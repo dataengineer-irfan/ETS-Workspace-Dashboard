@@ -64,6 +64,13 @@ class EmployeeDetails(BaseModel):
     finance_history: List[Dict[str, Any]]
     grade_median_ctc: Optional[float] = None
     grade_median_tenure: Optional[float] = None
+    full_name: Optional[str] = None
+    employee_label: Optional[str] = None
+    current_ctc: Optional[float] = None
+    monthly_salary: Optional[float] = None
+    last_bonus: Optional[float] = None
+    hike_percentage: Optional[float] = None
+    leave_records: Optional[List[Dict[str, Any]]] = None
 
 class TechwiseKPIs(BaseModel):
     total_unique_skills: int

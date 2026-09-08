@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import type { EmployeeDetails, EmployeeListItem } from '../../types/dashboard';
 import { KPICard } from '../common/KPICard';
 import { ExportButton } from '../common/ExportButton';
@@ -12,7 +12,9 @@ import {
   TrendingUp, 
   Code, 
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  Search,
+  X
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -42,12 +44,46 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const filteredList = employeeList.filter(
-    (e) =>
-      e['EMPLOYEE LABEL'].toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(e['EMPLOYEE NUMBER']).includes(searchTerm)
-  );
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Focus input when dropdown opens
+  useEffect(() => {
+    if (dropdownOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [dropdownOpen]);
+
+  // Multi-field search: name, ID, grade, department, state, project, manager, location
+  const filteredList = useMemo(() => {
+    if (!searchTerm.trim()) return employeeList;
+    const term = searchTerm.toLowerCase().trim();
+    return employeeList.filter((e) => {
+      const label = (e['EMPLOYEE LABEL'] || '').toLowerCase();
+      const id = String(e['EMPLOYEE NUMBER']);
+      const grade = (e['JOB LEVEL'] || '').toLowerCase();
+      const dept = (e['DEPARTMENT'] || '').toLowerCase();
+      const title = (e['JOB TITLE'] || '').toLowerCase();
+      const state = (e['State'] || '').toLowerCase();
+      const project = (e['Project Working'] || '').toLowerCase();
+      const manager = (e['MANAGER'] || '').toLowerCase();
+      const location = (e['LOCATION'] || '').toLowerCase();
+      return label.includes(term) || id.includes(term) || grade.includes(term) ||
+        dept.includes(term) || title.includes(term) || state.includes(term) ||
+        project.includes(term) || manager.includes(term) || location.includes(term);
+    });
+  }, [employeeList, searchTerm]);
 
   if (loading || !employee) {
     return (
@@ -60,10 +96,11 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
     );
   }
 
-  const latestFinance = employee.finance_history.length > 0
-    ? employee.finance_history[employee.finance_history.length - 1]
-    : null;
-  const currentCTC = latestFinance ? latestFinance.Total_CTC : 0;
+  // Use direct current_ctc from backend (EMPLOYEES sheet) instead of last finance row
+  const currentCTC = employee.current_ctc || (employee.finance_history.length > 0 ? employee.finance_history[employee.finance_history.length - 1].Total_CTC : 0);
+  const monthlySalary = employee.monthly_salary || 0;
+  const lastBonus = employee.last_bonus || 0;
+  const hikePct = employee.hike_percentage || 0;
   const gradeMedianCTC = employee.grade_median_ctc || 850000;
   const ctcPctDiff = gradeMedianCTC > 0 ? ((currentCTC - gradeMedianCTC) / gradeMedianCTC) * 100 : 0;
 
@@ -90,7 +127,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
             </span>
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-              {employee.infinite_exp}y ETS tenure ({tenureDiff >= 0 ? '+' : ''}${tenureDiff.toFixed(1)}y vs Median)
+              {employee.infinite_exp}y ETS tenure ({tenureDiff >= 0 ? '+' : ''}{tenureDiff.toFixed(1)}y vs Median)
             </span>
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
@@ -121,47 +158,75 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
           </div>
         </div>
 
-        {/* Searchable Autocomplete Employee Dropdown */}
-        <div className="relative min-w-[280px]">
+        {/* Searchable Employee Slicer — Full Employee List */}
+        <div className="relative min-w-[320px]" ref={dropdownRef}>
           <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+            onClick={() => { setDropdownOpen(!dropdownOpen); setSearchTerm(''); }}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-left text-slate-800 flex items-center justify-between hover:border-cyan-500 hover:bg-white transition-colors"
           >
             <span className="truncate font-medium">{employee.name} ({employee.employee_number})</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 mt-1 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1.5 flex flex-col gap-1">
-              <input
-                type="text"
-                placeholder="Search by name or ID (590 employees)..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1 rounded focus:outline-none focus:border-cyan-500"
-                autoFocus
-              />
-              <div className="max-h-56 overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
-                {filteredList.slice(0, 40).map((e) => (
+            <div className="absolute right-0 mt-1 w-[380px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1.5 flex flex-col gap-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Search by name, ID, grade, dept, state, project..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs pl-7 pr-7 py-1.5 rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-200"
+                />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <X className="w-3 h-3 text-slate-400 hover:text-slate-600" />
+                  </button>
+                )}
+              </div>
+              <div className="text-[9px] text-slate-500 px-1 font-medium">
+                {filteredList.length} of {employeeList.length} employees
+              </div>
+              <div className="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
+                {filteredList.map((e) => (
                   <button
                     key={e['EMPLOYEE NUMBER']}
                     onClick={() => {
                       onSelectEmployee(e['EMPLOYEE NUMBER']);
                       setDropdownOpen(false);
+                      setSearchTerm('');
                     }}
-                    className={`text-left px-2 py-1 rounded text-[11px] flex items-center justify-between hover:bg-slate-50 transition-colors ${
-                      e['EMPLOYEE NUMBER'] === employee.employee_number ? 'bg-cyan-50 text-cyan-800 font-bold' : 'text-slate-700'
+                    className={`text-left px-2 py-1.5 rounded-lg text-[11px] flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors ${
+                      e['EMPLOYEE NUMBER'] === employee.employee_number ? 'bg-cyan-50 text-cyan-800 font-bold border border-cyan-200' : 'text-slate-700'
                     }`}
                   >
-                    <span className="truncate max-w-[200px]">{e['EMPLOYEE LABEL']}</span>
-                    <span className="text-[10px] font-mono text-slate-500">{e['JOB LEVEL']}</span>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="truncate font-semibold">{e['EMPLOYEE LABEL']}</span>
+                      <span className="text-[9px] text-slate-500 truncate">
+                        {e['DEPARTMENT']} · {e['LOCATION']}{e['State'] ? ` · ${e['State']}` : ''}{e['Project Working'] ? ` · ${e['Project Working']}` : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[9px] font-mono text-slate-500">{e['JOB LEVEL']}</span>
+                      {e['EMP_CTC1'] ? (
+                        <span className="text-[9px] font-mono text-emerald-600">₹{(e['EMP_CTC1'] / 100000).toFixed(1)}L</span>
+                      ) : null}
+                    </div>
                   </button>
                 ))}
+                {filteredList.length === 0 && (
+                  <div className="text-center py-4 text-slate-400 text-xs">
+                    No employees match "{searchTerm}"
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
+
 
       {/* Peer Comparison Benchmark Strip */}
       <div className="grid grid-cols-3 gap-2 shrink-0">

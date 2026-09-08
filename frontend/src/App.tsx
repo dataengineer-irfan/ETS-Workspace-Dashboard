@@ -63,25 +63,34 @@ export const App: React.FC = () => {
   const [salarywise2Data, setSalarywise2Data] = useState<Salarywise2KPIs | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
 
-  // Load Filter Options & Employee List on Mount
+  // Load Filter Options on Mount
   useEffect(() => {
-    const initBaseData = async () => {
+    const loadOptions = async () => {
       try {
-        const [opts, emps] = await Promise.all([
-          fetchFilterOptions(),
-          fetchEmployeeList(),
-        ]);
+        const opts = await fetchFilterOptions();
         setFilterOptions(opts);
+      } catch (err) {
+        console.error('Error loading filter options:', err);
+      }
+    };
+    loadOptions();
+  }, []);
+
+  // Re-fetch employee list when filters change
+  useEffect(() => {
+    const loadEmployeeList = async () => {
+      try {
+        const emps = await fetchEmployeeList(filters);
         setEmployeeList(emps);
-        if (emps.length > 0) {
+        if (emps.length > 0 && !emps.find(e => e['EMPLOYEE NUMBER'] === selectedEmpNumber)) {
           setSelectedEmpNumber(emps[0]['EMPLOYEE NUMBER']);
         }
       } catch (err) {
-        console.error('Error initializing base data:', err);
+        console.error('Error loading employee list:', err);
       }
     };
-    initBaseData();
-  }, []);
+    loadEmployeeList();
+  }, [filters]);
 
   // Fetch Tab Specific Data based on activeTab and filters
   const loadActiveTabData = useCallback(async () => {

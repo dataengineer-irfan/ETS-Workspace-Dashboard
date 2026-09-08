@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, List, Optional
 import math
+import re
 from backend.app.data_loader import data_loader
 
 GRADE_ORDER = ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10']
@@ -26,30 +27,95 @@ def sanitize_dict(d: Dict[str, Any]) -> Dict[str, Any]:
 def sanitize_list(l: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [sanitize_dict(item) for item in l]
 
+def parse_filter_list(val: Any) -> List[str]:
+    """
+    Parses filter input into a clean list of non-empty strings.
+    Handles None, empty string, list, tuple, set, comma-separated string,
+    and excludes 'ALL' / 'ALL (ALL)' placeholders.
+    """
+    if val is None:
+        return []
+    if isinstance(val, (list, tuple, set)):
+        items = []
+        for v in val:
+            items.extend(parse_filter_list(v))
+        return items
+    s = str(val).strip()
+    if not s or s.lower() in ('', 'all', 'none', 'null', 'undefined'):
+        return []
+    parts = [p.strip() for p in s.split(',') if p.strip()]
+    return [p for p in parts if p.lower() not in ('all', 'none', 'null', 'undefined')]
+
+def extract_request_filters(request: Any) -> Dict[str, Any]:
+    """
+    Extracts query parameters from Starlette/FastAPI Request,
+    supporting key, key[], comma-separated, and multi-repeated keys.
+    """
+    filters: Dict[str, Any] = {}
+    if not hasattr(request, 'query_params'):
+        return filters
+    for k, v in request.query_params.multi_items():
+        clean_k = k[:-2] if k.endswith('[]') else k
+        if clean_k not in filters:
+            filters[clean_k] = []
+        filters[clean_k].append(v)
+    return filters
+
 def apply_employee_filters(df: pd.DataFrame, filters: Dict[str, Any]) -> pd.DataFrame:
     res = df.copy()
-    if filters.get('state'):
-        res = res[res['State'].str.upper() == str(filters['state']).upper()]
-    if filters.get('job_level'):
-        res = res[res['JOB LEVEL'].str.upper() == str(filters['job_level']).upper()]
-    if filters.get('location'):
-        res = res[res['LOCATION'].str.upper() == str(filters['location']).upper()]
-    if filters.get('department'):
-        res = res[res['DEPARTMENT'].str.upper() == str(filters['department']).upper()]
-    if filters.get('project'):
-        res = res[res['Project Working'].str.upper() == str(filters['project']).upper()]
-    if filters.get('manager'):
-        res = res[res['MANAGER'].str.contains(str(filters['manager']), case=False, regex=False, na=False)]
-    if filters.get('salary_bin'):
-        res = res[res['SalaryBin'] == str(filters['salary_bin'])]
-    if filters.get('search'):
-        q = str(filters['search']).lower().strip()
+    if not filters:
+        return res
+
+    # State filter (NH, ND, AK)
+    states = parse_filter_list(filters.get('state'))
+    if states:
+        res = res[res['State'].astype(str).str.upper().isin([s.upper() for s in states])]
+
+    # Project filter (AK, ND, NH, NH Projects)
+    projects = parse_filter_list(filters.get('project'))
+    if projects:
+        projects_upper = [p.upper() for p in projects]
+        matched = res['Project Working'].astype(str).str.upper().isin(projects_upper)
+        if any(p == 'NH' for p in projects_upper):
+            matched = matched | (res['Project Working'].astype(str).str.upper() == 'NH PROJECTS')
+        res = res[matched]
+
+    # Job level / Grade filter (E1 - E10)
+    grades = parse_filter_list(filters.get('job_level'))
+    if grades:
+        res = res[res['JOB LEVEL'].astype(str).str.upper().isin([g.upper() for g in grades])]
+
+    # Location filter (Bangalore, Chennai, Hyderabad, Pune)
+    locations = parse_filter_list(filters.get('location'))
+    if locations:
+        res = res[res['LOCATION'].astype(str).str.upper().isin([l.upper() for l in locations])]
+
+    # Department filter (Cognos, Core, IT, Informatica, Infra, QA)
+    departments = parse_filter_list(filters.get('department'))
+    if departments:
+        res = res[res['DEPARTMENT'].astype(str).str.upper().isin([d.upper() for d in departments])]
+
+    # Manager filter
+    managers = parse_filter_list(filters.get('manager'))
+    if managers:
+        pattern = '|'.join(re.escape(m) for m in managers)
+        res = res[res['MANAGER'].astype(str).str.contains(pattern, case=False, regex=True, na=False)]
+
+    # Salary bin filter ('< 5L', '5-10L', etc.)
+    salary_bins = parse_filter_list(filters.get('salary_bin'))
+    if salary_bins:
+        res = res[res['SalaryBin'].astype(str).isin(salary_bins)]
+
+    # Search filter (name, number, email, title)
+    search_q = str(filters.get('search') or '').lower().strip()
+    if search_q and search_q not in ('', 'none', 'null', 'undefined'):
         res = res[
-            res['EMPLOYEE LABEL'].str.lower().str.contains(q, regex=False, na=False) |
-            res['EMPLOYEE NUMBER'].astype(str).str.contains(q, regex=False, na=False) |
-            res['EMAIL'].str.lower().str.contains(q, regex=False, na=False) |
-            res['JOB TITLE'].str.lower().str.contains(q, regex=False, na=False)
+            res['EMPLOYEE LABEL'].astype(str).str.lower().str.contains(search_q, regex=False, na=False) |
+            res['EMPLOYEE NUMBER'].astype(str).str.contains(search_q, regex=False, na=False) |
+            res['EMAIL'].astype(str).str.lower().str.contains(search_q, regex=False, na=False) |
+            res['JOB TITLE'].astype(str).str.lower().str.contains(search_q, regex=False, na=False)
         ]
+
     return res
 
 class AnalyticsEngine:
@@ -303,7 +369,21 @@ class AnalyticsEngine:
             emp_number = int(emp_match['EMPLOYEE NUMBER'].iloc[0])
             
         emp = emp_match.iloc[0]
+
+        # Clean name: remove ID if present in label
+        raw_label = str(emp.get('EMPLOYEE LABEL') or '')
+        clean_name = re.sub(r'\s*\(\d+\)\s*', '', raw_label).strip()
+        if not clean_name:
+            clean_name = f"{emp.get('EMPLOYEE FIRST NAME', '')} {emp.get('EMPLOYEE LAST NAME', '')}".strip()
+        employee_label = f"{clean_name} ({emp_number})"
         
+        # Financial metrics directly from df_employees
+        curr_ctc = float(emp['EMP_CTC1']) if pd.notnull(emp.get('EMP_CTC1')) else 0.0
+        m_sal = float(emp['M_Salary']) if pd.notnull(emp.get('M_Salary')) else (round(curr_ctc / 12, 2) if curr_ctc > 0 else 0.0)
+        last_bonus = float(emp['Last_Bonus']) if pd.notnull(emp.get('Last_Bonus')) else 0.0
+        hike_pct = float(emp['Hike_Percentage']) if pd.notnull(emp.get('Hike_Percentage')) else 0.0
+
+        # Skills mapping
         df_skill = data_loader.df_skills
         emp_skills_df = df_skill[df_skill['EMPLOYEE NUMBER'] == emp_number].copy()
         if 'Assigned Date' in emp_skills_df.columns:
@@ -311,6 +391,7 @@ class AnalyticsEngine:
         emp_skills = sanitize_list(emp_skills_df.to_dict(orient='records'))
         fresh_skills = [s['Skill Name'] for s in emp_skills if s.get('Skill Level') == 'Advanced'] or [s['Skill Name'] for s in emp_skills]
         
+        # Finance History
         df_fin = data_loader.df_finance
         emp_fin_df = df_fin[df_fin['EMPLOYEE NUMBER'] == emp_number].sort_values('Year').copy()
         for col in ['Prom_Eve_Date', 'START DATE', 'EXIT DATE']:
@@ -318,12 +399,47 @@ class AnalyticsEngine:
                 emp_fin_df[col] = emp_fin_df[col].astype(str)
         emp_fin = sanitize_list(emp_fin_df.to_dict(orient='records'))
         
+        # If no multi-year finance history exists, synthesize FY24 baseline record from EMPLOYEES
+        if not emp_fin:
+            emp_fin = [{
+                'EMPLOYEE NUMBER': emp_number,
+                'Year': 2024,
+                'Base_Salary': round(m_sal * 12, 2),
+                'Bonus': round(last_bonus, 2),
+                'Perks': round(curr_ctc * 0.08, 2),
+                'Other_Comp': max(0.0, round(curr_ctc - (m_sal * 12) - last_bonus, 2)),
+                'M_Salary': round(m_sal, 2),
+                'Total_CTC': round(curr_ctc, 2),
+                'Hike': round(hike_pct / 100.0, 4) if hike_pct > 0 else 0.0,
+                'Is_Promotion': 'No'
+            }]
+
+        # Leave Records
+        df_leave = data_loader.df_leave
+        emp_leave_df = df_leave[df_leave['EMPLOYEE NUMBER'] == emp_number].copy()
+        leave_records = []
+        for _, lr in emp_leave_df.iterrows():
+            leave_records.append({
+                'leave_type': str(lr.get('LEAVE TYPE', 'Leave')),
+                'day_value': float(lr.get('DAY VALUE', 1.0)),
+                'start_date': lr['START DATE'].strftime('%Y-%m-%d') if pd.notnull(lr.get('START DATE')) else '',
+                'end_date': lr['END DATE'].strftime('%Y-%m-%d') if pd.notnull(lr.get('END DATE')) else '',
+                'manager': str(lr.get('MANAGER', ''))
+            })
+
         contact_seed = int(emp_number) if emp_number > 0 else 1019272
         contact_str = f"+91 {(contact_seed * 987654) % 9000000000 + 1000000000}"
         
+        grade_str = str(emp['JOB LEVEL'])
+        grade_employees = df_emp[df_emp['JOB LEVEL'] == grade_str]
+        grade_median_ctc = round(float(grade_employees['EMP_CTC1'].median()), 2) if not grade_employees.empty else curr_ctc
+        grade_median_tenure = round(float(grade_employees['Infinite_Exp'].median()), 2) if not grade_employees.empty else float(emp['Infinite_Exp'])
+        
         return {
             'employee_number': emp_number,
-            'name': str(emp['EMPLOYEE LABEL']),
+            'name': clean_name,
+            'full_name': clean_name,
+            'employee_label': employee_label,
             'email': str(emp['EMAIL']),
             'contact_no': contact_str,
             'gender': str(emp['GENDER']),
@@ -331,7 +447,7 @@ class AnalyticsEngine:
             'state': str(emp['State']),
             'department': str(emp['DEPARTMENT']),
             'job_title': str(emp['JOB TITLE']),
-            'job_level': str(emp['JOB LEVEL']),
+            'job_level': grade_str,
             'manager': str(emp['MANAGER']),
             'project': str(emp['Project Working']),
             'start_date': emp['START DATE'].strftime('%Y-%m-%d') if pd.notnull(emp['START DATE']) else None,
@@ -342,8 +458,13 @@ class AnalyticsEngine:
             'skills': emp_skills,
             'fresh_skills': fresh_skills,
             'finance_history': emp_fin,
-            'grade_median_ctc': round(float(df_emp[df_emp['JOB LEVEL'] == str(emp['JOB LEVEL'])]['EMP_CTC1'].median()), 2) if not df_emp[df_emp['JOB LEVEL'] == str(emp['JOB LEVEL'])].empty else float(emp['EMP_CTC1']),
-            'grade_median_tenure': round(float(df_emp[df_emp['JOB LEVEL'] == str(emp['JOB LEVEL'])]['Infinite_Exp'].median()), 2) if not df_emp[df_emp['JOB LEVEL'] == str(emp['JOB LEVEL'])].empty else float(emp['Infinite_Exp']),
+            'grade_median_ctc': grade_median_ctc,
+            'grade_median_tenure': grade_median_tenure,
+            'current_ctc': curr_ctc,
+            'monthly_salary': m_sal,
+            'last_bonus': last_bonus,
+            'hike_percentage': hike_pct,
+            'leave_records': leave_records
         }
 
     @staticmethod
@@ -352,8 +473,10 @@ class AnalyticsEngine:
         df_emp = apply_employee_filters(data_loader.df_employees, filters)
         df_skill = data_loader.df_skills.copy()
         
-        if filters.get('skill_name'):
-            df_skill = df_skill[df_skill['Skill Name'].str.upper() == str(filters['skill_name']).upper()]
+        skills = parse_filter_list(filters.get('skill_name'))
+        if skills:
+            skills_upper = [s.upper() for s in skills]
+            df_skill = df_skill[df_skill['Skill Name'].astype(str).str.upper().isin(skills_upper)]
             
         active_emp_ids = set(df_emp['EMPLOYEE NUMBER'])
         matched_skills = df_skill[df_skill['EMPLOYEE NUMBER'].isin(active_emp_ids)]
@@ -465,7 +588,24 @@ class AnalyticsEngine:
         # Query full df_employees dataset for comprehensive 590-employee compensation analytics
         df_emp = apply_employee_filters(data_loader.df_employees, filters)
         if df_emp.empty:
-            df_emp = data_loader.df_employees
+            return {
+                'total_salary': 0.0,
+                'avg_salary': 0.0,
+                'max_salary': 0.0,
+                'min_salary': 0.0,
+                'total_ctc': 0.0,
+                'avg_ctc': 0.0,
+                'max_ctc': 0.0,
+                'min_ctc': 0.0,
+                'total_perks': 0.0,
+                'total_bonus': 0.0,
+                'avg_bonus': 0.0,
+                'manager_grade_ctc_matrix': {'managers': [], 'manager_totals': {}, 'grades': [], 'matrix': {}},
+                'top_n_earners': [],
+                'salary_histogram': [{'bin': b, 'count': 0, 'percentage': 0.0} for b in ['< 5L', '5-10L', '10-15L', '15-20L', '20L+']],
+                'total_managers': 0,
+                'matched_records': 0
+            }
             
         total_ctc = float(df_emp['EMP_CTC1'].sum())
         avg_ctc = round(float(df_emp['EMP_CTC1'].mean()), 2)
@@ -545,20 +685,28 @@ class AnalyticsEngine:
         filters = filters or {}
         df_fin = data_loader.df_finance.copy()
 
-        if filters.get('year'):
-            df_fin = df_fin[df_fin['Year'] == int(filters['year'])]
-        if filters.get('state'):
-            df_fin = df_fin[df_fin['State'].str.upper() == str(filters['state']).upper()]
-        if filters.get('salary_bin'):
-            df_fin = df_fin[df_fin['SalaryBin'] == str(filters['salary_bin'])]
-        if filters.get('job_level'):
-            df_fin = df_fin[df_fin['JOB LEVEL'].str.upper() == str(filters['job_level']).upper()]
-        if filters.get('location'):
-            df_fin = df_fin[df_fin['LOCATION'].str.upper() == str(filters['location']).upper()]
-        if filters.get('department'):
-            df_fin = df_fin[df_fin['DEPARTMENT'].str.upper() == str(filters['department']).upper()]
-        if filters.get('manager'):
-            df_fin = df_fin[df_fin['MANAGER'].str.upper() == str(filters['manager']).upper()]
+        years = [int(y) for y in parse_filter_list(filters.get('year')) if str(y).isdigit()]
+        if years:
+            df_fin = df_fin[df_fin['Year'].isin(years)]
+        states = parse_filter_list(filters.get('state'))
+        if states:
+            df_fin = df_fin[df_fin['State'].astype(str).str.upper().isin([s.upper() for s in states])]
+        salary_bins = parse_filter_list(filters.get('salary_bin'))
+        if salary_bins:
+            df_fin = df_fin[df_fin['SalaryBin'].isin(salary_bins)]
+        grades = parse_filter_list(filters.get('job_level'))
+        if grades:
+            df_fin = df_fin[df_fin['JOB LEVEL'].astype(str).str.upper().isin([g.upper() for g in grades])]
+        locations = parse_filter_list(filters.get('location'))
+        if locations:
+            df_fin = df_fin[df_fin['LOCATION'].astype(str).str.upper().isin([l.upper() for l in locations])]
+        departments = parse_filter_list(filters.get('department'))
+        if departments:
+            df_fin = df_fin[df_fin['DEPARTMENT'].astype(str).str.upper().isin([d.upper() for d in departments])]
+        managers = parse_filter_list(filters.get('manager'))
+        if managers:
+            pattern = '|'.join(re.escape(m) for m in managers)
+            df_fin = df_fin[df_fin['MANAGER'].astype(str).str.contains(pattern, case=False, regex=True, na=False)]
 
         if df_fin.empty:
             return {
@@ -666,12 +814,17 @@ class AnalyticsEngine:
         filters = filters or {}
         df_leave = data_loader.df_leave.copy()
         
-        if filters.get('leave_type'):
-            df_leave = df_leave[df_leave['LEAVE TYPE'].str.contains(str(filters['leave_type']), case=False, na=False)]
-        if filters.get('department'):
-            df_leave = df_leave[df_leave['DEPARTMENT'].str.upper() == str(filters['department']).upper()]
-        if filters.get('manager'):
-            df_leave = df_leave[df_leave['MANAGER'].str.contains(str(filters['manager']), case=False, na=False)]
+        leave_types = parse_filter_list(filters.get('leave_type'))
+        if leave_types:
+            pattern = '|'.join(re.escape(l) for l in leave_types)
+            df_leave = df_leave[df_leave['LEAVE TYPE'].astype(str).str.contains(pattern, case=False, regex=True, na=False)]
+        departments = parse_filter_list(filters.get('department'))
+        if departments:
+            df_leave = df_leave[df_leave['DEPARTMENT'].astype(str).str.upper().isin([d.upper() for d in departments])]
+        managers = parse_filter_list(filters.get('manager'))
+        if managers:
+            pattern = '|'.join(re.escape(m) for m in managers)
+            df_leave = df_leave[df_leave['MANAGER'].astype(str).str.contains(pattern, case=False, regex=True, na=False)]
             
         total_days = float(df_leave['DAY VALUE'].sum())
         unique_emps = int(df_leave['EMPLOYEE NUMBER'].nunique())

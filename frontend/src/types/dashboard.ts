@@ -89,11 +89,19 @@ export interface EmployeeListItem {
   'JOB LEVEL': string;
   'DEPARTMENT': string;
   'LOCATION': string;
+  'State'?: string;
+  'Project Working'?: string;
+  'MANAGER'?: string;
+  'EMP_CTC1'?: number;
+  'M_Salary'?: number;
+  'Total_Exp'?: number;
 }
 
 export interface EmployeeDetails {
   employee_number: number;
   name: string;
+  full_name?: string;
+  employee_label?: string;
   email: string;
   contact_no?: string;
   gender: string;
@@ -111,6 +119,10 @@ export interface EmployeeDetails {
   total_exp: number;
   grade_median_ctc?: number;
   grade_median_tenure?: number;
+  current_ctc?: number;
+  monthly_salary?: number;
+  last_bonus?: number;
+  hike_percentage?: number;
   skills: {
     'Skill Name': string;
     'Skill Type': string;
@@ -126,10 +138,17 @@ export interface EmployeeDetails {
     Bonus: number;
     Perks: number;
     Other_Comp: number;
-    M_Salary: number;
+    M_Salary?: number;
     Total_CTC: number;
     Hike: number;
     Is_Promotion?: string;
+  }[];
+  leave_records?: {
+    leave_type: string;
+    day_value: number;
+    start_date?: string;
+    end_date?: string;
+    manager?: string;
   }[];
 }
 

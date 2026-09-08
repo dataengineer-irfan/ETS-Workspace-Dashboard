@@ -18,6 +18,22 @@ const API_BASE = '/api';
 const api = axios.create({
   baseURL: API_BASE,
   timeout: 10000,
+  paramsSerializer: (params) => {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      if (Array.isArray(value)) {
+        value.forEach((v) => {
+          if (v !== undefined && v !== null && v !== '') {
+            searchParams.append(key, String(v));
+          }
+        });
+      } else {
+        searchParams.append(key, String(value));
+      }
+    });
+    return searchParams.toString();
+  },
 });
 
 export const fetchFilterOptions = async (): Promise<FilterOptions> => {
@@ -35,8 +51,8 @@ export const fetchStatewiseKPIs = async (filters: FilterParams): Promise<Statewi
   return res.data;
 };
 
-export const fetchEmployeeList = async (): Promise<EmployeeListItem[]> => {
-  const res = await api.get('/employee/list');
+export const fetchEmployeeList = async (filters?: FilterParams): Promise<EmployeeListItem[]> => {
+  const res = await api.get('/employee/list', { params: filters });
   return res.data;
 };
 

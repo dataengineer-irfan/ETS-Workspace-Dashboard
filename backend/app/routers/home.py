@@ -1,29 +1,12 @@
-from fastapi import APIRouter, Query
-from typing import Optional
-from backend.app.analytics import analytics_engine
+from fastapi import APIRouter, Request
+from backend.app.analytics import analytics_engine, extract_request_filters
 from backend.app.models import HomeKPIs
 
 router = APIRouter(prefix="/api/home", tags=["Home"])
 
 @router.get("/kpis", response_model=HomeKPIs)
-def get_home_kpis(
-    state: Optional[str] = Query(None),
-    job_level: Optional[str] = Query(None),
-    location: Optional[str] = Query(None),
-    department: Optional[str] = Query(None),
-    project: Optional[str] = Query(None),
-    manager: Optional[str] = Query(None),
-    search: Optional[str] = Query(None)
-):
-    filters = {
-        'state': state,
-        'job_level': job_level,
-        'location': location,
-        'department': department,
-        'project': project,
-        'manager': manager,
-        'search': search
-    }
+def get_home_kpis(request: Request):
+    filters = extract_request_filters(request)
     return analytics_engine.get_home_kpis(filters)
 
 @router.get("/filters")
