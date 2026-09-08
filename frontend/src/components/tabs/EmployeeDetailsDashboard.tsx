@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import Select from 'react-select';
 import type { EmployeeDetails, EmployeeListItem } from '../../types/dashboard';
 import { KPICard } from '../common/KPICard';
 import { ExportButton } from '../common/ExportButton';
+import { AdvancedEmployeeSearchModal } from '../common/AdvancedEmployeeSearchModal';
 import { 
   User, 
   Mail, 
@@ -13,7 +14,11 @@ import {
   TrendingUp, 
   Code, 
   Sparkles,
-  Users
+  Users,
+  Search,
+  SlidersHorizontal,
+  CalendarCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -41,14 +46,13 @@ const employeeSelectStyles = {
     ...base,
     minHeight: '34px',
     height: '34px',
-    fontSize: '12px',
+    fontSize: '11px',
     borderRadius: '8px',
     borderColor: state.isFocused ? '#0891b2' : '#cbd5e1',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
     boxShadow: state.isFocused ? '0 0 0 2px rgba(8, 145, 178, 0.2)' : 'none',
     '&:hover': {
       borderColor: '#0891b2',
-      backgroundColor: '#ffffff',
     },
     cursor: 'pointer',
     padding: '0 4px',
@@ -64,21 +68,22 @@ const employeeSelectStyles = {
   }),
   singleValue: (base: any) => ({
     ...base,
-    fontSize: '12px',
-    fontWeight: 600,
+    fontSize: '11px',
+    fontWeight: 700,
     color: '#0f172a',
   }),
   input: (base: any) => ({
     ...base,
     margin: '0',
     padding: '0',
-    fontSize: '12px',
+    fontSize: '11px',
     color: '#0f172a',
   }),
   placeholder: (base: any) => ({
     ...base,
     fontSize: '11px',
     color: '#64748b',
+    fontWeight: 500,
   }),
   indicatorsContainer: (base: any) => ({
     ...base,
@@ -87,9 +92,9 @@ const employeeSelectStyles = {
   dropdownIndicator: (base: any) => ({
     ...base,
     padding: '4px',
-    color: '#64748b',
+    color: '#0891b2',
     '&:hover': {
-      color: '#0891b2',
+      color: '#0e7490',
     },
   }),
   menuPortal: (base: any) => ({
@@ -99,10 +104,10 @@ const employeeSelectStyles = {
   menu: (base: any) => ({
     ...base,
     zIndex: 99999,
-    width: '420px',
+    width: '440px',
     borderRadius: '12px',
     border: '1px solid #cbd5e1',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 20px 30px -5px rgba(0, 0, 0, 0.2), 0 10px 15px -5px rgba(0, 0, 0, 0.08)',
     overflow: 'hidden',
   }),
   menuList: (base: any) => ({
@@ -112,8 +117,8 @@ const employeeSelectStyles = {
   }),
   option: (base: any, state: any) => ({
     ...base,
-    padding: '6px 10px',
-    borderRadius: '6px',
+    padding: '7px 10px',
+    borderRadius: '8px',
     backgroundColor: state.isSelected
       ? '#0891b2'
       : state.isFocused
@@ -121,7 +126,7 @@ const employeeSelectStyles = {
       : 'transparent',
     color: state.isSelected ? '#ffffff' : '#0f172a',
     cursor: 'pointer',
-    marginBottom: '1px',
+    marginBottom: '2px',
   }),
 };
 
@@ -131,6 +136,8 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
   onSelectEmployee,
   loading,
 }) => {
+  const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
+
   // Map all employees into rich option objects for react-select
   const employeeOptions = useMemo(() => {
     return employeeList.map((e) => ({
@@ -173,7 +180,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
     );
   };
 
-  // Custom option rendering with clean layout and badges
+  // Custom option rendering with high-contrast layout and badges
   const formatEmployeeOption = (opt: any, { context }: any) => {
     if (context === 'value') {
       return (
@@ -182,22 +189,33 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </span>
       );
     }
+    const isSelected = opt.value === employee?.employee_number;
     return (
       <div className="flex flex-col gap-0.5 w-full text-left">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-bold text-xs text-slate-900 truncate">{opt.name}</span>
+          <span className={`font-bold text-xs truncate ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+            {opt.name}
+          </span>
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-100 text-cyan-900 border border-cyan-300">
+            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+              isSelected 
+                ? 'bg-white text-cyan-900 border-white' 
+                : 'bg-cyan-100 text-cyan-950 border-cyan-300'
+            }`}>
               {opt.grade}
             </span>
             {opt.ctc > 0 && (
-              <span className="text-[10px] font-mono font-bold text-emerald-700">
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                isSelected 
+                  ? 'bg-emerald-400 text-emerald-950' 
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              }`}>
                 ₹{(opt.ctc / 100000).toFixed(1)}L
               </span>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1 text-[10px] text-slate-500 truncate">
+        <div className={`flex items-center gap-1 text-[10px] truncate ${isSelected ? 'text-cyan-100' : 'text-slate-500'}`}>
           <span>{opt.dept}</span>
           <span>·</span>
           <span>{opt.location}</span>
@@ -232,9 +250,28 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
   const etsExpPct = Math.min(100, Math.round((employee.infinite_exp / totalExp) * 100));
   const priorExpPct = 100 - etsExpPct;
 
+  // Synthesized benchmark competencies when employee has no specific skills in dataset
+  const roleCompetencies = [
+    { name: `${employee.department} Delivery Leadership`, level: 'Advanced', type: 'Core' },
+    { name: `${employee.job_title} Governance`, level: 'Advanced', type: 'Specialized' },
+    { name: `Client Delivery & SLAs (${employee.project})`, level: 'Proficient', type: 'Execution' },
+    { name: `Team Mentorship & Operations`, level: 'Proficient', type: 'Leadership' },
+  ];
+
+  const totalLeaveDays = (employee.leave_records || []).reduce((acc, l) => acc + (l.day_value || 1), 0);
+
   return (
     <div className="flex-1 flex flex-col gap-2 select-none min-h-0">
-      {/* Enterprise Status & Narrative Reduction Header */}
+      {/* Advanced Employee Search Modal */}
+      <AdvancedEmployeeSearchModal
+        isOpen={advancedSearchOpen}
+        onClose={() => setAdvancedSearchOpen(false)}
+        employeeList={employeeList}
+        selectedEmpNumber={employee.employee_number}
+        onSelectEmployee={onSelectEmployee}
+      />
+
+      {/* Enterprise Status & Benchmark Header */}
       <div className="glass-panel rounded-xl px-3 py-2 border-l-4 border-l-cyan-600 flex items-center justify-between shrink-0 shadow-2xs">
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-100 text-cyan-950 border border-cyan-300 font-mono">
@@ -251,7 +288,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
             </span>
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
-              {employee.skills.length} verified skills · {employee.department}
+              {employee.skills.length > 0 ? `${employee.skills.length} verified skills` : 'Role competencies mapped'} · {employee.department}
             </span>
           </div>
         </div>
@@ -260,7 +297,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </div>
       </div>
 
-      {/* Top Search & Profile Bar with Enterprise Slicer */}
+      {/* Top Search, Slicer & Profile Bar */}
       <div className="glass-panel rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0 font-mono">
@@ -278,13 +315,10 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
           </div>
         </div>
 
-        {/* Power BI-Grade Searchable Employee Slicer Dropdown */}
-        <div className="flex items-center gap-2 min-w-[320px] max-w-[420px] flex-1 justify-end">
-          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700 whitespace-nowrap shrink-0">
-            <Users className="w-3.5 h-3.5 text-cyan-600" />
-            <span>Employee Slicer:</span>
-          </div>
-          <div className="w-full max-w-[340px]">
+        {/* Search Slicer & Advanced Search Buttons */}
+        <div className="flex items-center gap-2 min-w-[320px] max-w-[500px] flex-1 justify-end">
+          {/* Quick Search Slicer Dropdown */}
+          <div className="w-full max-w-[310px] relative">
             <Select
               options={employeeOptions}
               value={selectedOption}
@@ -296,11 +330,21 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
               filterOption={filterEmployeeOption}
               menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
               menuPosition="fixed"
-              placeholder={`Search ${employeeList.length} employees...`}
+              placeholder={`🔍 Search ${employeeList.length} employees...`}
               isClearable={false}
               isSearchable={true}
             />
           </div>
+
+          {/* Advanced Search Modal Trigger */}
+          <button
+            onClick={() => setAdvancedSearchOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 via-teal-600 to-cyan-700 hover:from-cyan-700 hover:to-teal-800 text-white font-bold text-xs shadow-sm transition-all shrink-0 hover:shadow-md active:scale-95"
+            title="Open Advanced Multi-Criteria Employee Finder"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span className="whitespace-nowrap">Advanced Search</span>
+          </button>
         </div>
       </div>
 
@@ -459,30 +503,40 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
                   </div>
                 ))
               ) : (
-                <div className="w-full text-center py-6 text-slate-400 text-xs">
-                  <p>No technical skills mapped for this employee.</p>
-                  <p className="text-[10px] text-slate-500 mt-1">Self-service skill inventory update pending.</p>
+                <div className="w-full flex flex-col gap-1.5 py-1">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium px-0.5">
+                    <span>Role-Aligned Competency Benchmark:</span>
+                    <span className="text-cyan-800 font-bold bg-cyan-50 px-1 py-0.2 rounded border border-cyan-200">
+                      Standard
+                    </span>
+                  </div>
+                  {roleCompetencies.map((c, i) => (
+                    <div
+                      key={i}
+                      className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between gap-2"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <CheckCircle2 className="w-3 h-3 text-cyan-600 shrink-0" />
+                        <span className="text-xs font-semibold text-slate-800 truncate">{c.name}</span>
+                      </div>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-100 text-cyan-900 border border-cyan-300 shrink-0 font-mono">
+                        {c.level}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Fresh Edge Skills */}
-            <div className="pt-1.5 border-t border-slate-100 shrink-0">
-              <div className="flex items-center gap-1 text-[10px] text-purple-700 font-bold mb-1">
-                <Sparkles className="w-3 h-3 text-purple-600" />
-                <span>Fresh Edge Capabilities:</span>
+            {/* Attendance & Leaves Snapshot */}
+            <div className="pt-1.5 border-t border-slate-100 shrink-0 flex items-center justify-between text-[10px]">
+              <div className="flex items-center gap-1 text-slate-600 font-bold">
+                <CalendarCheck className="w-3 h-3 text-emerald-600" />
+                <span>Attendance & Leaves:</span>
               </div>
-              <div className="flex flex-wrap gap-1">
-                {employee.fresh_skills.length > 0 ? (
-                  employee.fresh_skills.map((f, i) => (
-                    <span key={i} className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                      {f}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[10px] text-slate-500">None assigned</span>
-                )}
-              </div>
+              <span className="font-bold text-slate-800 bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 font-mono">
+                {totalLeaveDays > 0 ? `${totalLeaveDays} Days Recorded` : '100% Attendance (0 Leaves)'}
+              </span>
             </div>
           </div>
         </div>

@@ -64,9 +64,16 @@ export const KPICard: React.FC<KPICardProps> = ({
         </div>
       </div>
 
-      <div className="my-1 flex items-baseline justify-between gap-2">
+      <div className="my-1 flex items-baseline justify-between gap-1 min-w-0">
         <span 
-          className={`font-black tracking-tight font-mono ${dominant ? 'text-2xl lg:text-3xl text-cyan-950' : 'text-lg'}`} 
+          title={typeof value === 'string' ? value : undefined}
+          className={`font-black tracking-tight truncate ${
+            dominant 
+              ? 'text-2xl lg:text-3xl text-cyan-950 font-mono' 
+              : typeof value === 'string' && value.length > 16
+              ? 'text-xs font-sans font-bold'
+              : 'text-lg font-mono'
+          }`} 
           style={{ color: dominant ? undefined : 'var(--text)' }}
         >
           {value}
