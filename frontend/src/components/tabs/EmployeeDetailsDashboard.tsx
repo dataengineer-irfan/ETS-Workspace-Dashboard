@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import Select from 'react-select';
 import type { EmployeeDetails, EmployeeListItem } from '../../types/dashboard';
 import { KPICard } from '../common/KPICard';
 import { ExportButton } from '../common/ExportButton';
@@ -12,9 +13,7 @@ import {
   TrendingUp, 
   Code, 
   Sparkles,
-  ChevronDown,
-  Search,
-  X
+  Users
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -36,54 +35,178 @@ interface EmployeeDetailsDashboardProps {
   loading: boolean;
 }
 
+// Enterprise custom styles for react-select employee slicer
+const employeeSelectStyles = {
+  control: (base: any, state: any) => ({
+    ...base,
+    minHeight: '34px',
+    height: '34px',
+    fontSize: '12px',
+    borderRadius: '8px',
+    borderColor: state.isFocused ? '#0891b2' : '#cbd5e1',
+    backgroundColor: '#f8fafc',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(8, 145, 178, 0.2)' : 'none',
+    '&:hover': {
+      borderColor: '#0891b2',
+      backgroundColor: '#ffffff',
+    },
+    cursor: 'pointer',
+    padding: '0 4px',
+    transition: 'all 0.15s ease',
+  }),
+  valueContainer: (base: any) => ({
+    ...base,
+    height: '34px',
+    padding: '0 6px',
+    display: 'flex',
+    alignItems: 'center',
+    overflow: 'hidden',
+  }),
+  singleValue: (base: any) => ({
+    ...base,
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#0f172a',
+  }),
+  input: (base: any) => ({
+    ...base,
+    margin: '0',
+    padding: '0',
+    fontSize: '12px',
+    color: '#0f172a',
+  }),
+  placeholder: (base: any) => ({
+    ...base,
+    fontSize: '11px',
+    color: '#64748b',
+  }),
+  indicatorsContainer: (base: any) => ({
+    ...base,
+    height: '34px',
+  }),
+  dropdownIndicator: (base: any) => ({
+    ...base,
+    padding: '4px',
+    color: '#64748b',
+    '&:hover': {
+      color: '#0891b2',
+    },
+  }),
+  menuPortal: (base: any) => ({
+    ...base,
+    zIndex: 99999,
+  }),
+  menu: (base: any) => ({
+    ...base,
+    zIndex: 99999,
+    width: '420px',
+    borderRadius: '12px',
+    border: '1px solid #cbd5e1',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden',
+  }),
+  menuList: (base: any) => ({
+    ...base,
+    maxHeight: '340px',
+    padding: '4px',
+  }),
+  option: (base: any, state: any) => ({
+    ...base,
+    padding: '6px 10px',
+    borderRadius: '6px',
+    backgroundColor: state.isSelected
+      ? '#0891b2'
+      : state.isFocused
+      ? '#f0fdfa'
+      : 'transparent',
+    color: state.isSelected ? '#ffffff' : '#0f172a',
+    cursor: 'pointer',
+    marginBottom: '1px',
+  }),
+};
+
 export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> = ({
   employee,
   employeeList,
   onSelectEmployee,
   loading,
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Map all employees into rich option objects for react-select
+  const employeeOptions = useMemo(() => {
+    return employeeList.map((e) => ({
+      value: e['EMPLOYEE NUMBER'],
+      label: `${e['EMPLOYEE LABEL'] || e['EMPLOYEE NUMBER']} · ${e['JOB LEVEL']} · ${e['DEPARTMENT']}`,
+      name: e['EMPLOYEE LABEL'] || `Employee #${e['EMPLOYEE NUMBER']}`,
+      id: e['EMPLOYEE NUMBER'],
+      grade: e['JOB LEVEL'] || '',
+      title: e['JOB TITLE'] || '',
+      dept: e['DEPARTMENT'] || '',
+      location: e['LOCATION'] || '',
+      state: e['State'] || '',
+      project: e['Project Working'] || '',
+      manager: e['MANAGER'] || '',
+      ctc: e['EMP_CTC1'] || 0,
+    }));
+  }, [employeeList]);
 
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Current selected option
+  const selectedOption = useMemo(() => {
+    if (!employee) return null;
+    return employeeOptions.find((o) => o.value === employee.employee_number) || null;
+  }, [employeeOptions, employee?.employee_number]);
 
-  // Focus input when dropdown opens
-  useEffect(() => {
-    if (dropdownOpen && inputRef.current) {
-      inputRef.current.focus();
+  // Custom multi-field search: Name, ID, Grade, Dept, Location, State, Project, Manager
+  const filterEmployeeOption = (candidate: any, input: string) => {
+    if (!input) return true;
+    const term = input.toLowerCase().trim();
+    const d = candidate.data;
+    return (
+      String(d.id).includes(term) ||
+      d.name.toLowerCase().includes(term) ||
+      d.grade.toLowerCase().includes(term) ||
+      d.title.toLowerCase().includes(term) ||
+      d.dept.toLowerCase().includes(term) ||
+      d.location.toLowerCase().includes(term) ||
+      d.state.toLowerCase().includes(term) ||
+      d.project.toLowerCase().includes(term) ||
+      d.manager.toLowerCase().includes(term)
+    );
+  };
+
+  // Custom option rendering with clean layout and badges
+  const formatEmployeeOption = (opt: any, { context }: any) => {
+    if (context === 'value') {
+      return (
+        <span className="font-bold text-xs text-slate-800 truncate">
+          {opt.name}
+        </span>
+      );
     }
-  }, [dropdownOpen]);
-
-  // Multi-field search: name, ID, grade, department, state, project, manager, location
-  const filteredList = useMemo(() => {
-    if (!searchTerm.trim()) return employeeList;
-    const term = searchTerm.toLowerCase().trim();
-    return employeeList.filter((e) => {
-      const label = (e['EMPLOYEE LABEL'] || '').toLowerCase();
-      const id = String(e['EMPLOYEE NUMBER']);
-      const grade = (e['JOB LEVEL'] || '').toLowerCase();
-      const dept = (e['DEPARTMENT'] || '').toLowerCase();
-      const title = (e['JOB TITLE'] || '').toLowerCase();
-      const state = (e['State'] || '').toLowerCase();
-      const project = (e['Project Working'] || '').toLowerCase();
-      const manager = (e['MANAGER'] || '').toLowerCase();
-      const location = (e['LOCATION'] || '').toLowerCase();
-      return label.includes(term) || id.includes(term) || grade.includes(term) ||
-        dept.includes(term) || title.includes(term) || state.includes(term) ||
-        project.includes(term) || manager.includes(term) || location.includes(term);
-    });
-  }, [employeeList, searchTerm]);
+    return (
+      <div className="flex flex-col gap-0.5 w-full text-left">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-bold text-xs text-slate-900 truncate">{opt.name}</span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-100 text-cyan-900 border border-cyan-300">
+              {opt.grade}
+            </span>
+            {opt.ctc > 0 && (
+              <span className="text-[10px] font-mono font-bold text-emerald-700">
+                ₹{(opt.ctc / 100000).toFixed(1)}L
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-[10px] text-slate-500 truncate">
+          <span>{opt.dept}</span>
+          <span>·</span>
+          <span>{opt.location}</span>
+          {opt.state ? <span>({opt.state})</span> : null}
+          {opt.project ? <span>· Proj: {opt.project}</span> : null}
+        </div>
+      </div>
+    );
+  };
 
   if (loading || !employee) {
     return (
@@ -96,11 +219,8 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
     );
   }
 
-  // Use direct current_ctc from backend (EMPLOYEES sheet) instead of last finance row
+  // Sourced directly from backend
   const currentCTC = employee.current_ctc || (employee.finance_history.length > 0 ? employee.finance_history[employee.finance_history.length - 1].Total_CTC : 0);
-  const monthlySalary = employee.monthly_salary || 0;
-  const lastBonus = employee.last_bonus || 0;
-  const hikePct = employee.hike_percentage || 0;
   const gradeMedianCTC = employee.grade_median_ctc || 850000;
   const ctcPctDiff = gradeMedianCTC > 0 ? ((currentCTC - gradeMedianCTC) / gradeMedianCTC) * 100 : 0;
 
@@ -113,7 +233,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
   const priorExpPct = 100 - etsExpPct;
 
   return (
-    <div className="flex-1 flex flex-col gap-2 overflow-hidden select-none">
+    <div className="flex-1 flex flex-col gap-2 select-none min-h-0">
       {/* Enterprise Status & Narrative Reduction Header */}
       <div className="glass-panel rounded-xl px-3 py-2 border-l-4 border-l-cyan-600 flex items-center justify-between shrink-0 shadow-2xs">
         <div className="flex items-center gap-3">
@@ -140,90 +260,47 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </div>
       </div>
 
-      {/* Top Search & Profile Bar */}
-      <div className="glass-panel rounded-xl p-2 flex items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0 font-mono">
+      {/* Top Search & Profile Bar with Enterprise Slicer */}
+      <div className="glass-panel rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0 font-mono">
             {employee.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-slate-900 tracking-tight">{employee.name}</h2>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-cyan-50 text-cyan-800 border border-cyan-200">
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight truncate">{employee.name}</h2>
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-cyan-50 text-cyan-800 border border-cyan-200 shrink-0">
                 Grade {employee.job_level}
               </span>
-              <span className="text-[10px] text-slate-500 font-mono font-medium">ID: {employee.employee_number}</span>
+              <span className="text-[10px] text-slate-500 font-mono font-medium shrink-0">#{employee.employee_number}</span>
             </div>
-            <p className="text-[11px] text-slate-600 font-medium">{employee.job_title} · {employee.department} · {employee.location} ({employee.state})</p>
+            <p className="text-[11px] text-slate-600 font-medium truncate">{employee.job_title} · {employee.department} · {employee.location} ({employee.state})</p>
           </div>
         </div>
 
-        {/* Searchable Employee Slicer — Full Employee List */}
-        <div className="relative min-w-[320px]" ref={dropdownRef}>
-          <button
-            onClick={() => { setDropdownOpen(!dropdownOpen); setSearchTerm(''); }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-left text-slate-800 flex items-center justify-between hover:border-cyan-500 hover:bg-white transition-colors"
-          >
-            <span className="truncate font-medium">{employee.name} ({employee.employee_number})</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {dropdownOpen && (
-            <div className="absolute right-0 mt-1 w-[380px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1.5 flex flex-col gap-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Search by name, ID, grade, dept, state, project..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs pl-7 pr-7 py-1.5 rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-200"
-                />
-                {searchTerm && (
-                  <button onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2">
-                    <X className="w-3 h-3 text-slate-400 hover:text-slate-600" />
-                  </button>
-                )}
-              </div>
-              <div className="text-[9px] text-slate-500 px-1 font-medium">
-                {filteredList.length} of {employeeList.length} employees
-              </div>
-              <div className="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
-                {filteredList.map((e) => (
-                  <button
-                    key={e['EMPLOYEE NUMBER']}
-                    onClick={() => {
-                      onSelectEmployee(e['EMPLOYEE NUMBER']);
-                      setDropdownOpen(false);
-                      setSearchTerm('');
-                    }}
-                    className={`text-left px-2 py-1.5 rounded-lg text-[11px] flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors ${
-                      e['EMPLOYEE NUMBER'] === employee.employee_number ? 'bg-cyan-50 text-cyan-800 font-bold border border-cyan-200' : 'text-slate-700'
-                    }`}
-                  >
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="truncate font-semibold">{e['EMPLOYEE LABEL']}</span>
-                      <span className="text-[9px] text-slate-500 truncate">
-                        {e['DEPARTMENT']} · {e['LOCATION']}{e['State'] ? ` · ${e['State']}` : ''}{e['Project Working'] ? ` · ${e['Project Working']}` : ''}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[9px] font-mono text-slate-500">{e['JOB LEVEL']}</span>
-                      {e['EMP_CTC1'] ? (
-                        <span className="text-[9px] font-mono text-emerald-600">₹{(e['EMP_CTC1'] / 100000).toFixed(1)}L</span>
-                      ) : null}
-                    </div>
-                  </button>
-                ))}
-                {filteredList.length === 0 && (
-                  <div className="text-center py-4 text-slate-400 text-xs">
-                    No employees match "{searchTerm}"
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+        {/* Power BI-Grade Searchable Employee Slicer Dropdown */}
+        <div className="flex items-center gap-2 min-w-[320px] max-w-[420px] flex-1 justify-end">
+          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700 whitespace-nowrap shrink-0">
+            <Users className="w-3.5 h-3.5 text-cyan-600" />
+            <span>Employee Slicer:</span>
+          </div>
+          <div className="w-full max-w-[340px]">
+            <Select
+              options={employeeOptions}
+              value={selectedOption}
+              onChange={(opt: any) => {
+                if (opt) onSelectEmployee(opt.value);
+              }}
+              styles={employeeSelectStyles}
+              formatOptionLabel={formatEmployeeOption}
+              filterOption={filterEmployeeOption}
+              menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+              menuPosition="fixed"
+              placeholder={`Search ${employeeList.length} employees...`}
+              isClearable={false}
+              isSearchable={true}
+            />
+          </div>
         </div>
       </div>
 

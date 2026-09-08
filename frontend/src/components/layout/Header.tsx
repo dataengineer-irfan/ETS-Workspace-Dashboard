@@ -40,13 +40,13 @@ export const Header: React.FC<HeaderProps> = ({
   setTheme,
 }) => {
   const tabs = [
-    { id: 'home', label: 'Workforce Overview', icon: Users },
-    { id: 'statewise', label: 'State Performance', icon: MapPin },
-    { id: 'techwise', label: 'Skills & Capability', icon: Cpu },
-    { id: 'salarywise', label: 'Compensation Analytics', icon: BadgeIndianRupee },
-    { id: 'salarywise2', label: 'Compensation Trends', icon: TrendingUp },
-    { id: 'calendar', label: 'Leave & Attendance', icon: CalendarDays },
-    { id: 'employee_details', label: 'Employee Profile', icon: UserCheck },
+    { id: 'home', label: 'Workforce', fullLabel: 'Workforce Overview', icon: Users },
+    { id: 'statewise', label: 'State Perf', fullLabel: 'State Performance', icon: MapPin },
+    { id: 'techwise', label: 'Skills', fullLabel: 'Skills & Capability', icon: Cpu },
+    { id: 'salarywise', label: 'Compensation', fullLabel: 'Compensation Analytics', icon: BadgeIndianRupee },
+    { id: 'salarywise2', label: 'Comp Trends', fullLabel: 'Compensation Trends', icon: TrendingUp },
+    { id: 'calendar', label: 'Leave', fullLabel: 'Leave & Attendance', icon: CalendarDays },
+    { id: 'employee_details', label: 'Employee Profile', fullLabel: 'Employee Profile', icon: UserCheck },
   ];
 
   const handleFullscreen = () => {
@@ -59,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className="h-12 border-b px-3 flex items-center justify-between shrink-0 select-none z-30"
+      className="h-12 border-b px-3 flex items-center justify-between shrink-0 select-none z-30 gap-2"
       style={{
         background: 'linear-gradient(180deg, rgba(15,23,42,0.02), rgba(255,255,255,0.78), var(--surface)), var(--surface)',
         borderColor: 'var(--border)',
@@ -67,23 +67,23 @@ export const Header: React.FC<HeaderProps> = ({
       }}
     >
       {/* Brand & Title */}
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 via-sky-500 to-teal-500 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/20">
           <BarChart3 className="w-5 h-5 text-white" />
         </div>
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-sm font-bold tracking-[0.08em]" style={{ color: 'var(--text)' }}>ETS ENTERPRISE</h1>
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border" style={{ background: 'var(--pill-bg)', color: 'var(--cyan-strong)', borderColor: 'var(--border-strong)' }}>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-xs sm:text-sm font-bold tracking-[0.08em]" style={{ color: 'var(--text)' }}>ETS ENTERPRISE</h1>
+            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full border" style={{ background: 'var(--pill-bg)', color: 'var(--cyan-strong)', borderColor: 'var(--border-strong)' }}>
               v2.0
             </span>
           </div>
-          <p className="text-[10px] font-medium tracking-[0.12em] uppercase" style={{ color: 'var(--muted)' }}>Executive command center</p>
+          <p className="text-[9px] sm:text-[10px] font-medium tracking-[0.12em] uppercase" style={{ color: 'var(--muted)' }}>Executive command center</p>
         </div>
       </div>
 
       {/* Center Navigation Tabs */}
-      <nav className="flex items-center gap-1 p-1 rounded-xl mx-3 overflow-x-auto custom-scrollbar" style={{ background: 'rgba(15, 23, 42, 0.02)', border: '1px solid var(--border)' }}>
+      <nav className="flex items-center gap-1 p-0.5 rounded-xl mx-1 shrink min-w-0" style={{ background: 'rgba(15, 23, 42, 0.02)', border: '1px solid var(--border)' }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all shrink-0 ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all shrink-0 ${
                 isActive ? 'shadow-sm border font-semibold' : ''
               }`}
               style={
@@ -109,7 +109,8 @@ export const Header: React.FC<HeaderProps> = ({
               }
             >
               <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: isActive ? 'var(--cyan-strong)' : 'var(--muted)' }} />
-              <span className="whitespace-nowrap">{tab.label}</span>
+              <span className="whitespace-nowrap hidden 2xl:inline">{tab.fullLabel}</span>
+              <span className="whitespace-nowrap 2xl:hidden">{tab.label}</span>
             </button>
           );
         })}

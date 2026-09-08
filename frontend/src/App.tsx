@@ -163,7 +163,7 @@ export const App: React.FC = () => {
 
       {/* Main Viewport Container & Docked Copilot (Push Layout) */}
       <div className="flex-1 flex flex-row overflow-hidden min-h-0 relative" style={{ background: 'var(--bg-soft)' }}>
-        <main className="flex-1 p-2 flex flex-col overflow-hidden min-h-0 relative">
+        <main className="flex-1 p-2 flex flex-col overflow-y-auto custom-scrollbar min-h-0 relative">
           {activeTab === 'home' && (
             <HomeDashboard
               data={homeData}
