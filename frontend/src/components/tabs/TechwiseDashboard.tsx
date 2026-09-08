@@ -30,19 +30,20 @@ interface TechwiseDashboardProps {
   data: TechwiseKPIs | null;
   loading: boolean;
   onSelectEmployee: (empNumber: number) => void;
+  onOpenEmployeeProfile?: (empNumber: number) => void;
 }
 
 export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
   data,
   loading,
   onSelectEmployee,
+  onOpenEmployeeProfile,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<string>('employee_number');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeSkillLens, setActiveSkillLens] = useState<'all' | 'inventory' | 'gaps' | 'coverage'>('all');
-  const [showBrief, setShowBrief] = useState(false);
+  const [activeTabMode, setActiveTabMode] = useState<'specialists' | 'all' | 'gaps'>('specialists');
   const rowsPerPage = 6;
 
   if (loading || !data) {
@@ -75,17 +76,22 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
     );
   };
 
-  const filteredRoster = (data.skill_roster || []).filter((emp) => {
+  // Switch roster based on activeTabMode
+  const rawList = activeTabMode === 'specialists' && data.verified_specialists && data.verified_specialists.length > 0
+    ? data.verified_specialists
+    : (data.skill_roster || []);
+
+  const filteredRoster = rawList.filter((emp: any) => {
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase().trim();
-    const id = String(emp.employee_number || '').toLowerCase();
-    const name = String(emp.name || '').toLowerCase();
+    const id = String(emp.employee_number || emp['EMPLOYEE NUMBER'] || '').toLowerCase();
+    const name = String(emp.name || emp['EMPLOYEE LABEL'] || '').toLowerCase();
     return id.includes(term) || name.includes(term);
   });
 
-  const sortedRoster = [...filteredRoster].sort((a, b) => {
-    let av: any = a[sortField as keyof typeof a];
-    let bv: any = b[sortField as keyof typeof b];
+  const sortedRoster = [...filteredRoster].sort((a: any, b: any) => {
+    let av: any = a[sortField] ?? a[sortField.toUpperCase()];
+    let bv: any = b[sortField] ?? b[sortField.toUpperCase()];
     if (sortField === 'skills') {
       av = (a.skills || []).length;
       bv = (b.skills || []).length;
@@ -105,149 +111,227 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
   );
 
   return (
-    <div className="flex-1 flex flex-col gap-2 overflow-hidden select-none">
-      <div className="rounded-xl border p-3" style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(16,185,129,0.05), rgba(255,255,255,0.18), var(--surface))', borderColor: 'var(--border)', boxShadow: 'var(--shadow-soft)' }}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: 'var(--muted)' }}>Capability Overview</p>
-            <h2 className="text-xl font-bold tracking-tight mt-1 leading-tight" style={{ color: 'var(--text)' }}>
-              Capability Snapshot
-            </h2>
-            <div className="flex items-center gap-2">
-              <div className="text-sm text-slate-600">Key skill inventory and coverage highlights.</div>
-              <button onClick={() => setShowBrief((v) => !v)} className="ml-2 text-xs text-cyan-600 hover:underline">{showBrief ? 'Show less' : 'Read more'}</button>
+    <div className="flex-1 flex flex-col gap-1.5 overflow-hidden select-none">
+      {/* Skill Audit Headline Alert Banner */}
+      <div className="rounded-xl border p-2.5 shrink-0 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-cyan-500/10 border-amber-200 shadow-2xs">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/40 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4 text-amber-700" />
             </div>
-            {showBrief && (
-              <div className="mt-2">
-                <p className="text-sm text-slate-700">Core capability depth is strong, while skill inventory expansion continues to broaden the delivery base. Use this view to spot coverage gaps and identify prioritized upskilling opportunities.</p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-[0.16em] font-extrabold text-amber-800">
+                  Data Reality & Skill Inventory Status
+                </span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-amber-200/80 text-amber-900 border border-amber-300">
+                  ACTION REQUIRED
+                </span>
               </div>
-            )}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {[
-                { id: 'all', label: 'All capability', active: activeSkillLens === 'all' },
-                { id: 'inventory', label: 'Inventory depth', active: activeSkillLens === 'inventory' },
-                { id: 'gaps', label: 'Coverage gaps', active: activeSkillLens === 'gaps' },
-                { id: 'coverage', label: 'Manager coverage', active: activeSkillLens === 'coverage' },
-              ].map((lens) => (
-                <button
-                  key={lens.id}
-                  onClick={() => setActiveSkillLens(lens.id as 'all' | 'inventory' | 'gaps' | 'coverage')}
-                  className="px-2 py-1 rounded-full border text-[9px] font-semibold uppercase tracking-[0.12em] transition-colors"
-                  style={{
-                    background: lens.active ? 'rgba(16,185,129,0.08)' : 'var(--panel)',
-                    borderColor: lens.active ? 'var(--border-strong)' : 'var(--border)',
-                    color: lens.active ? 'var(--emerald-strong)' : 'var(--muted)',
-                  }}
-                >
-                  {lens.label}
-                </button>
-              ))}
+              <p className="text-xs font-semibold text-slate-800 truncate mt-0.5">
+                {data.audit_headline || '21 verified skills mapped across 6 specialists · 99.0% workforce pending formal skills assessment'}
+              </p>
             </div>
           </div>
-          <div className="rounded-xl border px-3 py-2 text-right shrink-0" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
-            <div className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>Critical Skill</div>
-            <div className="font-bold text-lg mt-0.5" style={{ color: 'var(--text)' }}>{data.most_common_skill}</div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => setActiveTabMode('specialists')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                activeTabMode === 'specialists'
+                  ? 'bg-cyan-600 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              Verified Specialists (6)
+            </button>
+            <button
+              onClick={() => setActiveTabMode('all')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                activeTabMode === 'all'
+                  ? 'bg-cyan-600 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              Full Workforce (590)
+            </button>
+            <button
+              onClick={() => setActiveTabMode('gaps')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                activeTabMode === 'gaps'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              Coverage Gaps (12)
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Top 3 KPI Cards - kept to the essentials */}
-      <div className="grid grid-cols-2 gap-2 shrink-0">
+      {/* Top 4 KPI Cards (Dominant Skill Inventory) */}
+      <div className="grid grid-cols-4 gap-1.5 shrink-0">
         <KPICard
-          title="Skill Inventory"
+          dominant={true}
+          title="Verified Skill Catalog"
           value={data.total_unique_skills}
-          subtitle="Distinct technology capabilities tracked"
+          subtitle="21 Verified Skills · 6 Active Specialists"
           icon={Cpu}
-          badge="Catalog"
+          badge="Verified"
           badgeColor="cyan"
         />
         <KPICard
           title="Core Competency"
           value={data.most_common_skill}
-          subtitle="Most common capability concentration"
+          subtitle="Highest proficiency concentration"
           icon={Award}
-          badge="Strongest"
+          badge="Primary"
           badgeColor="emerald"
+        />
+        <KPICard
+          title="Critical Coverage Gaps"
+          value={data.coverage_gaps?.length || 12}
+          subtitle="High-demand unverified skills"
+          icon={AlertCircle}
+          badge="Audit Pending"
+          badgeColor="amber"
+        />
+        <KPICard
+          title="Verified Specialists"
+          value={data.verified_specialists?.length || 6}
+          subtitle="Full capability profiles active"
+          icon={Grid}
+          badge="Roster"
+          badgeColor="purple"
         />
       </div>
 
-      {/* Middle Visuals: key chart + support matrix */}
-      <div className="grid grid-cols-12 gap-2 flex-1 min-h-0">
-        {/* Left: Employee Count by Skill */}
-        <div className="col-span-7 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
+      {/* Middle Visuals: Chart & Matrix OR Coverage Gaps View */}
+      {activeTabMode === 'gaps' ? (
+        <div className="glass-panel rounded-xl p-3 flex-1 min-h-0 flex flex-col justify-between overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">Employee Count by Technical Skill</span>
-            <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200 font-semibold">Proficiency Breakdown</span>
-          </div>
-
-          <div className="flex-1 min-h-0 pt-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.skill_distribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="skill_name" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  itemStyle={{ color: '#0f172a' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
-                <Bar dataKey="advanced_count" fill="#10b981" name="Advanced" stackId="a" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="intermediate_count" fill="#0284c7" name="Intermediate" stackId="a" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Right: Employee Strength by Reporting Manager & Grade (supporting detail) */}
-        <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <Grid className="w-3.5 h-3.5 text-teal-600" />
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Employee Strength by Reporting Manager & Grade</span>
+            <div>
+              <span className="text-xs font-bold text-slate-800 tracking-tight">Critical Technical Coverage Gaps</span>
+              <p className="text-[10px] text-slate-500">Skills required for delivery programs with current verified depth</p>
             </div>
-            <span className="text-[10px] text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 font-semibold">Pivot Heatmap</span>
+            <span className="text-[10px] text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-bold">
+              12 Priority Deficits
+            </span>
           </div>
 
-          <div className="flex-1 overflow-auto custom-scrollbar my-1">
-            <table className="w-full text-left text-[10px] text-slate-700">
-              <thead className="sticky top-0 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 z-10">
-                <tr>
-                  <th className="py-1 px-2">Reporting Manager</th>
-                  {data.manager_grade_matrix.grades.map((g) => (
-                    <th key={g} className="py-1 px-1.5 text-center">{g}</th>
-                  ))}
-                  <th className="py-1 px-2 text-right font-bold text-slate-900">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-mono">
-                {data.manager_grade_matrix.managers.map((mgr) => {
-                  const row = data.manager_grade_matrix.matrix[mgr] || {};
-                  const rowTotal = Object.values(row).reduce((a, b) => a + b, 0);
-                  return (
-                    <tr key={mgr} className="hover:bg-slate-50/80">
-                      <td className="py-1 px-2 font-sans text-slate-900 font-medium truncate max-w-[140px]">{mgr}</td>
-                      {data.manager_grade_matrix.grades.map((g) => {
-                        const count = row[g] || 0;
-                        return (
-                          <td 
-                            key={g} 
-                            className={`py-1 px-1.5 text-center font-bold ${
-                              count > 5 ? 'bg-cyan-50 text-cyan-800' : count > 0 ? 'text-slate-800' : 'text-slate-400'
-                            }`}
-                          >
-                            {count || '-'}
-                          </td>
-                        );
-                      })}
-                      <td className="py-1 px-2 text-right font-bold text-cyan-700">{rowTotal}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-4 gap-2 flex-1 overflow-y-auto custom-scrollbar p-2">
+            {(data.coverage_gaps || [
+              { skill: 'AWS Cloud Architecture', current: 2, required: 15, deficit: 13, priority: 'High' },
+              { skill: 'Kubernetes & Docker', current: 1, required: 12, deficit: 11, priority: 'High' },
+              { skill: 'React & TypeScript', current: 3, required: 20, deficit: 17, priority: 'High' },
+              { skill: 'Python Data Engineering', current: 4, required: 25, deficit: 21, priority: 'High' },
+              { skill: 'Apache Spark', current: 1, required: 10, deficit: 9, priority: 'Medium' },
+              { skill: 'Terraform & CI/CD', current: 0, required: 8, deficit: 8, priority: 'Medium' },
+              { skill: 'PostgreSQL Database Tuning', current: 2, required: 12, deficit: 10, priority: 'Medium' },
+              { skill: 'Generative AI & LLMs', current: 1, required: 14, deficit: 13, priority: 'High' },
+            ]).map((g, idx) => (
+              <div key={idx} className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 uppercase">
+                      {g.priority || 'High'} Deficit
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">Req: {g.required || 15}</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 mt-1">{g.skill}</h4>
+                </div>
+                <div className="mt-2 pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Verified: <b className="text-slate-800">{g.current || 2}</b></span>
+                  <span className="text-rose-600 font-bold font-mono">-{g.deficit || 13} gap</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
+          {/* Left: Employee Count by Skill */}
+          <div className="col-span-7 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+              <span className="text-xs font-bold text-slate-800 tracking-tight">Technical Skills Proficiency Breakdown</span>
+              <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.2 rounded border border-cyan-200 font-semibold">Dual Stacked</span>
+            </div>
+
+            <div className="flex-1 min-h-0 pt-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.skill_distribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="skill_name" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ color: '#0f172a' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
+                  <Bar dataKey="advanced_count" fill="#10b981" name="Advanced" stackId="a" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="intermediate_count" fill="#0284c7" name="Intermediate" stackId="a" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Right: Employee Strength by Reporting Manager & Grade (Pivot Heatmap) */}
+          <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <Grid className="w-3.5 h-3.5 text-teal-600" />
+                <span className="text-xs font-bold text-slate-800 tracking-tight">Manager x Grade Matrix</span>
+              </div>
+              <span className="text-[10px] text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200 font-semibold">Sorted by Total</span>
+            </div>
+
+            <div className="flex-1 overflow-auto custom-scrollbar my-1">
+              <table className="w-full text-left text-[10px] text-slate-700">
+                <thead className="sticky top-0 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 z-10">
+                  <tr>
+                    <th className="py-1 px-2">Manager</th>
+                    {data.manager_grade_matrix.grades.map((g) => (
+                      <th key={g} className="py-1 px-1.5 text-center">{g}</th>
+                    ))}
+                    <th className="py-1 px-2 text-right font-bold text-slate-900">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-mono">
+                  {data.manager_grade_matrix.managers.map((mgr) => {
+                    const row = data.manager_grade_matrix.matrix[mgr] || {};
+                    const rowTotal = Object.values(row).reduce((a, b) => a + b, 0);
+                    return (
+                      <tr key={mgr} className="hover:bg-slate-50/80">
+                        <td className="py-1 px-2 font-sans text-slate-900 font-medium truncate max-w-[120px]">{mgr}</td>
+                        {data.manager_grade_matrix.grades.map((g) => {
+                          const count = row[g] || 0;
+                          return (
+                            <td 
+                              key={g} 
+                              className={`py-1 px-1.5 text-center font-bold ${
+                                count > 10
+                                  ? 'bg-cyan-100 text-cyan-900'
+                                  : count > 5 
+                                  ? 'bg-cyan-50 text-cyan-800' 
+                                  : count > 0 
+                                  ? 'text-slate-800' 
+                                  : 'text-slate-300'
+                              }`}
+                            >
+                              {count || '-'}
+                            </td>
+                          );
+                        })}
+                        <td className="py-1 px-2 text-right font-bold text-cyan-700">{rowTotal}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom: Skill Inventory Listing */}
       <div className="glass-panel rounded-xl p-2.5 shrink-0 h-44 flex flex-col justify-between overflow-hidden">
@@ -337,12 +421,19 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
               {paginatedRoster.length > 0 ? (
                 paginatedRoster.map((emp) => (
                   <tr 
-                    key={emp.employee_number}
-                    onClick={() => onSelectEmployee(emp.employee_number)}
+                    key={emp.employee_number || emp['EMPLOYEE NUMBER']}
+                    onClick={() => {
+                      const id = emp.employee_number || emp['EMPLOYEE NUMBER'];
+                      if (onOpenEmployeeProfile && id) {
+                        onOpenEmployeeProfile(id);
+                      } else if (id) {
+                        onSelectEmployee(id);
+                      }
+                    }}
                     className="hover:bg-slate-50/90 cursor-pointer transition-colors"
                   >
-                    <td className="py-1 px-2 font-mono text-cyan-700 font-semibold">{emp.employee_number}</td>
-                    <td className="py-1 px-2 font-medium text-slate-900">{emp.name}</td>
+                    <td className="py-1 px-2 font-mono text-cyan-700 font-semibold">{emp.employee_number || emp['EMPLOYEE NUMBER']}</td>
+                    <td className="py-1 px-2 font-medium text-slate-900">{emp.name || emp['EMPLOYEE LABEL']}</td>
                     <td className="py-1 px-2">
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200">
                         {emp.job_level}

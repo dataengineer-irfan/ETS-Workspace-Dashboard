@@ -10,6 +10,7 @@ import { SalarywiseDashboard } from './components/tabs/SalarywiseDashboard';
 import { Salarywise2Dashboard } from './components/tabs/Salarywise2Dashboard';
 import { EmployeeCalendarDashboard } from './components/tabs/EmployeeCalendarDashboard';
 import { AICopilotDrawer } from './components/copilot/AICopilotDrawer';
+import { EmployeeProfileDrawer } from './components/common/EmployeeProfileDrawer';
 import type {
   FilterParams,
   FilterOptions,
@@ -41,6 +42,15 @@ export const App: React.FC = () => {
   const [filters, setFilters] = useState<FilterParams>({});
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Universal Slide-Over Drawer state
+  const [drawerEmpNumber, setDrawerEmpNumber] = useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
+
+  const handleOpenEmployeeProfile = (empNumber: number) => {
+    setDrawerEmpNumber(empNumber);
+    setDrawerOpen(true);
+  };
 
   // Tab Data States
   const [homeData, setHomeData] = useState<HomeKPIs | null>(null);
@@ -142,73 +152,93 @@ export const App: React.FC = () => {
       {/* Selected filter chips */}
       <SelectedChips filters={filters} setFilters={setFilters} />
 
-      {/* Main Viewport Container - ZERO GLOBAL SCROLLBAR */}
-      <main className="flex-1 p-2 flex flex-col overflow-hidden min-h-0 relative" style={{ background: 'var(--bg-soft)' }}>
-        {activeTab === 'home' && (
-          <HomeDashboard
-            data={homeData}
-            loading={loading && !homeData}
-            onNavigateTab={setActiveTab}
-          />
-        )}
+      {/* Main Viewport Container & Docked Copilot (Push Layout) */}
+      <div className="flex-1 flex flex-row overflow-hidden min-h-0 relative" style={{ background: 'var(--bg-soft)' }}>
+        <main className="flex-1 p-2 flex flex-col overflow-hidden min-h-0 relative">
+          {activeTab === 'home' && (
+            <HomeDashboard
+              data={homeData}
+              loading={loading && !homeData}
+              onNavigateTab={setActiveTab}
+              onOpenEmployeeProfile={handleOpenEmployeeProfile}
+            />
+          )}
 
-        {activeTab === 'statewise' && (
-          <StatewiseDashboard
-            data={statewiseData}
-            loading={loading && !statewiseData}
-            onSelectEmployee={handleSelectEmployee}
-          />
-        )}
+          {activeTab === 'statewise' && (
+            <StatewiseDashboard
+              data={statewiseData}
+              loading={loading && !statewiseData}
+              onSelectEmployee={handleSelectEmployee}
+              onOpenEmployeeProfile={handleOpenEmployeeProfile}
+            />
+          )}
 
-        {activeTab === 'employee_details' && (
-          <EmployeeDetailsDashboard
-            employee={employeeDetails}
-            employeeList={employeeList}
-            selectedEmpNumber={selectedEmpNumber}
-            onSelectEmployee={setSelectedEmpNumber}
-            loading={loading && !employeeDetails}
-          />
-        )}
+          {activeTab === 'employee_details' && (
+            <EmployeeDetailsDashboard
+              employee={employeeDetails}
+              employeeList={employeeList}
+              selectedEmpNumber={selectedEmpNumber}
+              onSelectEmployee={setSelectedEmpNumber}
+              loading={loading && !employeeDetails}
+            />
+          )}
 
-        {activeTab === 'techwise' && (
-          <TechwiseDashboard
-            data={techwiseData}
-            loading={loading && !techwiseData}
-            onSelectEmployee={handleSelectEmployee}
-          />
-        )}
+          {activeTab === 'techwise' && (
+            <TechwiseDashboard
+              data={techwiseData}
+              loading={loading && !techwiseData}
+              onSelectEmployee={handleSelectEmployee}
+              onOpenEmployeeProfile={handleOpenEmployeeProfile}
+            />
+          )}
 
-        {activeTab === 'salarywise' && (
-          <SalarywiseDashboard
-            data={salarywiseData}
-            loading={loading && !salarywiseData}
-            onSelectEmployee={handleSelectEmployee}
-          />
-        )}
+          {activeTab === 'salarywise' && (
+            <SalarywiseDashboard
+              data={salarywiseData}
+              loading={loading && !salarywiseData}
+              onSelectEmployee={handleSelectEmployee}
+              onOpenEmployeeProfile={handleOpenEmployeeProfile}
+            />
+          )}
 
-        {activeTab === 'salarywise2' && (
-          <Salarywise2Dashboard
-            data={salarywise2Data}
-            loading={loading && !salarywise2Data}
-            onSelectEmployee={handleSelectEmployee}
-          />
-        )}
+          {activeTab === 'salarywise2' && (
+            <Salarywise2Dashboard
+              data={salarywise2Data}
+              loading={loading && !salarywise2Data}
+              onSelectEmployee={handleSelectEmployee}
+              onOpenEmployeeProfile={handleOpenEmployeeProfile}
+            />
+          )}
 
-        {activeTab === 'calendar' && (
-          <EmployeeCalendarDashboard
-            data={calendarData}
-            loading={loading && !calendarData}
-            onSelectEmployee={handleSelectEmployee}
-          />
-        )}
+          {activeTab === 'calendar' && (
+            <EmployeeCalendarDashboard
+              data={calendarData}
+              loading={loading && !calendarData}
+              onSelectEmployee={handleSelectEmployee}
+              onOpenEmployeeProfile={handleOpenEmployeeProfile}
+            />
+          )}
+        </main>
 
-        {/* AI Copilot Drawer */}
+        {/* Docked AI Copilot Drawer (Side-by-side Push Layout) */}
         <AICopilotDrawer
           isOpen={copilotOpen}
           onClose={() => setCopilotOpen(false)}
           activeTab={activeTab}
+          onNavigateTab={setActiveTab}
         />
-      </main>
+      </div>
+
+      {/* Universal Slide-over Employee Profile Drawer with Peer Benchmarking */}
+      <EmployeeProfileDrawer
+        empNumber={drawerEmpNumber}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onOpenFullProfile={(empNum) => {
+          setDrawerOpen(false);
+          handleSelectEmployee(empNum);
+        }}
+      />
     </div>
   );
 };

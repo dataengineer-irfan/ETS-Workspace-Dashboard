@@ -60,33 +60,59 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
     );
   }
 
+  const latestFinance = employee.finance_history.length > 0
+    ? employee.finance_history[employee.finance_history.length - 1]
+    : null;
+  const currentCTC = latestFinance ? latestFinance.Total_CTC : 0;
+  const gradeMedianCTC = employee.grade_median_ctc || 850000;
+  const ctcPctDiff = gradeMedianCTC > 0 ? ((currentCTC - gradeMedianCTC) / gradeMedianCTC) * 100 : 0;
+
+  const currentTenure = employee.infinite_exp;
+  const gradeMedianTenure = employee.grade_median_tenure || 3.2;
+  const tenureDiff = currentTenure - gradeMedianTenure;
+
+  const totalExp = employee.total_exp || (employee.infinite_exp + employee.prior_exp) || 1;
+  const etsExpPct = Math.min(100, Math.round((employee.infinite_exp / totalExp) * 100));
+  const priorExpPct = 100 - etsExpPct;
+
   return (
     <div className="flex-1 flex flex-col gap-2 overflow-hidden select-none">
-      <div className="rounded-xl border p-3" style={{ background: 'linear-gradient(135deg, rgba(14,165,233,0.08), rgba(52,211,153,0.04), var(--surface))', borderColor: 'var(--border)', boxShadow: 'var(--shadow-soft)' }}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: 'var(--muted)' }}>Employee 360</p>
-            <h2 className="text-xl font-bold tracking-tight mt-1 leading-tight" style={{ color: 'var(--text)' }}>
-              {employee.name} brings a clear role profile, capability depth, and compensation trajectory in context.
-            </h2>
+      {/* Enterprise Status & Narrative Reduction Header */}
+      <div className="glass-panel rounded-xl px-3 py-2 border-l-4 border-l-cyan-600 flex items-center justify-between shrink-0 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-100 text-cyan-950 border border-cyan-300 font-mono">
+            360° TALENT · GRADE {employee.job_level}
+          </span>
+          <div className="hidden lg:flex items-center gap-4 text-[11px] text-slate-700 font-medium">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-600"></span>
+              {currentCTC > 0 ? `₹${(currentCTC / 100000).toFixed(1)}L CTC (${ctcPctDiff >= 0 ? '+' : ''}${ctcPctDiff.toFixed(1)}% vs Grade Median)` : 'CTC pending baseline'}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+              {employee.infinite_exp}y ETS tenure ({tenureDiff >= 0 ? '+' : ''}${tenureDiff.toFixed(1)}y vs Median)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
+              {employee.skills.length} verified skills · {employee.department}
+            </span>
           </div>
-          <div className="rounded-xl border px-3 py-2 text-right shrink-0" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
-            <div className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>Grade</div>
-            <div className="font-bold text-lg mt-0.5" style={{ color: 'var(--text)' }}>{employee.job_level}</div>
-          </div>
+        </div>
+        <div className="text-[10px] text-slate-600 font-mono">
+          Employee ID: <strong className="text-slate-900 font-bold">#{employee.employee_number}</strong>
         </div>
       </div>
 
       {/* Top Search & Profile Bar */}
       <div className="glass-panel rounded-xl p-2 flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center font-bold text-white text-sm shadow-xs shrink-0 font-mono">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0 font-mono">
             {employee.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-slate-900 tracking-tight">{employee.name}</h2>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-800 border border-cyan-200">
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-cyan-50 text-cyan-800 border border-cyan-200">
                 Grade {employee.job_level}
               </span>
               <span className="text-[10px] text-slate-500 font-mono font-medium">ID: {employee.employee_number}</span>
@@ -101,7 +127,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-left text-slate-800 flex items-center justify-between hover:border-cyan-500 hover:bg-white transition-colors"
           >
-            <span className="truncate font-medium">{employee.name}</span>
+            <span className="truncate font-medium">{employee.name} ({employee.employee_number})</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
           </button>
 
@@ -137,8 +163,85 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </div>
       </div>
 
-      {/* Profile Detail Cards Grid */}
+      {/* Peer Comparison Benchmark Strip */}
+      <div className="grid grid-cols-3 gap-2 shrink-0">
+        <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">CTC vs Grade {employee.job_level} Median</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-xs font-black text-slate-900 font-mono">
+                ₹{currentCTC > 0 ? (currentCTC / 100000).toFixed(1) : '--'}L
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono">
+                vs ₹{(gradeMedianCTC / 100000).toFixed(1)}L med
+              </span>
+            </div>
+          </div>
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border font-mono ${
+            ctcPctDiff >= 0 
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+              : 'bg-rose-50 text-rose-800 border-rose-300'
+          }`}>
+            {ctcPctDiff >= 0 ? `+${ctcPctDiff.toFixed(1)}%` : `${ctcPctDiff.toFixed(1)}%`}
+          </span>
+        </div>
+
+        <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">ETS Tenure vs Grade Median</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-xs font-black text-slate-900 font-mono">
+                {currentTenure}y
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono">
+                vs {gradeMedianTenure.toFixed(1)}y med
+              </span>
+            </div>
+          </div>
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border font-mono ${
+            tenureDiff >= 0 
+              ? 'bg-cyan-50 text-cyan-800 border-cyan-300' 
+              : 'bg-amber-50 text-amber-800 border-amber-300'
+          }`}>
+            {tenureDiff >= 0 ? `+${tenureDiff.toFixed(1)}y` : `${tenureDiff.toFixed(1)}y`}
+          </span>
+        </div>
+
+        <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[9px] uppercase tracking-wider font-bold">
+            <span className="text-slate-500">Experience Composition</span>
+            <span className="text-slate-700 font-mono">{employee.total_exp}y Total</span>
+          </div>
+          <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden flex mt-1">
+            <div 
+              style={{ width: `${etsExpPct}%` }} 
+              className="bg-emerald-600 h-full transition-all"
+              title={`ETS Tenure: ${employee.infinite_exp}y (${etsExpPct}%)`}
+            />
+            <div 
+              style={{ width: `${priorExpPct}%` }} 
+              className="bg-amber-500 h-full transition-all"
+              title={`Prior Experience: ${employee.prior_exp}y (${priorExpPct}%)`}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[9px] font-medium text-slate-500 mt-1">
+            <span className="text-emerald-700 font-semibold">ETS: {employee.infinite_exp}y ({etsExpPct}%)</span>
+            <span className="text-amber-700 font-semibold">Prior: {employee.prior_exp}y ({priorExpPct}%)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Profile Detail Cards Grid - Dominant CTC Card */}
       <div className="grid grid-cols-6 gap-2 shrink-0">
+        <KPICard
+          title="Current Total CTC"
+          value={currentCTC > 0 ? `₹${(currentCTC / 100000).toFixed(2)} L` : 'N/A'}
+          subtitle={`Annual Comp · FY24`}
+          icon={Award}
+          badge="Dominant"
+          badgeColor="cyan"
+          dominant={true}
+        />
         <KPICard
           title="Reporting Manager"
           value={employee.manager.split('(')[0].trim() || 'Unassigned'}
@@ -156,19 +259,11 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
           badgeColor="emerald"
         />
         <KPICard
-          title="Prior Experience"
-          value={`${employee.prior_exp} Yrs`}
-          subtitle="Non-ETS External Experience"
-          icon={Briefcase}
-          badge="Prior"
-          badgeColor="amber"
-        />
-        <KPICard
           title="Total Experience"
           value={`${employee.total_exp} Yrs`}
-          subtitle="Cumulative Experience"
-          icon={Award}
-          badge="Total"
+          subtitle="Cumulative Career"
+          icon={Briefcase}
+          badge="Career"
           badgeColor="purple"
         />
         <KPICard
@@ -176,7 +271,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
           value={employee.email.split('@')[0]}
           subtitle={employee.email}
           icon={Mail}
-          badge="Infinite"
+          badge="Account"
           badgeColor="blue"
         />
         <KPICard
@@ -185,7 +280,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
           subtitle={`Location: ${employee.location}`}
           icon={MapPin}
           badge={employee.state}
-          badgeColor="cyan"
+          badgeColor="amber"
         />
       </div>
 

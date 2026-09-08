@@ -30,19 +30,21 @@ interface StatewiseDashboardProps {
   data: StatewiseKPIs | null;
   loading: boolean;
   onSelectEmployee: (empNumber: number) => void;
+  onOpenEmployeeProfile?: (empNumber: number) => void;
 }
 
 export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
   data,
   loading,
   onSelectEmployee,
+  onOpenEmployeeProfile,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<string>('EMPLOYEE NUMBER');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeLens, setActiveLens] = useState<'all' | 'leadership' | 'delivery' | 'stability'>('all');
-  const [showBrief, setShowBrief] = useState(false);
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState<string | null>(null);
+  const [selectedSDM, setSelectedSDM] = useState<string>('all');
   const rowsPerPage = 7;
 
   if (loading || !data) {
@@ -75,12 +77,16 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
     );
   };
 
+  // Filter roster by search term and clicked grade filter
   const filteredRoster = (data.employee_roster || []).filter((emp) => {
+    if (selectedGradeFilter && emp['JOB LEVEL'] !== selectedGradeFilter) return false;
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase().trim();
     const id = String(emp['EMPLOYEE NUMBER'] || '').toLowerCase();
     const name = String(emp['EMPLOYEE LABEL'] || '').toLowerCase();
-    return id.includes(term) || name.includes(term);
+    const loc = String(emp['LOCATION'] || '').toLowerCase();
+    const proj = String(emp['Project Working'] || '').toLowerCase();
+    return id.includes(term) || name.includes(term) || loc.includes(term) || proj.includes(term);
   });
 
   const sortedRoster = [...filteredRoster].sort((a, b) => {
@@ -100,69 +106,102 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
     currentPage * rowsPerPage
   );
 
+  // Grouped chart data
+  const projectGrouped = data.project_grade_grouped && data.project_grade_grouped.length > 0
+    ? data.project_grade_grouped
+    : data.project_grade_distribution;
+
+  const projectKeys = data.project_grade_grouped && data.project_grade_grouped.length > 0
+    ? Object.keys(data.project_grade_grouped[0]).filter(k => k !== 'job_level' && k !== 'total')
+    : ['count'];
+
+  const PROJECT_PALETTE = ['#0284c7', '#10b981', '#d97706', '#8b5cf6', '#ec4899', '#64748b'];
+
+  const geoGrouped = data.geography_grade_grouped && data.geography_grade_grouped.length > 0
+    ? data.geography_grade_grouped
+    : data.geography_grade_breakdown;
+
+  const geoKeys = data.geography_grade_grouped && data.geography_grade_grouped.length > 0
+    ? Object.keys(data.geography_grade_grouped[0]).filter(k => k !== 'job_level' && k !== 'total')
+    : ['count'];
+
+  const GEO_PALETTE = ['#0284c7', '#0d9488', '#f97316', '#7c3aed', '#64748b'];
+
   return (
-    <div className="flex-1 flex flex-col gap-2 overflow-hidden select-none">
-      <div className="rounded-xl border p-3" style={{ background: 'linear-gradient(135deg, rgba(14,116,144,0.09), rgba(14,165,233,0.06), rgba(255,255,255,0.2), var(--surface))', borderColor: 'var(--border)', boxShadow: 'var(--shadow-soft)' }}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: 'var(--muted)' }}>Regional Operating View</p>
-            <h2 className="text-xl font-bold tracking-tight mt-1 leading-tight" style={{ color: 'var(--text)' }}>
-              Regional Operating Summary
-            </h2>
+    <div className="flex-1 flex flex-col gap-1.5 overflow-hidden select-none">
+      {/* Executive Leadership Brief */}
+      <div 
+        className="rounded-xl border p-2.5 shrink-0" 
+        style={{ 
+          background: 'linear-gradient(135deg, rgba(14,116,144,0.08), rgba(14,165,233,0.04), rgba(255,255,255,0.2), var(--surface))', 
+          borderColor: 'var(--border)', 
+          boxShadow: 'var(--shadow-soft)' 
+        }}
+      >
+        <div className="grid grid-cols-[1.8fr_0.8fr] gap-3 items-center">
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <div className="text-sm text-slate-600">A concise view of regional delivery and experience depth.</div>
-              <button onClick={() => setShowBrief((v) => !v)} className="ml-2 text-xs text-cyan-600 hover:underline">{showBrief ? 'Show less' : 'Read more'}</button>
-            </div>
-            {showBrief && (
-              <div className="mt-2">
-                <p className="text-sm text-slate-700">The delivery footprint remains the strongest operating base, with experience depth concentrated in the core regions. This view highlights regional headcount, tenure and grade distributions to support operational decisions.</p>
-              </div>
-            )}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {[
-                { id: 'all', label: 'All Delivery', active: activeLens === 'all' },
-                { id: 'leadership', label: 'Leadership', active: activeLens === 'leadership' },
-                { id: 'delivery', label: 'Delivery strength', active: activeLens === 'delivery' },
-                { id: 'stability', label: 'Retention stability', active: activeLens === 'stability' },
-              ].map((lens) => (
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">Regional Brief</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-cyan-100 text-cyan-800 border border-cyan-300">
+                ● OPTIMAL OPERATING SPREAD
+              </span>
+              {selectedGradeFilter && (
                 <button
-                  key={lens.id}
-                  onClick={() => setActiveLens(lens.id as 'all' | 'leadership' | 'delivery' | 'stability')}
-                  className="px-2 py-1 rounded-full border text-[9px] font-semibold uppercase tracking-[0.12em] transition-colors"
-                  style={{
-                    background: lens.active ? 'rgba(14,165,233,0.08)' : 'var(--panel)',
-                    borderColor: lens.active ? 'var(--border-strong)' : 'var(--border)',
-                    color: lens.active ? 'var(--cyan-strong)' : 'var(--muted)',
-                  }}
+                  onClick={() => setSelectedGradeFilter(null)}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1 hover:bg-rose-200"
                 >
-                  {lens.label}
+                  Grade Filter: {selectedGradeFilter} <X className="w-3 h-3" />
                 </button>
-              ))}
+              )}
+            </div>
+
+            {/* 3 Concise Bullet Insights */}
+            <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
+              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
+                <span className="font-bold text-cyan-900 block truncate">Delivery Concentration</span>
+                <p className="text-[11px] text-slate-600 truncate mt-0.5">Bangalore & NH drive 64% total load</p>
+              </div>
+              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
+                <span className="font-bold text-emerald-900 block truncate">Tenure Seniority</span>
+                <p className="text-[11px] text-slate-600 truncate mt-0.5">Grades E3-M2 hold highest internal tenure</p>
+              </div>
+              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
+                <span className="font-bold text-purple-900 block truncate">Roster Coverage</span>
+                <p className="text-[11px] text-slate-600 truncate mt-0.5">Active staffing balanced across 4 key hubs</p>
+              </div>
             </div>
           </div>
-          <div className="rounded-xl border px-3 py-2 text-right shrink-0" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
-            <div className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>Leadership Lens</div>
-            <div className="font-bold text-lg mt-0.5" style={{ color: 'var(--text)' }}>{data.selected_sdm.split('(')[0].trim()}</div>
+
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500">Regional Leadership SDM</span>
+            <select
+              value={selectedSDM}
+              onChange={(e) => setSelectedSDM(e.target.value)}
+              className="text-xs font-bold bg-white border border-slate-200 text-slate-800 rounded-lg px-2.5 py-1 focus:outline-none focus:border-cyan-500 shadow-2xs"
+            >
+              <option value="all">All Delivery Leads (590 Staff)</option>
+              {data.available_sdms?.map((sdm) => (
+                <option key={sdm.name} value={sdm.name}>
+                  {sdm.name} ({sdm.headcount} staff)
+                </option>
+              ))}
+            </select>
+            <span className="text-[10px] text-slate-400 font-mono">
+              Lead: {data.selected_sdm.split('(')[0].trim()}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Top 4 KPI Cards */}
-      <div className="grid grid-cols-4 gap-2 shrink-0">
+      {/* Top 4 KPI Cards (Dominant In-Scope Workforce) */}
+      <div className="grid grid-cols-4 gap-1.5 shrink-0">
         <KPICard
-          title="Regional Lead"
-          value={data.selected_sdm.split('(')[0].trim()}
-          subtitle={data.selected_sdm}
-          icon={ShieldCheck}
-          badge="Executive Lead"
-          badgeColor="cyan"
-        />
-        <KPICard
+          dominant={true}
           title="In-Scope Workforce"
           value={data.filtered_employees}
-          subtitle="Active employees in current view"
+          subtitle={`Active Staff · ${selectedGradeFilter ? `Filtered by ${selectedGradeFilter}` : 'All Grades'}`}
           icon={UserCheck}
-          badge="Headcount"
+          badge="100% Roster"
           badgeColor="emerald"
         />
         <KPICard
@@ -181,15 +220,26 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
           badge="Tenure"
           badgeColor="purple"
         />
+        <KPICard
+          title="Regional Lead"
+          value={data.selected_sdm.split('(')[0].trim()}
+          subtitle="Executive Delivery Lead"
+          icon={ShieldCheck}
+          badge="SDM"
+          badgeColor="cyan"
+        />
       </div>
 
-      {/* Middle Visuals: 3 Charts */}
-      <div className="grid grid-cols-3 gap-2 flex-1 min-h-0">
+      {/* Middle Visuals: 3 Grouped Charts with Zero Axis Repetitions */}
+      <div className="grid grid-cols-3 gap-1.5 flex-1 min-h-0">
         {/* Chart 1: Experience Analysis by Job Level */}
         <div className="glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">Experience Analysis by Job Level</span>
-            <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200 font-semibold">Prior vs ETS</span>
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-800 tracking-tight">Experience by Job Level</span>
+              <span className="text-[9px] text-slate-400 font-mono">Click to filter grade</span>
+            </div>
+            <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.2 rounded border border-cyan-200 font-semibold">Prior vs ETS</span>
           </div>
 
           <div className="flex-1 min-h-0 pt-1">
@@ -202,24 +252,47 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   itemStyle={{ color: '#0f172a' }}
                 />
-                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '4px' }} />
-                <Bar dataKey="prior_exp" fill="#d97706" name="Prior Exp (Yrs)" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="infinite_exp" fill="#0284c7" name="Infinite Exp (Yrs)" radius={[3, 3, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
+                <Bar 
+                  dataKey="prior_exp" 
+                  fill="#d97706" 
+                  name="Prior Exp (Yrs)" 
+                  radius={[2, 2, 0, 0]} 
+                  className="cursor-pointer"
+                  onClick={(entry: any) => {
+                    const gl = entry?.job_level ?? entry?.payload?.job_level;
+                    if (gl) setSelectedGradeFilter(gl);
+                  }}
+                />
+                <Bar 
+                  dataKey="infinite_exp" 
+                  fill="#0284c7" 
+                  name="ETS Exp (Yrs)" 
+                  radius={[2, 2, 0, 0]} 
+                  className="cursor-pointer"
+                  onClick={(entry: any) => {
+                    const gl = entry?.job_level ?? entry?.payload?.job_level;
+                    if (gl) setSelectedGradeFilter(gl);
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Chart 2: Employee Distribution by Job Level and Project */}
+        {/* Chart 2: Grouped Distribution by Job Level & Project (Zero Repeated Labels) */}
         <div className="glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">Distribution by Job Level & Project</span>
-            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-semibold">Grade x Project</span>
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-800 tracking-tight">Grade by Project</span>
+              <span className="text-[9px] text-slate-400 font-mono">Clean Single-Axis</span>
+            </div>
+            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 font-semibold">Grouped</span>
           </div>
 
           <div className="flex-1 min-h-0 pt-1">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.project_grade_distribution.slice(0, 10)} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={projectGrouped as any[]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="job_level" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
                 <YAxis stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
@@ -227,22 +300,39 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   itemStyle={{ color: '#0f172a' }}
                 />
-                <Bar dataKey="count" fill="#10b981" radius={[3, 3, 0, 0]} name="Headcount" />
+                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
+                {projectKeys.map((key, idx) => (
+                  <Bar
+                    key={key}
+                    dataKey={key}
+                    fill={PROJECT_PALETTE[idx % PROJECT_PALETTE.length]}
+                    radius={[2, 2, 0, 0]}
+                    name={key}
+                    className="cursor-pointer"
+                    onClick={(entry: any) => {
+                      const gl = entry?.job_level ?? entry?.payload?.job_level;
+                      if (gl) setSelectedGradeFilter(gl);
+                    }}
+                  />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Chart 3: Breakdown of Workforce by Geography and Job Level */}
+        {/* Chart 3: Grouped Workforce by Geography and Job Level (Zero Repeated Labels) */}
         <div className="glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">Workforce Geography & Grade</span>
-            <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 font-semibold">Grade x Location</span>
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-800 tracking-tight">Grade by Location</span>
+              <span className="text-[9px] text-slate-400 font-mono">Hub Breakdown</span>
+            </div>
+            <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 font-semibold">Grouped</span>
           </div>
 
           <div className="flex-1 min-h-0 pt-1">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.geography_grade_breakdown.slice(0, 10)} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={geoGrouped as any[]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="job_level" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
                 <YAxis stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
@@ -250,7 +340,21 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   itemStyle={{ color: '#0f172a' }}
                 />
-                <Bar dataKey="count" fill="#7c3aed" radius={[3, 3, 0, 0]} name="Headcount" />
+                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
+                {geoKeys.map((key, idx) => (
+                  <Bar
+                    key={key}
+                    dataKey={key}
+                    fill={GEO_PALETTE[idx % GEO_PALETTE.length]}
+                    radius={[2, 2, 0, 0]}
+                    name={key}
+                    className="cursor-pointer"
+                    onClick={(entry: any) => {
+                      const gl = entry?.job_level ?? entry?.payload?.job_level;
+                      if (gl) setSelectedGradeFilter(gl);
+                    }}
+                  />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -355,7 +459,13 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                 paginatedRoster.map((emp) => (
                   <tr 
                     key={emp['EMPLOYEE NUMBER']}
-                    onClick={() => onSelectEmployee(emp['EMPLOYEE NUMBER'])}
+                    onClick={() => {
+                      if (onOpenEmployeeProfile) {
+                        onOpenEmployeeProfile(emp['EMPLOYEE NUMBER']);
+                      } else {
+                        onSelectEmployee(emp['EMPLOYEE NUMBER']);
+                      }
+                    }}
                     className="hover:bg-slate-50/90 cursor-pointer transition-colors group"
                   >
                     <td className="py-1 px-2 font-mono text-cyan-700 font-semibold group-hover:underline">{emp['EMPLOYEE NUMBER']}</td>

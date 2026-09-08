@@ -33,8 +33,10 @@ export interface HomeKPIs {
   avg_prior_exp: number;
   avg_total_exp: number;
   recent_hirings: { [key: string]: number };
-  attrition_by_year: { year: string; exits: number; rate: number }[];
+  attrition_by_year: { year: string; exits: number; rate: number; leavers?: any[] }[];
   location_distribution: { location: string; count: number; percentage: number }[];
+  attrition_rate_current?: number;
+  attrition_trend_dir?: string;
 }
 
 export interface StatewiseKPIs {
@@ -54,11 +56,14 @@ export interface StatewiseKPIs {
     project: string;
     count: number;
   }[];
+  project_grade_grouped?: { job_level: string; total: number; [key: string]: any }[];
   geography_grade_breakdown: {
     job_level: string;
     location: string;
     count: number;
   }[];
+  geography_grade_grouped?: { job_level: string; total: number; [key: string]: any }[];
+  available_sdms?: { name: string; headcount: number }[];
   employee_roster: {
     'EMPLOYEE NUMBER': number;
     'EMPLOYEE LABEL': string;
@@ -104,6 +109,8 @@ export interface EmployeeDetails {
   prior_exp: number;
   infinite_exp: number;
   total_exp: number;
+  grade_median_ctc?: number;
+  grade_median_tenure?: number;
   skills: {
     'Skill Name': string;
     'Skill Type': string;
@@ -150,6 +157,9 @@ export interface TechwiseKPIs {
     skills: string[];
     has_missing_skills: boolean;
   }[];
+  verified_specialists?: any[];
+  coverage_gaps?: any[];
+  audit_headline?: string;
 }
 
 export interface SalarywiseKPIs {
@@ -179,6 +189,9 @@ export interface SalarywiseKPIs {
     base_salary: number;
     bonus: number;
   }[];
+  salary_histogram?: { band: string; count: number; percentage: number; color?: string }[];
+  total_managers?: number;
+  matched_records?: number;
 }
 
 export interface Salarywise2KPIs {
@@ -240,6 +253,8 @@ export interface CalendarEvent {
 export interface CalendarData {
   total_leave_days: number;
   unique_employees_on_leave: number;
+  leave_rate_pct?: number;
+  daily_leave_counts?: { [dateStr: string]: number };
   leave_type_breakdown: {
     leave_type: string;
     records_count: number;

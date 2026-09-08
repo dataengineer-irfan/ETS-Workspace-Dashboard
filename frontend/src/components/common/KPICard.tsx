@@ -9,6 +9,7 @@ interface KPICardProps {
   badge?: string;
   badgeColor?: 'cyan' | 'emerald' | 'amber' | 'purple' | 'rose' | 'blue';
   trend?: string;
+  dominant?: boolean;
   onClick?: () => void;
 }
 
@@ -38,30 +39,40 @@ export const KPICard: React.FC<KPICardProps> = ({
   badge,
   badgeColor = 'cyan',
   trend,
+  dominant = false,
   onClick,
 }) => {
   return (
     <div
       onClick={onClick}
-      className={`glass-panel rounded-xl p-2 flex flex-col justify-between transition-all relative overflow-hidden ${
-        onClick ? 'cursor-pointer hover:border-cyan-400 hover:shadow-sm' : ''
-      }`}
+      className={`glass-panel rounded-xl p-2.5 flex flex-col justify-between transition-all relative overflow-hidden ${
+        dominant ? 'border-l-4 border-l-cyan-600 bg-cyan-50/20 shadow-sm' : ''
+      } ${onClick ? 'cursor-pointer hover:border-cyan-400 hover:shadow-sm' : ''}`}
       style={{
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.96), var(--surface))',
+        background: dominant 
+          ? 'linear-gradient(180deg, rgba(240,253,250,0.95), var(--surface))' 
+          : 'linear-gradient(180deg, rgba(255,255,255,0.96), var(--surface))',
       }}
     >
       <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: 'linear-gradient(90deg, rgba(14,165,233,0.9), rgba(59,130,246,0.3), transparent)' }} />
       <div className="flex items-center justify-between gap-1">
-        <span className="text-[10px] font-semibold tracking-[0.08em] uppercase" style={{ color: 'var(--muted)' }}>{title}</span>
-        <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${ICON_BG_STYLES[badgeColor]}`}>
-          <Icon className="w-3 h-3" />
+        <span className={`text-[10px] font-bold tracking-[0.08em] uppercase ${dominant ? 'text-cyan-900' : ''}`} style={{ color: dominant ? undefined : 'var(--muted)' }}>
+          {title}
+        </span>
+        <div className={`rounded-md flex items-center justify-center shrink-0 ${dominant ? 'w-7 h-7' : 'w-6 h-6'} ${ICON_BG_STYLES[badgeColor]}`}>
+          <Icon className={dominant ? 'w-4 h-4' : 'w-3 h-3'} />
         </div>
       </div>
 
       <div className="my-1 flex items-baseline justify-between gap-2">
-        <span className="text-lg font-bold tracking-tight font-mono" style={{ color: 'var(--text)' }}>{value}</span>
+        <span 
+          className={`font-black tracking-tight font-mono ${dominant ? 'text-2xl lg:text-3xl text-cyan-950' : 'text-lg'}`} 
+          style={{ color: dominant ? undefined : 'var(--text)' }}
+        >
+          {value}
+        </span>
         {badge && (
-          <span className={`text-[9px] font-semibold px-1.25 py-0.5 rounded-full border font-mono ${BADGE_STYLES[badgeColor]}`}>
+          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border font-mono ${BADGE_STYLES[badgeColor]}`}>
             {badge}
           </span>
         )}

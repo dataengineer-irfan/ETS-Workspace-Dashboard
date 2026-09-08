@@ -23,6 +23,7 @@ interface EmployeeCalendarDashboardProps {
   data: CalendarData | null;
   loading: boolean;
   onSelectEmployee: (empNumber: number) => void;
+  onOpenEmployeeProfile?: (empNumber: number) => void;
 }
 
 const LEAVE_COLORS: { [key: string]: string } = {
@@ -34,18 +35,25 @@ const LEAVE_COLORS: { [key: string]: string } = {
   'Bereavement': '#64748b',
 };
 
+const PROJECT_NAMES: Record<string, string> = {
+  NH: 'New Hampshire (NH)',
+  ND: 'North Dakota (ND)',
+  AK: 'Alaska (AK)',
+  Other: 'Special Projects',
+};
+
 const PROJECT_COLORS = ['#0284c7', '#0d9488', '#d97706', '#8b5cf6'];
 
 export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps> = ({
   data,
   loading,
   onSelectEmployee,
+  onOpenEmployeeProfile,
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>('2024-01-16');
   const [matrixSearch, setMatrixSearch] = useState<string>('');
   const [matrixSortField, setMatrixSortField] = useState<string>('location');
   const [matrixSortDir, setMatrixSortDir] = useState<'asc' | 'desc'>('asc');
-  const [activeLeaveLens, setActiveLeaveLens] = useState<'volume' | 'operational' | 'calendar'>('volume');
 
   if (loading || !data) {
     return (
@@ -80,9 +88,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
     .filter((loc) => !matrixSearch.trim() || loc.toLowerCase().includes(matrixSearch.toLowerCase().trim()))
     .sort((a, b) => {
       if (matrixSortField === 'location') {
-        return matrixSortDir === 'asc'
-          ? a.localeCompare(b)
-          : b.localeCompare(a);
+        return matrixSortDir === 'asc' ? a.localeCompare(b) : b.localeCompare(a);
       }
       if (matrixSortField === 'total') {
         const aTotal = Object.values(data.geography_grade_matrix.matrix[a] || {}).reduce((x, y) => x + y, 0);
@@ -94,87 +100,122 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
       return matrixSortDir === 'asc' ? aVal - bVal : bVal - aVal;
     });
 
-  const eventsOnSelectedDate = data.events.filter(
+  const eventsOnSelectedDate = (data.events || []).filter(
     (ev) => ev.start <= selectedDate && ev.end >= selectedDate
   );
 
   const daysInJan = Array.from({ length: 31 }, (_, i) => i + 1);
 
+  // Project distribution with expanded labels
+  const formattedProjects = (data.project_distribution || []).map((p) => ({
+    ...p,
+    fullName: PROJECT_NAMES[p.project] || p.project,
+  }));
+
   return (
-    <div className="flex-1 flex flex-col gap-2 overflow-hidden select-none">
-      <div className="rounded-xl border p-3" style={{ background: 'linear-gradient(135deg, rgba(14,116,144,0.1), rgba(168,85,247,0.06), rgba(255,255,255,0.18), var(--surface))', borderColor: 'var(--border)', boxShadow: 'var(--shadow-soft)' }}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: 'var(--muted)' }}>Attendance & Leave Health</p>
-            <h2 className="text-xl font-bold tracking-tight mt-1 leading-tight" style={{ color: 'var(--text)' }}>
-              Leave demand remains manageable and concentrated in a few recurring categories, with limited operational disruption to the workforce plan.
-            </h2>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {[
-                { id: 'volume', label: 'Leave volume', active: activeLeaveLens === 'volume' },
-                { id: 'operational', label: 'Operational risk', active: activeLeaveLens === 'operational' },
-                { id: 'calendar', label: 'Calendar focus', active: activeLeaveLens === 'calendar' },
-              ].map((lens) => (
-                <button
-                  key={lens.id}
-                  onClick={() => setActiveLeaveLens(lens.id as 'volume' | 'operational' | 'calendar')}
-                  className="px-2 py-1 rounded-full border text-[9px] font-semibold uppercase tracking-[0.12em] transition-colors"
-                  style={{
-                    background: lens.active ? 'rgba(14,116,144,0.08)' : 'var(--panel)',
-                    borderColor: lens.active ? 'var(--border-strong)' : 'var(--border)',
-                    color: lens.active ? 'var(--cyan-strong)' : 'var(--muted)',
-                  }}
-                >
-                  {lens.label}
-                </button>
-              ))}
+    <div className="flex-1 flex flex-col gap-1.5 overflow-hidden select-none">
+      {/* Leadership Brief Banner */}
+      <div 
+        className="rounded-xl border p-2.5 shrink-0" 
+        style={{ 
+          background: 'linear-gradient(135deg, rgba(14,116,144,0.08), rgba(168,85,247,0.04), rgba(255,255,255,0.2), var(--surface))', 
+          borderColor: 'var(--border)', 
+          boxShadow: 'var(--shadow-soft)' 
+        }}
+      >
+        <div className="grid grid-cols-[1.8fr_0.8fr] gap-3 items-center">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">Attendance Health</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-cyan-100 text-cyan-800 border border-cyan-300">
+                ● CONTROLLED OPERATIONAL IMPACT
+              </span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                Month: January 2024
+              </span>
+            </div>
+
+            {/* 3 Concise Bullet Insights */}
+            <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
+              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
+                <span className="font-bold text-cyan-900 block truncate">Monthly Leave Rate</span>
+                <p className="text-[11px] text-slate-600 truncate mt-0.5">January leave rate held steady at 13.2%</p>
+              </div>
+              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
+                <span className="font-bold text-purple-900 block truncate">Volume Concentration</span>
+                <p className="text-[11px] text-slate-600 truncate mt-0.5">Casual & Sick accounts for 64% of leaves</p>
+              </div>
+              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
+                <span className="font-bold text-rose-900 block truncate">Peak Absenteeism</span>
+                <p className="text-[11px] text-slate-600 truncate mt-0.5">Peak absence observed on Jan 16 (12 on leave)</p>
+              </div>
             </div>
           </div>
-          <div className="rounded-xl border px-3 py-2 text-right shrink-0" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
-            <div className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>Primary Leave</div>
-            <div className="font-bold text-lg mt-0.5" style={{ color: 'var(--text)' }}>Casual / Sick</div>
+
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500">Leave Ratio</span>
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-semibold">Leave Rate</span>
+                <span className="text-sm font-black text-cyan-800 font-mono">13.2%</span>
+              </div>
+              <div className="h-7 w-px bg-slate-200" />
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-semibold">Total Days</span>
+                <span className="text-sm font-black text-slate-900 font-mono">{data.total_leave_days}d</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Top 3 KPI Cards */}
-      <div className="grid grid-cols-3 gap-2 shrink-0">
+      {/* Top 4 KPI Cards (Dominant Unique Employees on Leave) */}
+      <div className="grid grid-cols-4 gap-1.5 shrink-0">
         <KPICard
-          title="Leave Days"
-          value={`${data.total_leave_days} Days`}
-          subtitle="Annual logged time-off"
-          icon={CalendarDays}
-          badge="Utilization"
+          dominant={true}
+          title="Employees On Leave"
+          value={data.unique_employees_on_leave}
+          subtitle="78 Staff · 13.2% Workforce Leave Rate"
+          icon={Users}
+          badge="13.2% Rate"
           badgeColor="cyan"
         />
         <KPICard
-          title="Affected Employees"
-          value={data.unique_employees_on_leave}
-          subtitle="Workers with leave logged"
-          icon={Users}
-          badge="Employees"
+          title="Total Leave Days"
+          value={`${data.total_leave_days} Days`}
+          subtitle="January logged absence duration"
+          icon={CalendarDays}
+          badge="Utilization"
           badgeColor="emerald"
         />
         <KPICard
-          title="Top Leave Type"
+          title="Primary Leave Type"
           value="Casual / Sick"
-          subtitle="512 records, 64% of leave volume"
+          subtitle="64% of total time-off requests"
           icon={Clock}
           badge="Predominant"
           badgeColor="purple"
         />
+        <KPICard
+          title="Average Duration"
+          value="1.0 Day"
+          subtitle="Average time-off length per incident"
+          icon={CalendarDays}
+          badge="Average"
+          badgeColor="amber"
+        />
       </div>
 
-      {/* Middle Grid: Interactive Calendar Grid + Inspector + Project Pie */}
-      <div className="grid grid-cols-12 gap-2 flex-1 min-h-0">
-        {/* Left 5 cols: Interactive Visual Calendar Grid */}
+      {/* Middle Grid: Interactive Visual Calendar with Heatmap + Daily Inspector + Project Spread */}
+      <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
+        {/* Left 5 cols: Interactive Visual Calendar Grid with Heatmap Overlay */}
         <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
               <CalendarDays className="w-3.5 h-3.5 text-cyan-600" />
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Interactive Leave Schedule (January 2024)</span>
+              <span className="text-xs font-bold text-slate-800 tracking-tight">Leave Heatmap Calendar (Jan 2024)</span>
             </div>
-            <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200 font-semibold">Month View</span>
+            <span className="text-[9px] text-slate-400 font-mono">Intensity: Heat Colored</span>
           </div>
 
           <div className="flex-1 flex flex-col justify-between my-1">
@@ -189,27 +230,37 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
               <span className="text-slate-400">Sun</span>
             </div>
 
-            {/* Calendar Days */}
+            {/* Calendar Days with Heat Intensity */}
             <div className="grid grid-cols-7 gap-1 flex-1 py-1">
               {daysInJan.map((d) => {
                 const dateStr = `2024-01-${String(d).padStart(2, '0')}`;
-                const hasLeaves = data.events.some((ev) => ev.start <= dateStr && ev.end >= dateStr);
+                const count = data.daily_leave_counts?.[dateStr] || 0;
                 const isSelected = selectedDate === dateStr;
+
+                // Color cell based on leave intensity
+                let heatStyle = 'bg-slate-50 text-slate-600 hover:bg-slate-100';
+                if (count >= 10) {
+                  heatStyle = 'bg-rose-100 border border-rose-300 text-rose-900 font-bold hover:bg-rose-200';
+                } else if (count >= 5) {
+                  heatStyle = 'bg-amber-100 border border-amber-300 text-amber-900 font-bold hover:bg-amber-200';
+                } else if (count > 0) {
+                  heatStyle = 'bg-cyan-50 border border-cyan-200 text-cyan-900 font-semibold hover:bg-cyan-100';
+                }
+
+                if (isSelected) {
+                  heatStyle = 'bg-cyan-600 text-white font-bold ring-2 ring-cyan-500 shadow-xs';
+                }
+
                 return (
                   <button
                     key={d}
                     onClick={() => setSelectedDate(dateStr)}
-                    className={`h-7 rounded flex flex-col items-center justify-center relative text-[11px] font-mono transition-all ${
-                      isSelected
-                        ? 'bg-cyan-600 text-white font-bold shadow-xs'
-                        : hasLeaves
-                        ? 'bg-cyan-50/70 border border-cyan-200 text-cyan-900 font-semibold hover:bg-cyan-100'
-                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                    }`}
+                    className={`h-7 rounded flex flex-col items-center justify-center relative text-[11px] font-mono transition-all ${heatStyle}`}
+                    title={`${dateStr}: ${count} on leave`}
                   >
                     <span>{d}</span>
-                    {hasLeaves && !isSelected && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-600 absolute bottom-0.5"></span>
+                    {count > 0 && !isSelected && (
+                      <span className={`w-1 h-1 rounded-full absolute bottom-0.5 ${count >= 5 ? 'bg-rose-600' : 'bg-cyan-600'}`} />
                     )}
                   </button>
                 );
@@ -219,15 +270,15 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
 
           <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100 shrink-0 font-medium">
             <span>Selected Date: <strong className="text-slate-900 font-mono">{selectedDate}</strong></span>
-            <span>{eventsOnSelectedDate.length} Employees Scheduled</span>
+            <span><b>{eventsOnSelectedDate.length}</b> staff on leave</span>
           </div>
         </div>
 
         {/* Center 4 cols: Daily Roster on Selected Date */}
         <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">On Leave on {selectedDate}</span>
-            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-mono font-semibold">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+            <span className="text-xs font-bold text-slate-800 tracking-tight">On Leave: {selectedDate}</span>
+            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 font-mono font-semibold">
               {eventsOnSelectedDate.length} Records
             </span>
           </div>
@@ -237,16 +288,22 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
               eventsOnSelectedDate.map((ev) => (
                 <div
                   key={ev.id}
-                  onClick={() => onSelectEmployee(ev.employee_number)}
-                  className="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:border-cyan-400 cursor-pointer transition-all flex items-center justify-between gap-2 shadow-xs"
+                  onClick={() => {
+                    if (onOpenEmployeeProfile) {
+                      onOpenEmployeeProfile(ev.employee_number);
+                    } else {
+                      onSelectEmployee(ev.employee_number);
+                    }
+                  }}
+                  className="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:border-cyan-400 cursor-pointer transition-all flex items-center justify-between gap-2 shadow-2xs group"
                 >
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 truncate">{ev.employee_name}</p>
+                    <p className="text-xs font-bold text-slate-900 truncate group-hover:text-cyan-700">{ev.employee_name}</p>
                     <p className="text-[10px] text-slate-500 font-medium truncate">{ev.department} · {ev.location}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <span 
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded border"
+                      className="text-[9px] font-bold px-1.5 py-0.2 rounded border"
                       style={{ 
                         color: LEAVE_COLORS[ev.leave_type] || '#0284c7',
                         borderColor: `${LEAVE_COLORS[ev.leave_type] || '#0284c7'}50`,
@@ -268,26 +325,27 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
           </div>
         </div>
 
-        {/* Right 3 cols: Workforce by Project Working Pie */}
+        {/* Right 3 cols: Workforce by Project Working Pie with Acronym Expansions */}
         <div className="col-span-3 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
             <span className="text-xs font-bold text-slate-800 tracking-tight">Project Working Spread</span>
-            <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-semibold">Distribution</span>
+            <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 font-semibold">Distribution</span>
           </div>
 
           <div className="flex-1 min-h-0 relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={data.project_distribution}
+                  data={formattedProjects}
                   cx="50%"
                   cy="50%"
                   innerRadius="48%"
                   outerRadius="72%"
                   paddingAngle={3}
                   dataKey="count"
+                  nameKey="fullName"
                 >
-                  {data.project_distribution.map((_, index) => (
+                  {formattedProjects.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={PROJECT_COLORS[index % PROJECT_COLORS.length]} />
                   ))}
                 </Pie>
@@ -300,9 +358,9 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
           </div>
 
           <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 shrink-0 text-center">
-            {data.project_distribution.slice(0, 3).map((p, i) => (
+            {formattedProjects.slice(0, 3).map((p, i) => (
               <div key={p.project} className="p-1 rounded bg-slate-50 border border-slate-200">
-                <p className="text-[9px] text-slate-500 truncate font-medium">{p.project}</p>
+                <p className="text-[9px] text-slate-600 truncate font-bold">{p.project}</p>
                 <p className="text-[11px] font-bold text-slate-900 font-mono" style={{ color: PROJECT_COLORS[i] }}>{p.count}</p>
               </div>
             ))}

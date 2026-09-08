@@ -25,6 +25,8 @@ class HomeKPIs(BaseModel):
     recent_hirings: Dict[str, int]
     attrition_by_year: List[Dict[str, Any]]
     location_distribution: List[Dict[str, Any]]
+    attrition_rate_current: Optional[float] = None
+    attrition_trend_dir: Optional[str] = None
 
 class StatewiseKPIs(BaseModel):
     selected_sdm: str
@@ -33,7 +35,10 @@ class StatewiseKPIs(BaseModel):
     avg_infinite_exp: float
     experience_by_grade: List[Dict[str, Any]]
     project_grade_distribution: List[Dict[str, Any]]
+    project_grade_grouped: Optional[List[Dict[str, Any]]] = None
     geography_grade_breakdown: List[Dict[str, Any]]
+    geography_grade_grouped: Optional[List[Dict[str, Any]]] = None
+    available_sdms: Optional[List[Dict[str, Any]]] = None
     employee_roster: List[Dict[str, Any]]
 
 class EmployeeDetails(BaseModel):
@@ -57,6 +62,8 @@ class EmployeeDetails(BaseModel):
     skills: List[Dict[str, Any]]
     fresh_skills: List[str]
     finance_history: List[Dict[str, Any]]
+    grade_median_ctc: Optional[float] = None
+    grade_median_tenure: Optional[float] = None
 
 class TechwiseKPIs(BaseModel):
     total_unique_skills: int
@@ -65,6 +72,9 @@ class TechwiseKPIs(BaseModel):
     skill_distribution: List[Dict[str, Any]]
     manager_grade_matrix: Dict[str, Any]
     skill_roster: List[Dict[str, Any]]
+    verified_specialists: Optional[List[Dict[str, Any]]] = None
+    coverage_gaps: Optional[List[Dict[str, Any]]] = None
+    audit_headline: Optional[str] = None
 
 class SalarywiseKPIs(BaseModel):
     total_salary: float
@@ -80,6 +90,9 @@ class SalarywiseKPIs(BaseModel):
     avg_bonus: float
     manager_grade_ctc_matrix: Dict[str, Any]
     top_n_earners: List[Dict[str, Any]]
+    salary_histogram: Optional[List[Dict[str, Any]]] = None
+    total_managers: Optional[int] = 54
+    matched_records: Optional[int] = 590
 
 class Salarywise2KPIs(BaseModel):
     team_avg_salary: List[Dict[str, Any]]
@@ -90,14 +103,16 @@ class Salarywise2KPIs(BaseModel):
     top_earners: List[Dict[str, Any]]
     filtered_count: int = 0
 
-
 class CalendarData(BaseModel):
     total_leave_days: float
     unique_employees_on_leave: int
+    leave_rate_pct: Optional[float] = None
     leave_type_breakdown: List[Dict[str, Any]]
     project_distribution: List[Dict[str, Any]]
     manager_grade_matrix: Dict[str, Any]
     geography_grade_matrix: Dict[str, Any]
+    daily_leave_counts: Optional[Dict[str, int]] = None
+    events: Optional[List[Dict[str, Any]]] = None
     events: List[Dict[str, Any]]
 
 class CopilotQueryRequest(BaseModel):

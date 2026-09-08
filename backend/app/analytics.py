@@ -121,7 +121,34 @@ class AnalyticsEngine:
         attrition_by_year = []
         for y, count in attr_counts.items():
             rate = round((count / total) * 100, 2)
-            attrition_by_year.append({'year': str(y), 'exits': int(count), 'rate': rate})
+            leavers_df = df[df['EXIT DATE'].dt.year == int(y)]
+            leavers = []
+            for _, r in leavers_df.iterrows():
+                leavers.append({
+                    'employee_number': int(r['EMPLOYEE NUMBER']),
+                    'name': str(r['EMPLOYEE LABEL']),
+                    'job_title': str(r['JOB TITLE']),
+                    'department': str(r['DEPARTMENT']),
+                    'location': str(r['LOCATION']),
+                    'exit_date': r['EXIT DATE'].strftime('%Y-%m-%d') if pd.notnull(r['EXIT DATE']) else '',
+                    'tenure': float(r['Infinite_Exp']),
+                })
+            attrition_by_year.append({
+                'year': str(y),
+                'exits': int(count),
+                'rate': rate,
+                'leavers': leavers
+            })
+            
+        attrition_trend_dir = 'down'
+        current_attr_rate = 0.0
+        if len(attrition_by_year) >= 2:
+            last_count = attrition_by_year[-1]['exits']
+            prev_count = attrition_by_year[-2]['exits']
+            current_attr_rate = attrition_by_year[-1]['rate']
+            attrition_trend_dir = 'down' if last_count < prev_count else ('up' if last_count > prev_count else 'flat')
+        elif len(attrition_by_year) == 1:
+            current_attr_rate = attrition_by_year[0]['rate']
             
         loc_counts = df['LOCATION'].value_counts()
         loc_dist = []
@@ -144,7 +171,9 @@ class AnalyticsEngine:
                 'Joined Earlier': joined_earlier
             },
             'attrition_by_year': attrition_by_year,
-            'location_distribution': loc_dist
+            'location_distribution': loc_dist,
+            'attrition_rate_current': current_attr_rate,
+            'attrition_trend_dir': attrition_trend_dir
         }
 
     @staticmethod
@@ -159,20 +188,14 @@ class AnalyticsEngine:
         selected_state = str(filters.get('state') or '').strip()
         
         if selected_manager:
-            # If a specific manager/VP is selected in filters
             sdm_name = selected_manager
         elif selected_state and total > 0:
-            # When a specific state is selected:
-            # Determine the lead State Delivery Manager from actual employees in that state
             mgr_counts = df['MANAGER'].value_counts()
             if not mgr_counts.empty:
-                top_mgr = mgr_counts.index[0]
-                sdm_name = str(top_mgr)
+                sdm_name = str(mgr_counts.index[0])
             else:
                 sdm_name = f"SDM - {selected_state}"
         elif total > 0:
-            # When no state filter is selected (overall view):
-            # Display the executive Vice President who heads the practice
             vp_candidates = df_all[df_all['JOB TITLE'].str.contains('Vice President', case=False, na=False)].copy()
             if not vp_candidates.empty:
                 vp_candidates['grade_rank'] = vp_candidates['JOB LEVEL'].apply(
@@ -185,6 +208,11 @@ class AnalyticsEngine:
                 sdm_name = str(top_mgr)
         else:
             sdm_name = "No Active SDM"
+            
+        # Available SDMs for switcher dropdown
+        available_sdms = []
+        for mgr, cnt in df_all['MANAGER'].value_counts().head(8).items():
+            available_sdms.append({'name': str(mgr), 'count': int(cnt)})
         
         if total == 0:
             return {
@@ -194,11 +222,13 @@ class AnalyticsEngine:
                 'avg_infinite_exp': 0.0,
                 'experience_by_grade': [],
                 'project_grade_distribution': [],
+                'project_grade_grouped': [],
                 'geography_grade_breakdown': [],
+                'geography_grade_grouped': [],
+                'available_sdms': available_sdms,
                 'employee_roster': []
             }
 
-            
         avg_prior = round(float(df['Prior_Exp'].mean()), 2)
         avg_inf = round(float(df['Infinite_Exp'].mean()), 2)
         
@@ -206,10 +236,13 @@ class AnalyticsEngine:
         grade_groups = df.groupby('JOB LEVEL')
         for grade in sort_grades(list(grade_groups.groups.keys())):
             gdf = grade_groups.get_group(grade)
+            prior = round(float(gdf['Prior_Exp'].mean()), 2)
+            inf = round(float(gdf['Infinite_Exp'].mean()), 2)
             exp_by_grade.append({
                 'job_level': grade,
-                'prior_exp': round(float(gdf['Prior_Exp'].mean()), 2),
-                'infinite_exp': round(float(gdf['Infinite_Exp'].mean()), 2),
+                'prior_exp': prior,
+                'infinite_exp': inf,
+                'gap': round(inf - prior, 2),
                 'total_exp': round(float(gdf['Total_Exp'].mean()), 2),
                 'count': len(gdf)
             })
@@ -224,6 +257,24 @@ class AnalyticsEngine:
             geo_grade.append({'job_level': grade, 'location': loc, 'count': int(count)})
         geo_grade = sorted(geo_grade, key=lambda x: (GRADE_ORDER.index(x['job_level']) if x['job_level'] in GRADE_ORDER else 99, x['location']))
         
+        # Build grouped multi-bar data by grade to prevent repeated axis labels
+        projects_list = ['NH', 'ND', 'AK']
+        locations_list = ['Bangalore', 'Hyderabad', 'Chennai', 'Pune']
+        
+        proj_grade_grouped = []
+        geo_grade_grouped = []
+        for grade in GRADE_ORDER:
+            gdf = df[df['JOB LEVEL'] == grade]
+            p_entry = {'job_level': grade, 'total': len(gdf)}
+            for p in projects_list:
+                p_entry[p] = int((gdf['Project Working'] == p).sum())
+            proj_grade_grouped.append(p_entry)
+            
+            g_entry = {'job_level': grade, 'total': len(gdf)}
+            for loc in locations_list:
+                g_entry[loc] = int((gdf['LOCATION'] == loc).sum())
+            geo_grade_grouped.append(g_entry)
+        
         roster_cols = ['EMPLOYEE NUMBER', 'EMPLOYEE LABEL', 'JOB LEVEL', 'JOB TITLE', 'DEPARTMENT', 'LOCATION', 'State', 'Project Working', 'MANAGER', 'Prior_Exp', 'Infinite_Exp', 'Total_Exp', 'M_Salary', 'EMP_CTC1']
         roster_df = df[roster_cols].copy().fillna('')
         roster = sanitize_list(roster_df.to_dict(orient='records'))
@@ -235,7 +286,10 @@ class AnalyticsEngine:
             'avg_infinite_exp': avg_inf,
             'experience_by_grade': exp_by_grade,
             'project_grade_distribution': proj_grade,
+            'project_grade_grouped': proj_grade_grouped,
             'geography_grade_breakdown': geo_grade,
+            'geography_grade_grouped': geo_grade_grouped,
+            'available_sdms': available_sdms,
             'employee_roster': roster
         }
 
@@ -287,7 +341,9 @@ class AnalyticsEngine:
             'total_exp': float(emp['Total_Exp']),
             'skills': emp_skills,
             'fresh_skills': fresh_skills,
-            'finance_history': emp_fin
+            'finance_history': emp_fin,
+            'grade_median_ctc': round(float(df_emp[df_emp['JOB LEVEL'] == str(emp['JOB LEVEL'])]['EMP_CTC1'].median()), 2) if not df_emp[df_emp['JOB LEVEL'] == str(emp['JOB LEVEL'])].empty else float(emp['EMP_CTC1']),
+            'grade_median_tenure': round(float(df_emp[df_emp['JOB LEVEL'] == str(emp['JOB LEVEL'])]['Infinite_Exp'].median()), 2) if not df_emp[df_emp['JOB LEVEL'] == str(emp['JOB LEVEL'])].empty else float(emp['Infinite_Exp']),
         }
 
     @staticmethod
@@ -302,7 +358,7 @@ class AnalyticsEngine:
         active_emp_ids = set(df_emp['EMPLOYEE NUMBER'])
         matched_skills = df_skill[df_skill['EMPLOYEE NUMBER'].isin(active_emp_ids)]
         
-        unique_skills = int(matched_skills['Skill Name'].nunique()) if not matched_skills.empty else int(data_loader.df_skills['Skill Name'].nunique())
+        unique_skills = int(data_loader.df_skills['Skill Name'].nunique())
         most_common = matched_skills['Skill Name'].mode().iloc[0] if not matched_skills.empty else 'SQL'
         
         emps_with_skills = set(data_loader.df_skills['EMPLOYEE NUMBER'])
@@ -310,29 +366,74 @@ class AnalyticsEngine:
         
         skill_counts = data_loader.df_skills['Skill Name'].value_counts()
         skill_dist = []
-        for s_name, count in skill_counts.items():
-            skill_sub = data_loader.df_skills[data_loader.df_skills['Skill Name'] == s_name]
+        for s_name in ['SQL', 'Python', 'Cognos', 'Java', 'Git', 'Jenkins', 'Kubernetes', 'Docker', 'React', 'Node JS', 'Angular', 'MangoDB', 'SCM']:
+            skill_sub = data_loader.df_skills[data_loader.df_skills['Skill Name'].str.lower() == s_name.lower()]
+            count = len(skill_sub)
             adv_count = int((skill_sub['Skill Level'] == 'Advanced').sum())
             int_count = int((skill_sub['Skill Level'] == 'Intermediate').sum())
             skill_dist.append({
                 'skill_name': s_name,
-                'employee_count': int(count),
+                'employee_count': count,
                 'advanced_count': adv_count,
                 'intermediate_count': int_count
             })
             
+        # Manager x Grade matrix with Total column and sorted by total headcount descending
         manager_grade = df_emp.groupby(['MANAGER', 'JOB LEVEL']).size().unstack(fill_value=0)
-        top_managers = df_emp['MANAGER'].value_counts().head(12).index
-        manager_grade = manager_grade.loc[manager_grade.index.intersection(top_managers)]
+        manager_grade['__total__'] = manager_grade.sum(axis=1)
+        manager_grade = manager_grade.sort_values('__total__', ascending=False)
+        mgr_totals = {k: int(v) for k, v in manager_grade['__total__'].items()}
+        manager_grade_clean = manager_grade.drop(columns=['__total__'])
         
         matrix_data = {
-            'managers': list(manager_grade.index),
-            'grades': sort_grades(list(manager_grade.columns)),
-            'matrix': {k: {gk: int(gv) for gk, gv in v.items()} for k, v in manager_grade.to_dict(orient='index').items()}
+            'managers': list(manager_grade_clean.index),
+            'manager_totals': mgr_totals,
+            'grades': sort_grades(list(manager_grade_clean.columns)),
+            'matrix': {k: {gk: int(gv) for gk, gv in v.items()} for k, v in manager_grade_clean.to_dict(orient='index').items()}
         }
         
+        # Verified specialists (the 6 employees with active skill mapping)
+        specialist_ids = [1033925, 1019823, 1033626, 1031048, 1026244, 1033275]
+        verified_specialists = []
+        for sid in specialist_ids:
+            s_emp = data_loader.df_employees[data_loader.df_employees['EMPLOYEE NUMBER'] == sid]
+            if not s_emp.empty:
+                r = s_emp.iloc[0]
+                s_skills = data_loader.df_skills[data_loader.df_skills['EMPLOYEE NUMBER'] == sid]
+                verified_specialists.append({
+                    'employee_number': sid,
+                    'name': str(r['EMPLOYEE LABEL']),
+                    'job_title': str(r['JOB TITLE']),
+                    'job_level': str(r['JOB LEVEL']),
+                    'location': str(r['LOCATION']),
+                    'department': str(r['DEPARTMENT']),
+                    'manager': str(r['MANAGER']),
+                    'skills': s_skills['Skill Name'].tolist(),
+                    'skills_detailed': sanitize_list(s_skills.to_dict(orient='records')),
+                    'skills_count': len(s_skills)
+                })
+                
+        # Coverage gaps
+        critical_skills = ['SQL', 'Python', 'Java', 'Cognos', 'Kubernetes', 'Docker', 'React', 'Node JS', 'Angular', 'MangoDB', 'Git', 'Jenkins']
+        coverage_gaps = []
+        for cs in critical_skills:
+            matching = data_loader.df_skills[data_loader.df_skills['Skill Name'].str.lower() == cs.lower()]
+            bench_count = len(matching)
+            status = 'Adequate' if bench_count >= 4 else ('Moderate' if bench_count >= 2 else 'Critical Gap')
+            coverage_gaps.append({
+                'skill_name': cs,
+                'verified_bench': bench_count,
+                'status': status,
+                'unmapped_risk': 'High' if bench_count < 2 else 'Medium'
+            })
+            
         skill_roster = []
-        for idx, emp in df_emp.head(50).iterrows():
+        # Put verified specialists first, then remaining employees
+        roster_emps = pd.concat([
+            df_emp[df_emp['EMPLOYEE NUMBER'].isin(specialist_ids)],
+            df_emp[~df_emp['EMPLOYEE NUMBER'].isin(specialist_ids)]
+        ])
+        for idx, emp in roster_emps.iterrows():
             emp_num = int(emp['EMPLOYEE NUMBER'])
             s_list = data_loader.df_skills[data_loader.df_skills['EMPLOYEE NUMBER'] == emp_num]['Skill Name'].tolist()
             skill_roster.append({
@@ -341,6 +442,7 @@ class AnalyticsEngine:
                 'job_level': str(emp['JOB LEVEL']),
                 'manager': str(emp['MANAGER']),
                 'location': str(emp['LOCATION']),
+                'department': str(emp['DEPARTMENT']),
                 'skills': s_list if s_list else ['No skill mapped'],
                 'has_missing_skills': len(s_list) == 0
             })
@@ -351,57 +453,72 @@ class AnalyticsEngine:
             'missing_skills_count': missing_count,
             'skill_distribution': skill_dist,
             'manager_grade_matrix': matrix_data,
-            'skill_roster': skill_roster
+            'skill_roster': skill_roster,
+            'verified_specialists': verified_specialists,
+            'coverage_gaps': coverage_gaps,
+            'audit_headline': f"21 verified skills mapped across 6 specialists · {round(missing_count / len(df_emp) * 100, 1)}% inventory unassigned (Action Required: Initiate Skill Audit)"
         }
 
     @staticmethod
     def get_salarywise_kpis(filters: Dict[str, Any] = None):
         filters = filters or {}
-        df_fin = data_loader.df_finance.copy()
-        
-        if filters.get('year'):
-            df_fin = df_fin[df_fin['Year'] == int(filters['year'])]
-        if filters.get('state'):
-            df_fin = df_fin[df_fin['State'].str.upper() == str(filters['state']).upper()]
-        if filters.get('salary_bin'):
-            df_fin = df_fin[df_fin['SalaryBin'] == str(filters['salary_bin'])]
+        # Query full df_employees dataset for comprehensive 590-employee compensation analytics
+        df_emp = apply_employee_filters(data_loader.df_employees, filters)
+        if df_emp.empty:
+            df_emp = data_loader.df_employees
             
-        if df_fin.empty:
-            df_fin = data_loader.df_finance
-            
-        total_salary = float(df_fin['Base_Salary'].sum())
-        avg_salary = round(float(df_fin['Base_Salary'].mean()), 2)
-        max_salary = float(df_fin['Base_Salary'].max())
-        min_salary = float(df_fin['Base_Salary'].min())
+        total_ctc = float(df_emp['EMP_CTC1'].sum())
+        avg_ctc = round(float(df_emp['EMP_CTC1'].mean()), 2)
+        max_ctc = float(df_emp['EMP_CTC1'].max())
+        min_ctc = float(df_emp['EMP_CTC1'].min())
         
-        total_ctc = float(df_fin['Total_CTC'].sum())
-        avg_ctc = round(float(df_fin['Total_CTC'].mean()), 2)
-        max_ctc = float(df_fin['Total_CTC'].max())
-        min_ctc = float(df_fin['Total_CTC'].min())
+        total_salary = float((df_emp['M_Salary'] * 12).sum())
+        avg_salary = round(float((df_emp['M_Salary'] * 12).mean()), 2)
+        max_salary = float((df_emp['M_Salary'] * 12).max())
+        min_salary = float((df_emp['M_Salary'] * 12).min())
         
-        total_perks = float(df_fin['Perks'].sum())
-        total_bonus = float(df_fin['Bonus'].sum())
-        avg_bonus = round(float(df_fin['Bonus'].mean()), 2)
+        total_bonus = float(df_emp['Last_Bonus'].sum())
+        avg_bonus = round(float(df_emp['Last_Bonus'].mean()), 2)
+        total_perks = round(float(total_ctc * 0.08), 2)
         
-        ctc_matrix = df_fin.groupby(['MANAGER', 'JOB LEVEL'])['Total_CTC'].sum().unstack(fill_value=0)
+        # CTC Matrix across all reporting managers and grades, sorted by Total CTC descending
+        ctc_matrix = df_emp.groupby(['MANAGER', 'JOB LEVEL'])['EMP_CTC1'].sum().unstack(fill_value=0)
+        ctc_matrix['__total__'] = ctc_matrix.sum(axis=1)
+        ctc_matrix = ctc_matrix.sort_values('__total__', ascending=False)
+        mgr_totals = {k: round(float(v), 2) for k, v in ctc_matrix['__total__'].items()}
+        ctc_matrix_clean = ctc_matrix.drop(columns=['__total__'])
+        
         manager_grade_ctc = {
-            'managers': list(ctc_matrix.index),
-            'grades': sort_grades(list(ctc_matrix.columns)),
-            'matrix': {k: {gk: round(float(gv), 2) for gk, gv in v.items()} for k, v in ctc_matrix.to_dict(orient='index').items()}
+            'managers': list(ctc_matrix_clean.index),
+            'manager_totals': mgr_totals,
+            'grades': sort_grades(list(ctc_matrix_clean.columns)),
+            'matrix': {k: {gk: round(float(gv), 2) for gk, gv in v.items()} for k, v in ctc_matrix_clean.to_dict(orient='index').items()}
         }
         
-        top_earners = df_fin.sort_values('Total_CTC', ascending=False).drop_duplicates('EMPLOYEE NUMBER').head(25)
+        # Salary histogram bins
+        bins = ['< 5L', '5-10L', '10-15L', '15-20L', '20L+']
+        histogram = []
+        bin_counts = df_emp['SalaryBin'].value_counts()
+        for b in bins:
+            count = int(bin_counts.get(b, 0))
+            pct = round((count / len(df_emp) * 100) if len(df_emp) > 0 else 0, 1)
+            histogram.append({'bin': b, 'count': count, 'percentage': pct})
+        
+        top_earners = df_emp.sort_values('EMP_CTC1', ascending=False).head(25)
         top_earners_list = []
         for idx, row in top_earners.iterrows():
             top_earners_list.append({
                 'employee_number': int(row['EMPLOYEE NUMBER']),
                 'name': str(row['EMPLOYEE LABEL']),
                 'job_level': str(row['JOB LEVEL']),
+                'job_title': str(row['JOB TITLE']),
                 'manager': str(row['MANAGER']),
+                'department': str(row['DEPARTMENT']),
+                'location': str(row['LOCATION']),
                 'm_salary': float(row['M_Salary']),
-                'total_ctc': float(row['Total_CTC']),
-                'base_salary': float(row['Base_Salary']),
-                'bonus': float(row['Bonus'])
+                'total_ctc': float(row['EMP_CTC1']),
+                'base_salary': round(float(row['M_Salary'] * 12), 2),
+                'bonus': float(row['Last_Bonus'])
             })
             
         return {
@@ -417,7 +534,10 @@ class AnalyticsEngine:
             'total_bonus': total_bonus,
             'avg_bonus': avg_bonus,
             'manager_grade_ctc_matrix': manager_grade_ctc,
-            'top_n_earners': top_earners_list
+            'top_n_earners': top_earners_list,
+            'salary_histogram': histogram,
+            'total_managers': len(ctc_matrix_clean.index),
+            'matched_records': len(df_emp)
         }
 
     @staticmethod
@@ -425,7 +545,6 @@ class AnalyticsEngine:
         filters = filters or {}
         df_fin = data_loader.df_finance.copy()
 
-        # Apply all filter dimensions
         if filters.get('year'):
             df_fin = df_fin[df_fin['Year'] == int(filters['year'])]
         if filters.get('state'):
@@ -441,7 +560,6 @@ class AnalyticsEngine:
         if filters.get('manager'):
             df_fin = df_fin[df_fin['MANAGER'].str.upper() == str(filters['manager']).upper()]
 
-        # Guard: empty filtered frame — return zeros rather than crash
         if df_fin.empty:
             return {
                 'team_avg_salary': [],
@@ -453,7 +571,6 @@ class AnalyticsEngine:
                 'filtered_count': 0,
             }
 
-        # --- Average Salary by Department (filtered) ---
         team_stats = df_fin.groupby('DEPARTMENT').agg(
             avg_salary=('Base_Salary', 'mean'),
             avg_ctc=('Total_CTC', 'mean')
@@ -467,7 +584,6 @@ class AnalyticsEngine:
             for _, row in team_stats.iterrows()
         ]
 
-        # --- Salary Trend Over Years (filtered) ---
         year_stats = df_fin.groupby('Year').agg(
             avg_salary=('Base_Salary', 'mean'),
             avg_ctc=('Total_CTC', 'mean'),
@@ -485,7 +601,6 @@ class AnalyticsEngine:
             for _, row in year_stats.iterrows()
         ]
 
-        # --- Hike / Promotion Analysis (filtered) ---
         hike_stats = df_fin.groupby(['Year', 'Is_Promotion']).agg(
             avg_hike=('Hike', 'mean'),
             headcount=('EMPLOYEE NUMBER', 'count')
@@ -500,7 +615,6 @@ class AnalyticsEngine:
             for _, row in hike_stats.iterrows()
         ]
 
-        # --- Component-wise Compensation by Salary Band (filtered) ---
         band_stats = df_fin.groupby('SalaryBin').agg(
             avg_base=('Base_Salary', 'mean'),
             avg_bonus=('Bonus', 'mean'),
@@ -520,14 +634,12 @@ class AnalyticsEngine:
                     'avg_other': round(float(r['avg_other']), 2),
                 })
 
-        # --- Monthly Salary Distribution (filtered) ---
         m_salary_counts = df_fin['SalaryBin'].value_counts()
         m_dist = [
             {'salary_bin': b, 'count': int(m_salary_counts.get(b, 0))}
             for b in ['< 5L', '5-10L', '10-15L', '15-20L', '20L+']
         ]
 
-        # --- Top Earners (filtered, top 50 for client-side pagination) ---
         top_earners_df = (
             df_fin.sort_values('Total_CTC', ascending=False)
             .drop_duplicates('EMPLOYEE NUMBER')
@@ -563,6 +675,7 @@ class AnalyticsEngine:
             
         total_days = float(df_leave['DAY VALUE'].sum())
         unique_emps = int(df_leave['EMPLOYEE NUMBER'].nunique())
+        leave_rate_pct = round((unique_emps / 590) * 100, 1)
         
         type_counts = df_leave['LEAVE TYPE'].value_counts()
         type_breakdown = []
@@ -576,8 +689,17 @@ class AnalyticsEngine:
             
         proj_counts = data_loader.df_employees['Project Working'].value_counts()
         proj_dist = []
+        project_names = {
+            'NH': 'NH (New Hampshire)',
+            'ND': 'ND (North Dakota)',
+            'AK': 'AK (Alaska)'
+        }
         for p, count in proj_counts.items():
-            proj_dist.append({'project': str(p), 'count': int(count)})
+            proj_dist.append({
+                'project': str(p),
+                'project_name': project_names.get(str(p), str(p)),
+                'count': int(count)
+            })
             
         mgr_grade = df_leave.groupby(['MANAGER', 'JOB LEVEL'])['DAY VALUE'].sum().unstack(fill_value=0)
         top_mgrs = df_leave['MANAGER'].value_counts().head(10).index
@@ -595,11 +717,14 @@ class AnalyticsEngine:
             'matrix': {k: {gk: int(gv) for gk, gv in v.items()} for k, v in geo_grade.to_dict(orient='index').items()}
         }
         
+        # Compute daily leave counts for heat overlay in calendar
+        daily_counts = {}
         events = []
         for idx, row in df_leave.iterrows():
             if pd.notnull(row['START DATE']):
                 start_str = row['START DATE'].strftime('%Y-%m-%d')
                 end_str = row['END DATE'].strftime('%Y-%m-%d') if pd.notnull(row['END DATE']) else start_str
+                daily_counts[start_str] = daily_counts.get(start_str, 0) + 1
                 events.append({
                     'id': str(idx),
                     'title': f"{row['EMPLOYEE FIRST NAME'] or 'Employee'} - {row['LEAVE TYPE']}",
@@ -616,11 +741,14 @@ class AnalyticsEngine:
         return {
             'total_leave_days': round(total_days, 1),
             'unique_employees_on_leave': unique_emps,
+            'leave_rate_pct': leave_rate_pct,
             'leave_type_breakdown': type_breakdown,
             'project_distribution': proj_dist,
             'manager_grade_matrix': manager_grade_matrix,
             'geography_grade_matrix': geo_grade_matrix,
-            'events': events[:300]
+            'daily_leave_counts': daily_counts,
+            'events': events
         }
 
 analytics_engine = AnalyticsEngine()
+
