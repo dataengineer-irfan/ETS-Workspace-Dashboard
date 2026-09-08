@@ -42,6 +42,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [activeSkillLens, setActiveSkillLens] = useState<'all' | 'inventory' | 'gaps' | 'coverage'>('all');
+  const [showBrief, setShowBrief] = useState(false);
   const rowsPerPage = 6;
 
   if (loading || !data) {
@@ -110,8 +111,17 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: 'var(--muted)' }}>Capability Overview</p>
             <h2 className="text-xl font-bold tracking-tight mt-1 leading-tight" style={{ color: 'var(--text)' }}>
-              Core capability depth is strong, while skill inventory expansion continues to broaden the delivery base.
+              Capability Snapshot
             </h2>
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-slate-600">Key skill inventory and coverage highlights.</div>
+              <button onClick={() => setShowBrief((v) => !v)} className="ml-2 text-xs text-cyan-600 hover:underline">{showBrief ? 'Show less' : 'Read more'}</button>
+            </div>
+            {showBrief && (
+              <div className="mt-2">
+                <p className="text-sm text-slate-700">Core capability depth is strong, while skill inventory expansion continues to broaden the delivery base. Use this view to spot coverage gaps and identify prioritized upskilling opportunities.</p>
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap gap-1.5">
               {[
                 { id: 'all', label: 'All capability', active: activeSkillLens === 'all' },

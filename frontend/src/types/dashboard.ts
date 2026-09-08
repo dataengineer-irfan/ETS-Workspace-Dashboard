@@ -1,13 +1,13 @@
 export interface FilterParams {
-  state?: string;
-  job_level?: string;
-  location?: string;
-  department?: string;
-  project?: string;
-  manager?: string;
-  year?: number;
-  skill_name?: string;
-  salary_bin?: string;
+  state?: string | string[];
+  job_level?: string | string[];
+  location?: string | string[];
+  department?: string | string[];
+  project?: string | string[];
+  manager?: string | string[];
+  year?: number | number[];
+  skill_name?: string | string[];
+  salary_bin?: string | string[];
   search?: string;
 }
 

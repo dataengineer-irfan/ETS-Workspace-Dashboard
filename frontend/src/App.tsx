@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/layout/Header';
 import { FilterBar } from './components/layout/FilterBar';
+import SelectedChips from './components/layout/SelectedChips';
 import { HomeDashboard } from './components/tabs/HomeDashboard';
 import { StatewiseDashboard } from './components/tabs/StatewiseDashboard';
 import { EmployeeDetailsDashboard } from './components/tabs/EmployeeDetailsDashboard';
@@ -137,6 +138,9 @@ export const App: React.FC = () => {
         options={filterOptions}
         activeTab={activeTab}
       />
+
+      {/* Selected filter chips */}
+      <SelectedChips filters={filters} setFilters={setFilters} />
 
       {/* Main Viewport Container - ZERO GLOBAL SCROLLBAR */}
       <main className="flex-1 p-2 flex flex-col overflow-hidden min-h-0 relative" style={{ background: 'var(--bg-soft)' }}>

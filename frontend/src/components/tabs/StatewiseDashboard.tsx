@@ -42,6 +42,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [activeLens, setActiveLens] = useState<'all' | 'leadership' | 'delivery' | 'stability'>('all');
+  const [showBrief, setShowBrief] = useState(false);
   const rowsPerPage = 7;
 
   if (loading || !data) {
@@ -106,8 +107,17 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: 'var(--muted)' }}>Regional Operating View</p>
             <h2 className="text-xl font-bold tracking-tight mt-1 leading-tight" style={{ color: 'var(--text)' }}>
-              The delivery footprint remains the strongest operating base, with experience depth concentrated in the core regions.
+              Regional Operating Summary
             </h2>
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-slate-600">A concise view of regional delivery and experience depth.</div>
+              <button onClick={() => setShowBrief((v) => !v)} className="ml-2 text-xs text-cyan-600 hover:underline">{showBrief ? 'Show less' : 'Read more'}</button>
+            </div>
+            {showBrief && (
+              <div className="mt-2">
+                <p className="text-sm text-slate-700">The delivery footprint remains the strongest operating base, with experience depth concentrated in the core regions. This view highlights regional headcount, tenure and grade distributions to support operational decisions.</p>
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap gap-1.5">
               {[
                 { id: 'all', label: 'All Delivery', active: activeLens === 'all' },

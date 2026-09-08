@@ -305,6 +305,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 }) => {
   const [hoveredLocIndex, setHoveredLocIndex] = useState<number | null>(null);
   const [selectedLens, setSelectedLens] = useState<'regional' | 'capability' | 'compensation' | 'attendance'>('regional');
+  const [showBrief, setShowBrief] = useState(false);
 
   const lenses = [
     { id: 'regional', label: 'Regional view', description: 'Delivery footprint', action: () => onNavigateTab('statewise') },
@@ -350,9 +351,20 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: 'var(--muted)' }}>Leadership Brief</p>
             <h2 className="text-[1.32rem] font-bold tracking-[-0.05em] mt-1 leading-[1.1]" style={{ color: 'var(--text)' }}>
-              Workforce momentum remains healthy, with delivery concentration driving the strongest operating upside.
+              Workforce momentum remains healthy.
             </h2>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-2">
+              <p className="text-sm text-slate-500 truncate" style={{ maxWidth: 680 }}>
+                {showBrief ? (
+                  <>Workforce momentum remains healthy, with delivery concentration driving the strongest operating upside. Focus on regional delivery hubs and targeted capability buildouts to sustain momentum and reduce attrition risk.</>
+                ) : (
+                  <>
+                    Workforce momentum remains healthy, with delivery concentration driving the strongest operating upside.
+                  </>
+                )}
+                <button onClick={() => setShowBrief(v => !v)} className="ml-2 text-xs text-cyan-600 hover:underline">{showBrief ? 'Show less' : 'Read more'}</button>
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
               {lenses.map((lens) => {
                 const selected = selectedLens === lens.id;
                 return (
@@ -374,6 +386,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   </button>
                 );
               })}
+              </div>
             </div>
           </div>
 

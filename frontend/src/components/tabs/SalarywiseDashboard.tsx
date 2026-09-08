@@ -32,6 +32,7 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
   const [managerSortField, setManagerSortField] = useState<string>('manager');
   const [managerSortDir, setManagerSortDir] = useState<'asc' | 'desc'>('asc');
   const [activePayLens, setActivePayLens] = useState<'cost' | 'leadership' | 'bench'>('cost');
+  const [showBrief, setShowBrief] = useState(false);
 
   if (loading || !data) {
     return (
@@ -89,8 +90,17 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: 'var(--muted)' }}>Compensation Overview</p>
             <h2 className="text-xl font-bold tracking-tight mt-1 leading-tight" style={{ color: 'var(--text)' }}>
-              Compensation remains well structured, with cost concentration aligned to senior delivery leadership and critical role coverage.
+              Compensation Snapshot
             </h2>
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-slate-600">High-level view of cost, leadership mix and band spread.</div>
+              <button onClick={() => setShowBrief((v) => !v)} className="ml-2 text-xs text-cyan-600 hover:underline">{showBrief ? 'Show less' : 'Read more'}</button>
+            </div>
+            {showBrief && (
+              <div className="mt-2">
+                <p className="text-sm text-slate-700">Compensation remains well structured, with cost concentration aligned to senior delivery leadership and critical role coverage. This view helps identify cost drivers and opportunities to optimize pay scales.</p>
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap gap-1.5">
               {[
                 { id: 'cost', label: 'Cost structure', active: activePayLens === 'cost' },
