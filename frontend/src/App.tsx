@@ -38,7 +38,30 @@ import {
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [copilotOpen, setCopilotOpen] = useState<boolean>(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ets_dashboard_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+    }
+    return 'light';
+  });
+
+  // Synchronize theme with document.documentElement (for Tailwind dark: utilities) and localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('ets_dashboard_theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+    } catch (e) {
+      console.warn('Unable to persist theme:', e);
+    }
+  }, [theme]);
+
   const [filters, setFilters] = useState<FilterParams>({});
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -136,7 +159,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className={`theme-${theme} h-screen w-screen overflow-hidden flex flex-col select-none`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+    <div className={`theme-${theme} ${theme} h-screen w-screen overflow-hidden flex flex-col select-none`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
       {/* Executive Header */}
       <Header
         activeTab={activeTab}

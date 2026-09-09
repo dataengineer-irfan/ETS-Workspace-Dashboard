@@ -55,28 +55,28 @@ export const EmployeeProfileDrawer: React.FC<EmployeeProfileDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30 backdrop-blur-xs animate-in fade-in duration-150">
       <div 
-        className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-200 select-none overflow-hidden"
+        className="w-full max-w-md bg-white dark:bg-[#0c1829] h-full shadow-2xl flex flex-col border-l border-slate-200 dark:border-[#223755] animate-in slide-in-from-right duration-200 select-none overflow-hidden"
         style={{ background: 'var(--surface)' }}
       >
         {/* Top Header */}
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
+        <div className="px-5 py-4 border-b border-slate-200 dark:border-[#223755] flex items-center justify-between bg-slate-50/80 dark:bg-[#0f1f35]">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
               {details?.name ? details.name.slice(0, 2).toUpperCase() : <User className="w-5 h-5" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-slate-900 tracking-tight">{details?.name || `Employee #${empNumber}`}</h2>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-100 text-cyan-800 border border-cyan-200">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">{details?.name || `Employee #${empNumber}`}</h2>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-100 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
                   {details?.job_level || 'Grade'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 truncate max-w-[220px]">{details?.job_title || 'Workforce Member'}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{details?.job_title || 'Workforce Member'}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors"
+            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -92,61 +92,61 @@ export const EmployeeProfileDrawer: React.FC<EmployeeProfileDrawerProps> = ({
           <div className="flex-1 overflow-y-auto custom-scrollbar p-5 flex flex-col gap-4">
             {/* Meta Tags */}
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-[#12223a] border border-slate-100 dark:border-[#223755]">
                 <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <div className="truncate">
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">Department</span>
-                  <span className="font-semibold text-slate-800">{details.department || 'Delivery'}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{details.department || 'Delivery'}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-[#12223a] border border-slate-100 dark:border-[#223755]">
                 <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <div className="truncate">
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">Location</span>
-                  <span className="font-semibold text-slate-800">{details.location || 'HQ'}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{details.location || 'HQ'}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-[#12223a] border border-slate-100 dark:border-[#223755]">
                 <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <div className="truncate">
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">Project</span>
-                  <span className="font-semibold text-slate-800">{details.project || 'General'}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{details.project || 'General'}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-[#12223a] border border-slate-100 dark:border-[#223755]">
                 <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <div className="truncate">
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">Manager</span>
-                  <span className="font-semibold text-slate-800">{details.manager || 'Executive'}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{details.manager || 'Executive'}</span>
                 </div>
               </div>
             </div>
 
             {/* Peer Comparison Benchmark Strip */}
-            <div className="rounded-xl p-3 bg-gradient-to-br from-slate-50 to-cyan-50/40 border border-cyan-100 flex flex-col gap-2">
+            <div className="rounded-xl p-3 bg-gradient-to-br from-slate-50 dark:from-[#0f1f35] to-cyan-50/40 dark:to-[#0f2a42] border border-cyan-100 dark:border-[#223755] flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-900 flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-cyan-600" /> Peer Benchmarking ({details.job_level})
+                <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-900 dark:text-cyan-300 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" /> Peer Benchmarking ({details.job_level})
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">Grade Cohort</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 mt-1">
-                <div className="bg-white p-2 rounded-lg border border-slate-200/80 shadow-xs">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">Annual CTC</span>
-                  <span className="text-sm font-bold text-slate-900 font-mono">{formatLakhs(ctc)}</span>
+                <div className="bg-white dark:bg-[#12223a] p-2 rounded-lg border border-slate-200/80 dark:border-[#223755] shadow-xs">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">Annual CTC</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">{formatLakhs(ctc)}</span>
                   {medianCtc > 0 && (
-                    <span className={`text-[10px] font-bold block mt-0.5 ${ctcDelta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <span className={`text-[10px] font-bold block mt-0.5 ${ctcDelta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                       {ctcDelta >= 0 ? `+${ctcDelta.toFixed(1)}%` : `${ctcDelta.toFixed(1)}%`} vs median ({formatLakhs(medianCtc)})
                     </span>
                   )}
                 </div>
 
-                <div className="bg-white p-2 rounded-lg border border-slate-200/80 shadow-xs">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">Company Tenure</span>
-                  <span className="text-sm font-bold text-slate-900 font-mono">{tenure.toFixed(1)} yrs</span>
+                <div className="bg-white dark:bg-[#12223a] p-2 rounded-lg border border-slate-200/80 dark:border-[#223755] shadow-xs">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">Company Tenure</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">{tenure.toFixed(1)} yrs</span>
                   {medianTenure > 0 && (
-                    <span className={`text-[10px] font-bold block mt-0.5 ${tenureDelta >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <span className={`text-[10px] font-bold block mt-0.5 ${tenureDelta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                       {tenureDelta >= 0 ? `+${tenureDelta.toFixed(1)} yrs` : `${tenureDelta.toFixed(1)} yrs`} vs median ({medianTenure.toFixed(1)}y)
                     </span>
                   )}
@@ -155,14 +155,14 @@ export const EmployeeProfileDrawer: React.FC<EmployeeProfileDrawerProps> = ({
             </div>
 
             {/* Experience Breakdown */}
-            <div className="rounded-xl p-3 bg-slate-50 border border-slate-200 flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+            <div className="rounded-xl p-3 bg-slate-50 dark:bg-[#12223a] border border-slate-200 dark:border-[#223755] flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" /> Total Experience
+                  <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" /> Total Experience
                 </span>
-                <span className="font-mono text-cyan-800 font-bold">{details.total_exp.toFixed(1)} Years</span>
+                <span className="font-mono text-cyan-800 dark:text-cyan-300 font-bold">{details.total_exp.toFixed(1)} Years</span>
               </div>
-              <div className="w-full bg-slate-200 rounded-full h-2 flex overflow-hidden">
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 flex overflow-hidden">
                 <div 
                   className="bg-cyan-600 h-full" 
                   style={{ width: `${details.total_exp > 0 ? (details.infinite_exp / details.total_exp) * 100 : 50}%` }}
@@ -174,7 +174,7 @@ export const EmployeeProfileDrawer: React.FC<EmployeeProfileDrawerProps> = ({
                   title={`Prior Exp: ${details.prior_exp.toFixed(1)} yrs`}
                 />
               </div>
-              <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
+              <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-cyan-600 inline-block" /> Infinite: {details.infinite_exp.toFixed(1)}y
                 </span>
@@ -185,12 +185,12 @@ export const EmployeeProfileDrawer: React.FC<EmployeeProfileDrawerProps> = ({
             </div>
 
             {/* Verified Skills */}
-            <div className="rounded-xl p-3 bg-slate-50 border border-slate-200 flex flex-col gap-2">
+            <div className="rounded-xl p-3 bg-slate-50 dark:bg-[#12223a] border border-slate-200 dark:border-[#223755] flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-purple-600" /> Verified Technical Skills
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" /> Verified Technical Skills
                 </span>
-                <span className="text-[10px] font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-bold border border-purple-200">
+                <span className="text-[10px] font-mono text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 rounded font-bold border border-purple-200 dark:border-purple-800">
                   {details.skills?.length || 0} skills
                 </span>
               </div>
@@ -200,7 +200,7 @@ export const EmployeeProfileDrawer: React.FC<EmployeeProfileDrawerProps> = ({
                   {details.skills.map((s, idx) => (
                     <span 
                       key={idx}
-                      className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white border border-slate-200 text-slate-800 shadow-2xs flex items-center gap-1"
+                      className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white dark:bg-[#162a45] border border-slate-200 dark:border-[#223755] text-slate-800 dark:text-slate-200 shadow-2xs flex items-center gap-1"
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                       {s['Skill Name']} 
@@ -214,15 +214,15 @@ export const EmployeeProfileDrawer: React.FC<EmployeeProfileDrawerProps> = ({
             </div>
 
             {/* Direct Contact */}
-            <div className="text-xs text-slate-500 flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
+            <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-[#12223a] border border-slate-100 dark:border-[#223755]">
               <Mail className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-mono text-[11px] text-slate-700 truncate">{details.email || `emp_${details.employee_number}@company.com`}</span>
+              <span className="font-mono text-[11px] text-slate-700 dark:text-slate-300 truncate">{details.email || `emp_${details.employee_number}@company.com`}</span>
             </div>
           </div>
         ) : null}
 
         {/* Footer Action */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center gap-2">
+        <div className="p-4 border-t border-slate-200 dark:border-[#223755] bg-slate-50 dark:bg-[#0c1829] flex items-center gap-2">
           <button
             onClick={() => {
               onOpenFullProfile(empNumber);
@@ -235,7 +235,7 @@ export const EmployeeProfileDrawer: React.FC<EmployeeProfileDrawerProps> = ({
           </button>
           <button
             onClick={onClose}
-            className="py-2 px-3 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold transition-colors"
+            className="py-2 px-3 rounded-lg bg-white dark:bg-[#12223a] hover:bg-slate-100 dark:hover:bg-[#172b45] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-[#223755] text-xs font-semibold transition-colors"
           >
             Close
           </button>

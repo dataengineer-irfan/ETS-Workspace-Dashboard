@@ -61,9 +61,11 @@ export const Header: React.FC<HeaderProps> = ({
     <header
       className="h-12 border-b px-3 flex items-center justify-between shrink-0 select-none z-30 gap-2"
       style={{
-        background: 'linear-gradient(180deg, rgba(15,23,42,0.02), rgba(255,255,255,0.78), var(--surface)), var(--surface)',
+        background: theme === 'dark'
+          ? 'linear-gradient(180deg, rgba(14,27,45,0.98), rgba(10,18,28,0.98))'
+          : 'linear-gradient(180deg, rgba(15,23,42,0.02), rgba(255,255,255,0.78), var(--surface)), var(--surface)',
         borderColor: 'var(--border)',
-        boxShadow: '0 12px 30px rgba(15, 23, 42, 0.05)',
+        boxShadow: theme === 'dark' ? '0 8px 24px rgba(0,0,0,0.45)' : '0 12px 30px rgba(15, 23, 42, 0.05)',
       }}
     >
       {/* Brand & Title */}
@@ -83,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Center Navigation Tabs */}
-      <nav className="flex items-center gap-1 p-0.5 rounded-xl mx-1 shrink min-w-0" style={{ background: 'rgba(15, 23, 42, 0.02)', border: '1px solid var(--border)' }}>
+      <nav className="flex items-center gap-1 p-0.5 rounded-xl mx-1 shrink min-w-0" style={{ background: theme === 'dark' ? 'rgba(18, 34, 58, 0.6)' : 'rgba(15, 23, 42, 0.02)', border: '1px solid var(--border)' }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -97,10 +99,12 @@ export const Header: React.FC<HeaderProps> = ({
               style={
                 isActive
                   ? {
-                      background: 'linear-gradient(180deg, rgba(14,165,233,0.12), rgba(255,255,255,0.75))',
+                      background: theme === 'dark'
+                        ? 'linear-gradient(180deg, rgba(14,165,233,0.25), rgba(15,27,45,0.9))'
+                        : 'linear-gradient(180deg, rgba(14,165,233,0.12), rgba(255,255,255,0.75))',
                       color: 'var(--cyan-strong)',
                       border: '1px solid var(--border-strong)',
-                      boxShadow: '0 8px 20px rgba(14,165,233,0.12)',
+                      boxShadow: theme === 'dark' ? '0 4px 14px rgba(14,165,233,0.25)' : '0 8px 20px rgba(14,165,233,0.12)',
                     }
                   : {
                       color: 'var(--muted)',

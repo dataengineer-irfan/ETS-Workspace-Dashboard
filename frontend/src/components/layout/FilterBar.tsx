@@ -10,7 +10,7 @@ interface FilterBarProps {
   activeTab: string;
 }
 
-// Compact custom styles for react-select to perfectly fit enterprise 28px slicer rows
+// Compact custom styles for react-select using CSS variables to flawlessly adapt to light and dark themes
 const compactSelectStyles: any = {
   control: (base: any, state: any) => ({
     ...base,
@@ -18,11 +18,11 @@ const compactSelectStyles: any = {
     height: '28px',
     fontSize: '11px',
     borderRadius: '6px',
-    borderColor: state.isFocused ? '#0891b2' : '#cbd5e1',
-    backgroundColor: '#ffffff',
+    borderColor: state.isFocused ? '#0891b2' : 'var(--border)',
+    backgroundColor: 'var(--surface)',
     boxShadow: state.isFocused ? '0 0 0 1px #0891b2' : 'none',
     '&:hover': {
-      borderColor: '#94a3b8',
+      borderColor: state.isFocused ? '#0891b2' : 'var(--border-strong)',
     },
     cursor: 'pointer',
     padding: '0 2px',
@@ -42,7 +42,12 @@ const compactSelectStyles: any = {
     margin: '0',
     padding: '0',
     fontSize: '11px',
-    color: '#0f172a',
+    color: 'var(--text)',
+  }),
+  singleValue: (base: any) => ({
+    ...base,
+    color: 'var(--text)',
+    fontSize: '11px',
   }),
   indicatorsContainer: (base: any) => ({
     ...base,
@@ -51,15 +56,15 @@ const compactSelectStyles: any = {
   dropdownIndicator: (base: any) => ({
     ...base,
     padding: '2px',
-    color: '#94a3b8',
+    color: 'var(--muted)',
     '&:hover': {
-      color: '#475569',
+      color: 'var(--text)',
     },
   }),
   clearIndicator: (base: any) => ({
     ...base,
     padding: '2px',
-    color: '#94a3b8',
+    color: 'var(--muted)',
     '&:hover': {
       color: '#ef4444',
     },
@@ -71,15 +76,17 @@ const compactSelectStyles: any = {
     width: 'max-content',
     maxWidth: '280px',
     zIndex: 9999,
-    boxShadow: '0 10px 20px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+    backgroundColor: 'var(--surface)',
+    boxShadow: '0 10px 20px -5px rgba(0, 0, 0, 0.25), 0 4px 6px -2px rgba(0, 0, 0, 0.1)',
     borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    border: '1px solid var(--border)',
     overflow: 'hidden',
   }),
   menuList: (base: any) => ({
     ...base,
     maxHeight: '220px',
     padding: '4px',
+    backgroundColor: 'var(--surface)',
   }),
   menuPortal: (base: any) => ({
     ...base,
@@ -93,9 +100,9 @@ const compactSelectStyles: any = {
     backgroundColor: state.isSelected
       ? '#0891b2'
       : state.isFocused
-      ? '#f0fdfa'
+      ? 'var(--pill-bg)'
       : 'transparent',
-    color: state.isSelected ? '#ffffff' : '#1e293b',
+    color: state.isSelected ? '#ffffff' : 'var(--text)',
     fontWeight: state.isSelected ? 600 : 400,
     cursor: 'pointer',
     '&:active': {
@@ -105,14 +112,14 @@ const compactSelectStyles: any = {
   }),
   multiValue: (base: any) => ({
     ...base,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'var(--pill-bg)',
     borderRadius: '4px',
     margin: '1px 2px 1px 0',
     maxWidth: '85px',
   }),
   multiValueLabel: (base: any) => ({
     ...base,
-    color: '#0369a1',
+    color: 'var(--cyan-strong)',
     fontSize: '10px',
     fontWeight: '600',
     padding: '0 3px',
@@ -122,18 +129,18 @@ const compactSelectStyles: any = {
   }),
   multiValueRemove: (base: any) => ({
     ...base,
-    color: '#0369a1',
+    color: 'var(--cyan-strong)',
     padding: '0 2px',
     cursor: 'pointer',
     '&:hover': {
-      backgroundColor: '#bae6fd',
-      color: '#0284c7',
+      backgroundColor: 'rgba(34, 211, 238, 0.2)',
+      color: 'var(--cyan-strong)',
     },
   }),
   placeholder: (base: any) => ({
     ...base,
     fontSize: '11px',
-    color: '#64748b',
+    color: 'var(--muted)',
     fontWeight: '500',
     whiteSpace: 'nowrap',
   }),
@@ -155,7 +162,7 @@ const CompactValueContainer = ({ children, getValue, ...props }: any) => {
             {count}
           </span>
           <span
-            className="text-slate-800 font-medium text-[11px] truncate"
+            className="text-slate-800 dark:text-slate-200 font-medium text-[11px] truncate"
             title={values.map((v: any) => v.label).join(', ')}
           >
             {values.map((v: any) => v.label).join(', ')}
@@ -237,14 +244,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   }).length;
 
   return (
-    <div className="h-10 bg-white border-b border-slate-200 px-3 flex items-center justify-between gap-2 shrink-0 select-none text-xs">
+    <div className="h-10 bg-white dark:bg-[#0a1526] border-b border-slate-200 dark:border-[#223755] px-3 flex items-center justify-between gap-2 shrink-0 select-none text-xs">
       {/* Left Slicer Controls */}
       <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-1">
-        <div className="flex items-center gap-1 text-slate-500 shrink-0 font-medium pr-1">
-          <Filter className="w-3.5 h-3.5 text-cyan-600" />
-          <span className="text-[11px] font-semibold text-slate-700">Filters</span>
+        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 shrink-0 font-medium pr-1">
+          <Filter className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+          <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Filters</span>
           {activeFilterCount > 0 && (
-            <span className="w-4 h-4 rounded-full bg-cyan-600 text-white font-bold text-[9px] flex items-center justify-center font-mono">
+            <span className="w-4 h-4 rounded-full bg-cyan-600 dark:bg-cyan-500 text-white font-bold text-[9px] flex items-center justify-center font-mono">
               {activeFilterCount}
             </span>
           )}
@@ -384,12 +391,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Search employee / ID..."
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
-            className="bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-[11px] pl-6 pr-6 py-1 rounded-md focus:outline-none focus:border-cyan-500 w-36 hover:border-slate-300 leading-none transition-colors"
+            className="bg-slate-50 dark:bg-[#12223a] border border-slate-200 dark:border-[#223755] text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-[11px] pl-6 pr-6 py-1 rounded-md focus:outline-none focus:border-cyan-500 w-36 hover:border-slate-300 dark:hover:border-[#385780] leading-none transition-colors"
           />
           {localSearch && (
             <button
               onClick={() => setLocalSearch('')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X className="w-3 h-3" />
             </button>
@@ -399,7 +406,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         {activeFilterCount > 0 && (
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-md transition-colors shrink-0"
+            className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/60 px-2 py-1 rounded-md transition-colors shrink-0"
             title="Reset all active filters"
           >
             <RotateCcw className="w-3 h-3" />

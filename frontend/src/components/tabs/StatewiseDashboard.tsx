@@ -133,7 +133,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
       <div 
         className="rounded-xl border p-2.5 shrink-0" 
         style={{ 
-          background: 'linear-gradient(135deg, rgba(14,116,144,0.08), rgba(14,165,233,0.04), rgba(255,255,255,0.2), var(--surface))', 
+          background: 'linear-gradient(135deg, rgba(14,116,144,0.08), rgba(14,165,233,0.04), var(--panel), var(--surface))', 
           borderColor: 'var(--border)', 
           boxShadow: 'var(--shadow-soft)' 
         }}
@@ -141,14 +141,14 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
         <div className="grid grid-cols-[1.8fr_0.8fr] gap-3 items-center">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">Regional Brief</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-cyan-100 text-cyan-800 border border-cyan-300">
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 dark:text-slate-400">Regional Brief</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800">
                 ● OPTIMAL OPERATING SPREAD
               </span>
               {selectedGradeFilter && (
                 <button
                   onClick={() => setSelectedGradeFilter(null)}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1 hover:bg-rose-200"
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1 hover:bg-rose-200 dark:hover:bg-rose-900"
                 >
                   Grade Filter: {selectedGradeFilter} <X className="w-3 h-3" />
                 </button>
@@ -157,27 +157,27 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
 
             {/* 3 Concise Bullet Insights */}
             <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-cyan-900 block truncate">Delivery Concentration</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">Bangalore & NH drive 64% total load</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-cyan-900 dark:text-cyan-300 block truncate">Delivery Concentration</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Bangalore & NH drive 64% total load</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-emerald-900 block truncate">Tenure Seniority</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">Grades E3-M2 hold highest internal tenure</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-emerald-900 dark:text-emerald-300 block truncate">Tenure Seniority</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Grades E3-M2 hold highest internal tenure</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-purple-900 block truncate">Roster Coverage</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">Active staffing balanced across 4 key hubs</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-purple-900 dark:text-purple-300 block truncate">Roster Coverage</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Active staffing balanced across 4 key hubs</p>
               </div>
             </div>
           </div>
 
           <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500">Regional Leadership SDM</span>
+            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500 dark:text-slate-400">Regional Leadership SDM</span>
             <select
               value={selectedSDM}
               onChange={(e) => setSelectedSDM(e.target.value)}
-              className="text-xs font-bold bg-white border border-slate-200 text-slate-800 rounded-lg px-2.5 py-1 focus:outline-none focus:border-cyan-500 shadow-2xs"
+              className="text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-cyan-500 shadow-2xs"
             >
               <option value="all">All Delivery Leads (590 Staff)</option>
               {data.available_sdms?.map((sdm) => (
@@ -186,7 +186,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                 </option>
               ))}
             </select>
-            <span className="text-[10px] text-slate-400 font-mono">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
               Lead: {data.selected_sdm.split('(')[0].trim()}
             </span>
           </div>
@@ -234,23 +234,23 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
       <div className="grid grid-cols-3 gap-1.5 flex-1 min-h-0">
         {/* Chart 1: Experience Analysis by Job Level */}
         <div className="glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Experience by Job Level</span>
-              <span className="text-[9px] text-slate-400 font-mono">Click to filter grade</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Experience by Job Level</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Click to filter grade</span>
             </div>
-            <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.2 rounded border border-cyan-200 font-semibold">Prior vs ETS</span>
+            <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950 px-1.5 py-0.2 rounded border border-cyan-200 dark:border-cyan-800 font-semibold">Prior vs ETS</span>
           </div>
 
           <div className="flex-1 min-h-0 pt-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.experience_by_grade} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="job_level" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="job_level" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
+                <YAxis stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  itemStyle={{ color: '#0f172a' }}
+                  contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: 'var(--shadow-soft)' }}
+                  itemStyle={{ color: 'var(--text)' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
                 <Bar 
@@ -282,23 +282,23 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
 
         {/* Chart 2: Grouped Distribution by Job Level & Project (Zero Repeated Labels) */}
         <div className="glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Grade by Project</span>
-              <span className="text-[9px] text-slate-400 font-mono">Clean Single-Axis</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Grade by Project</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Clean Single-Axis</span>
             </div>
-            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 font-semibold">Grouped</span>
+            <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800 font-semibold">Grouped</span>
           </div>
 
           <div className="flex-1 min-h-0 pt-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={projectGrouped as any[]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="job_level" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="job_level" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
+                <YAxis stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  itemStyle={{ color: '#0f172a' }}
+                  contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: 'var(--shadow-soft)' }}
+                  itemStyle={{ color: 'var(--text)' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
                 {projectKeys.map((key, idx) => (
@@ -322,23 +322,23 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
 
         {/* Chart 3: Grouped Workforce by Geography and Job Level (Zero Repeated Labels) */}
         <div className="glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Grade by Location</span>
-              <span className="text-[9px] text-slate-400 font-mono">Hub Breakdown</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Grade by Location</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Hub Breakdown</span>
             </div>
-            <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 font-semibold">Grouped</span>
+            <span className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950 px-1.5 py-0.2 rounded border border-purple-200 dark:border-purple-800 font-semibold">Grouped</span>
           </div>
 
           <div className="flex-1 min-h-0 pt-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={geoGrouped as any[]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="job_level" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="job_level" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
+                <YAxis stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  itemStyle={{ color: '#0f172a' }}
+                  contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: 'var(--shadow-soft)' }}
+                  itemStyle={{ color: 'var(--text)' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
                 {geoKeys.map((key, idx) => (
@@ -363,10 +363,10 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
 
       {/* Bottom: Filtered Employee Listing Table */}
       <div className="glass-panel rounded-xl p-2.5 shrink-0 h-48 flex flex-col justify-between overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">Employee Listing</span>
-            <span className="text-[10px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded font-mono border border-slate-200 font-semibold">
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Employee Listing</span>
+            <span className="text-[10px] text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono border border-slate-200 dark:border-slate-700 font-semibold">
               {filteredRoster.length} Records
             </span>
           </div>
@@ -382,7 +382,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-[11px] pl-6 pr-6 py-0.5 rounded-md focus:outline-none focus:border-cyan-500 w-44 hover:border-slate-300 transition-colors leading-none"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-[11px] pl-6 pr-6 py-0.5 rounded-md focus:outline-none focus:border-cyan-500 w-44 hover:border-slate-300 dark:hover:border-slate-600 transition-colors leading-none"
               />
               {searchTerm && (
                 <button
@@ -398,19 +398,19 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
             </div>
 
             <ExportButton data={sortedRoster} filename="statewise_employee_roster.csv" />
-            <div className="flex items-center gap-1 text-[11px] text-slate-500">
+            <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
               <span>Page {currentPage} of {totalPages}</span>
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="p-1 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 disabled:opacity-30"
+                className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-30"
               >
                 <ChevronLeft className="w-3 h-3" />
               </button>
               <button
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="p-1 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 disabled:opacity-30"
+                className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-30"
               >
                 <ChevronRight className="w-3 h-3" />
               </button>
@@ -419,42 +419,42 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar my-1">
-          <table className="w-full text-left text-[11px] text-slate-700">
-            <thead className="sticky top-0 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 z-10">
+          <table className="w-full text-left text-[11px] text-slate-700 dark:text-slate-300">
+            <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs">
               <tr>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('EMPLOYEE NUMBER')}>
+                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('EMPLOYEE NUMBER')}>
                   <div className="flex items-center gap-0.5">ID <SortIcon field="EMPLOYEE NUMBER" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('EMPLOYEE LABEL')}>
+                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('EMPLOYEE LABEL')}>
                   <div className="flex items-center gap-0.5">Employee Name <SortIcon field="EMPLOYEE LABEL" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('JOB LEVEL')}>
+                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('JOB LEVEL')}>
                   <div className="flex items-center gap-0.5">Grade <SortIcon field="JOB LEVEL" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('JOB TITLE')}>
+                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('JOB TITLE')}>
                   <div className="flex items-center gap-0.5">Title <SortIcon field="JOB TITLE" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('LOCATION')}>
+                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('LOCATION')}>
                   <div className="flex items-center gap-0.5">Location <SortIcon field="LOCATION" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('State')}>
+                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('State')}>
                   <div className="flex items-center gap-0.5">State / Project <SortIcon field="State" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('MANAGER')}>
+                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('MANAGER')}>
                   <div className="flex items-center gap-0.5">Manager <SortIcon field="MANAGER" /></div>
                 </th>
-                <th className="py-1 px-2 text-right cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('Prior_Exp')}>
+                <th className="py-1 px-2 text-right cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('Prior_Exp')}>
                   <div className="flex items-center justify-end gap-0.5">Prior Exp <SortIcon field="Prior_Exp" /></div>
                 </th>
-                <th className="py-1 px-2 text-right cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('Infinite_Exp')}>
+                <th className="py-1 px-2 text-right cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('Infinite_Exp')}>
                   <div className="flex items-center justify-end gap-0.5">ETS Exp <SortIcon field="Infinite_Exp" /></div>
                 </th>
-                <th className="py-1 px-2 text-right font-bold text-slate-900 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleSort('Total_Exp')}>
+                <th className="py-1 px-2 text-right font-bold text-slate-900 dark:text-slate-100 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('Total_Exp')}>
                   <div className="flex items-center justify-end gap-0.5">Total Exp <SortIcon field="Total_Exp" /></div>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {paginatedRoster.length > 0 ? (
                 paginatedRoster.map((emp) => (
                   <tr 
@@ -466,27 +466,27 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                         onSelectEmployee(emp['EMPLOYEE NUMBER']);
                       }
                     }}
-                    className="hover:bg-slate-50/90 cursor-pointer transition-colors group"
+                    className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 cursor-pointer transition-colors group"
                   >
-                    <td className="py-1 px-2 font-mono text-cyan-700 font-semibold group-hover:underline">{emp['EMPLOYEE NUMBER']}</td>
-                    <td className="py-1 px-2 font-medium text-slate-900">{emp['EMPLOYEE LABEL']}</td>
+                    <td className="py-1 px-2 font-mono text-cyan-700 dark:text-cyan-400 font-semibold group-hover:underline">{emp['EMPLOYEE NUMBER']}</td>
+                    <td className="py-1 px-2 font-medium text-slate-900 dark:text-slate-100">{emp['EMPLOYEE LABEL']}</td>
                     <td className="py-1 px-2">
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-50 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
                         {emp['JOB LEVEL']}
                       </span>
                     </td>
-                    <td className="py-1 px-2 text-slate-600 truncate max-w-[120px]">{emp['JOB TITLE']}</td>
-                    <td className="py-1 px-2">{emp['LOCATION']}</td>
-                    <td className="py-1 px-2">{emp['State']} / {emp['Project Working']}</td>
-                    <td className="py-1 px-2 text-slate-600 truncate max-w-[140px]">{emp['MANAGER']}</td>
-                    <td className="py-1 px-2 text-right font-mono">{emp['Prior_Exp']} y</td>
-                    <td className="py-1 px-2 text-right font-mono">{emp['Infinite_Exp']} y</td>
-                    <td className="py-1 px-2 text-right font-mono font-bold text-slate-900">{emp['Total_Exp']} y</td>
+                    <td className="py-1 px-2 text-slate-600 dark:text-slate-400 truncate max-w-[120px]">{emp['JOB TITLE']}</td>
+                    <td className="py-1 px-2 text-slate-700 dark:text-slate-300">{emp['LOCATION']}</td>
+                    <td className="py-1 px-2 text-slate-700 dark:text-slate-300">{emp['State']} / {emp['Project Working']}</td>
+                    <td className="py-1 px-2 text-slate-600 dark:text-slate-400 truncate max-w-[140px]">{emp['MANAGER']}</td>
+                    <td className="py-1 px-2 text-right font-mono text-slate-700 dark:text-slate-300">{emp['Prior_Exp']} y</td>
+                    <td className="py-1 px-2 text-right font-mono text-slate-700 dark:text-slate-300">{emp['Infinite_Exp']} y</td>
+                    <td className="py-1 px-2 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{emp['Total_Exp']} y</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={10} className="py-6 text-center text-slate-400 text-xs">
+                  <td colSpan={10} className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs">
                     No matching employees found for "{searchTerm}"
                   </td>
                 </tr>

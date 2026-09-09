@@ -48,11 +48,11 @@ const employeeSelectStyles = {
     height: '34px',
     fontSize: '11px',
     borderRadius: '8px',
-    borderColor: state.isFocused ? '#0891b2' : '#cbd5e1',
-    backgroundColor: '#ffffff',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(8, 145, 178, 0.2)' : 'none',
+    borderColor: state.isFocused ? '#0891b2' : 'var(--border)',
+    backgroundColor: 'var(--surface)',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(8, 145, 178, 0.25)' : 'none',
     '&:hover': {
-      borderColor: '#0891b2',
+      borderColor: state.isFocused ? '#0891b2' : 'var(--border-strong)',
     },
     cursor: 'pointer',
     padding: '0 4px',
@@ -70,19 +70,19 @@ const employeeSelectStyles = {
     ...base,
     fontSize: '11px',
     fontWeight: 700,
-    color: '#0f172a',
+    color: 'var(--text)',
   }),
   input: (base: any) => ({
     ...base,
     margin: '0',
     padding: '0',
     fontSize: '11px',
-    color: '#0f172a',
+    color: 'var(--text)',
   }),
   placeholder: (base: any) => ({
     ...base,
     fontSize: '11px',
-    color: '#64748b',
+    color: 'var(--muted)',
     fontWeight: 500,
   }),
   indicatorsContainer: (base: any) => ({
@@ -92,9 +92,9 @@ const employeeSelectStyles = {
   dropdownIndicator: (base: any) => ({
     ...base,
     padding: '4px',
-    color: '#0891b2',
+    color: 'var(--cyan-strong)',
     '&:hover': {
-      color: '#0e7490',
+      color: 'var(--cyan-strong)',
     },
   }),
   menuPortal: (base: any) => ({
@@ -106,14 +106,16 @@ const employeeSelectStyles = {
     zIndex: 99999,
     width: '440px',
     borderRadius: '12px',
-    border: '1px solid #cbd5e1',
-    boxShadow: '0 20px 30px -5px rgba(0, 0, 0, 0.2), 0 10px 15px -5px rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'var(--surface)',
+    border: '1px solid var(--border)',
+    boxShadow: '0 20px 30px -5px rgba(0, 0, 0, 0.25), 0 10px 15px -5px rgba(0, 0, 0, 0.1)',
     overflow: 'hidden',
   }),
   menuList: (base: any) => ({
     ...base,
     maxHeight: '340px',
     padding: '4px',
+    backgroundColor: 'var(--surface)',
   }),
   option: (base: any, state: any) => ({
     ...base,
@@ -122,9 +124,9 @@ const employeeSelectStyles = {
     backgroundColor: state.isSelected
       ? '#0891b2'
       : state.isFocused
-      ? '#f0fdfa'
+      ? 'var(--pill-bg)'
       : 'transparent',
-    color: state.isSelected ? '#ffffff' : '#0f172a',
+    color: state.isSelected ? '#ffffff' : 'var(--text)',
     cursor: 'pointer',
     marginBottom: '2px',
   }),
@@ -184,7 +186,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
   const formatEmployeeOption = (opt: any, { context }: any) => {
     if (context === 'value') {
       return (
-        <span className="font-bold text-xs text-slate-800 truncate">
+        <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
           {opt.name}
         </span>
       );
@@ -193,14 +195,14 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
     return (
       <div className="flex flex-col gap-0.5 w-full text-left">
         <div className="flex items-center justify-between gap-2">
-          <span className={`font-bold text-xs truncate ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+          <span className={`font-bold text-xs truncate ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
             {opt.name}
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
             <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border ${
               isSelected 
                 ? 'bg-white text-cyan-900 border-white' 
-                : 'bg-cyan-100 text-cyan-950 border-cyan-300'
+                : 'bg-cyan-100 dark:bg-cyan-950/60 text-cyan-950 dark:text-cyan-300 border-cyan-300 dark:border-cyan-800'
             }`}>
               {opt.grade}
             </span>
@@ -208,14 +210,14 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
               <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
                 isSelected 
                   ? 'bg-emerald-400 text-emerald-950' 
-                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
               }`}>
                 ₹{(opt.ctc / 100000).toFixed(1)}L
               </span>
             )}
           </div>
         </div>
-        <div className={`flex items-center gap-1 text-[10px] truncate ${isSelected ? 'text-cyan-100' : 'text-slate-500'}`}>
+        <div className={`flex items-center gap-1 text-[10px] truncate ${isSelected ? 'text-cyan-100' : 'text-slate-500 dark:text-slate-400'}`}>
           <span>{opt.dept}</span>
           <span>·</span>
           <span>{opt.location}</span>
@@ -274,10 +276,10 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
       {/* Enterprise Status & Benchmark Header */}
       <div className="glass-panel rounded-xl px-3 py-2 border-l-4 border-l-cyan-600 flex items-center justify-between shrink-0 shadow-2xs">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-100 text-cyan-950 border border-cyan-300 font-mono">
+          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950/60 text-cyan-950 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 font-mono">
             360° TALENT · GRADE {employee.job_level}
           </span>
-          <div className="hidden lg:flex items-center gap-4 text-[11px] text-slate-700 font-medium">
+          <div className="hidden lg:flex items-center gap-4 text-[11px] text-slate-700 dark:text-slate-300 font-medium">
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-600"></span>
               {currentCTC > 0 ? `₹${(currentCTC / 100000).toFixed(1)}L CTC (${ctcPctDiff >= 0 ? '+' : ''}${ctcPctDiff.toFixed(1)}% vs Grade Median)` : 'CTC pending baseline'}
@@ -292,8 +294,8 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
             </span>
           </div>
         </div>
-        <div className="text-[10px] text-slate-600 font-mono">
-          Employee ID: <strong className="text-slate-900 font-bold">#{employee.employee_number}</strong>
+        <div className="text-[10px] text-slate-600 dark:text-slate-400 font-mono">
+          Employee ID: <strong className="text-slate-900 dark:text-slate-100 font-bold">#{employee.employee_number}</strong>
         </div>
       </div>
 
@@ -305,13 +307,13 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-slate-900 tracking-tight truncate">{employee.name}</h2>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-cyan-50 text-cyan-800 border border-cyan-200 shrink-0">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight truncate">{employee.name}</h2>
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-cyan-50 dark:bg-cyan-950/50 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 shrink-0">
                 Grade {employee.job_level}
               </span>
-              <span className="text-[10px] text-slate-500 font-mono font-medium shrink-0">#{employee.employee_number}</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-medium shrink-0">#{employee.employee_number}</span>
             </div>
-            <p className="text-[11px] text-slate-600 font-medium truncate">{employee.job_title} · {employee.department} · {employee.location} ({employee.state})</p>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium truncate">{employee.job_title} · {employee.department} · {employee.location} ({employee.state})</p>
           </div>
         </div>
 
@@ -348,57 +350,56 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </div>
       </div>
 
-
       {/* Peer Comparison Benchmark Strip */}
       <div className="grid grid-cols-3 gap-2 shrink-0">
-        <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200 flex items-center justify-between gap-2">
+        <div className="p-2 rounded-xl bg-slate-50/90 dark:bg-[#12223a]/80 border border-slate-200 dark:border-[#223755] flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">CTC vs Grade {employee.job_level} Median</span>
+            <span className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">CTC vs Grade {employee.job_level} Median</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xs font-black text-slate-900 font-mono">
+              <span className="text-xs font-black text-slate-900 dark:text-slate-100 font-mono">
                 ₹{currentCTC > 0 ? (currentCTC / 100000).toFixed(1) : '--'}L
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                 vs ₹{(gradeMedianCTC / 100000).toFixed(1)}L med
               </span>
             </div>
           </div>
           <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border font-mono ${
             ctcPctDiff >= 0 
-              ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
-              : 'bg-rose-50 text-rose-800 border-rose-300'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700' 
+              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-700'
           }`}>
             {ctcPctDiff >= 0 ? `+${ctcPctDiff.toFixed(1)}%` : `${ctcPctDiff.toFixed(1)}%`}
           </span>
         </div>
 
-        <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200 flex items-center justify-between gap-2">
+        <div className="p-2 rounded-xl bg-slate-50/90 dark:bg-[#12223a]/80 border border-slate-200 dark:border-[#223755] flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">ETS Tenure vs Grade Median</span>
+            <span className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">ETS Tenure vs Grade Median</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xs font-black text-slate-900 font-mono">
+              <span className="text-xs font-black text-slate-900 dark:text-slate-100 font-mono">
                 {currentTenure}y
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                 vs {gradeMedianTenure.toFixed(1)}y med
               </span>
             </div>
           </div>
           <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border font-mono ${
             tenureDiff >= 0 
-              ? 'bg-cyan-50 text-cyan-800 border-cyan-300' 
-              : 'bg-amber-50 text-amber-800 border-amber-300'
+              ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-700' 
+              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700'
           }`}>
             {tenureDiff >= 0 ? `+${tenureDiff.toFixed(1)}y` : `${tenureDiff.toFixed(1)}y`}
           </span>
         </div>
 
-        <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200 flex flex-col justify-between">
+        <div className="p-2 rounded-xl bg-slate-50/90 dark:bg-[#12223a]/80 border border-slate-200 dark:border-[#223755] flex flex-col justify-between">
           <div className="flex items-center justify-between text-[9px] uppercase tracking-wider font-bold">
-            <span className="text-slate-500">Experience Composition</span>
-            <span className="text-slate-700 font-mono">{employee.total_exp}y Total</span>
+            <span className="text-slate-500 dark:text-slate-400">Experience Composition</span>
+            <span className="text-slate-700 dark:text-slate-300 font-mono">{employee.total_exp}y Total</span>
           </div>
-          <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden flex mt-1">
+          <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex mt-1">
             <div 
               style={{ width: `${etsExpPct}%` }} 
               className="bg-emerald-600 h-full transition-all"
@@ -410,9 +411,9 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
               title={`Prior Experience: ${employee.prior_exp}y (${priorExpPct}%)`}
             />
           </div>
-          <div className="flex items-center justify-between text-[9px] font-medium text-slate-500 mt-1">
-            <span className="text-emerald-700 font-semibold">ETS: {employee.infinite_exp}y ({etsExpPct}%)</span>
-            <span className="text-amber-700 font-semibold">Prior: {employee.prior_exp}y ({priorExpPct}%)</span>
+          <div className="flex items-center justify-between text-[9px] font-medium text-slate-500 dark:text-slate-400 mt-1">
+            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">ETS: {employee.infinite_exp}y ({etsExpPct}%)</span>
+            <span className="text-amber-700 dark:text-amber-400 font-semibold">Prior: {employee.prior_exp}y ({priorExpPct}%)</span>
           </div>
         </div>
       </div>
@@ -475,12 +476,12 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         {/* Left Column: Skills & Info */}
         <div className="col-span-4 flex flex-col gap-2 min-h-0">
           <div className="glass-panel rounded-xl p-2.5 flex-1 flex flex-col justify-between overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
               <div className="flex items-center gap-1.5">
-                <Code className="w-3.5 h-3.5 text-cyan-600" />
-                <span className="text-xs font-bold text-slate-800 tracking-tight">Competencies & Skills</span>
+                <Code className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Competencies & Skills</span>
               </div>
-              <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200 font-mono font-semibold">
+              <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/50 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800/60 font-mono font-semibold">
                 {employee.skills.length} Mapped
               </span>
             </div>
@@ -490,13 +491,13 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
                 employee.skills.map((s, idx) => (
                   <div
                     key={idx}
-                    className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 min-w-[120px] max-w-full"
+                    className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 min-w-[120px] max-w-full"
                   >
-                    <span className="text-xs font-semibold text-slate-800">{s['Skill Name']}</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{s['Skill Name']}</span>
                     <span className={`text-[9px] font-bold px-1 py-0.2 rounded border ${
                       s['Skill Level'] === 'Advanced'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                     }`}>
                       {s['Skill Level']}
                     </span>
@@ -504,22 +505,22 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
                 ))
               ) : (
                 <div className="w-full flex flex-col gap-1.5 py-1">
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium px-0.5">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium px-0.5">
                     <span>Role-Aligned Competency Benchmark:</span>
-                    <span className="text-cyan-800 font-bold bg-cyan-50 px-1 py-0.2 rounded border border-cyan-200">
+                    <span className="text-cyan-800 dark:text-cyan-300 font-bold bg-cyan-50 dark:bg-cyan-950/50 px-1 py-0.2 rounded border border-cyan-200 dark:border-cyan-800/60">
                       Standard
                     </span>
                   </div>
                   {roleCompetencies.map((c, i) => (
                     <div
                       key={i}
-                      className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between gap-2"
+                      className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <CheckCircle2 className="w-3 h-3 text-cyan-600 shrink-0" />
-                        <span className="text-xs font-semibold text-slate-800 truncate">{c.name}</span>
+                        <CheckCircle2 className="w-3 h-3 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{c.name}</span>
                       </div>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-100 text-cyan-900 border border-cyan-300 shrink-0 font-mono">
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-100 dark:bg-cyan-950/60 text-cyan-900 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 shrink-0 font-mono">
                         {c.level}
                       </span>
                     </div>
@@ -529,12 +530,12 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
             </div>
 
             {/* Attendance & Leaves Snapshot */}
-            <div className="pt-1.5 border-t border-slate-100 shrink-0 flex items-center justify-between text-[10px]">
-              <div className="flex items-center gap-1 text-slate-600 font-bold">
-                <CalendarCheck className="w-3 h-3 text-emerald-600" />
+            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-between text-[10px]">
+              <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-bold">
+                <CalendarCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 <span>Attendance & Leaves:</span>
               </div>
-              <span className="font-bold text-slate-800 bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 font-mono">
+              <span className="font-bold text-slate-800 dark:text-slate-200 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 font-mono">
                 {totalLeaveDays > 0 ? `${totalLeaveDays} Days Recorded` : '100% Attendance (0 Leaves)'}
               </span>
             </div>
@@ -544,25 +545,25 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         {/* Right Column: Financial History Pivot & Trend Chart */}
         <div className="col-span-8 flex flex-col gap-2 min-h-0">
           <div className="glass-panel rounded-xl p-2.5 flex-1 flex flex-col justify-between overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
               <div className="flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-amber-600" />
-                <span className="text-xs font-bold text-slate-800 tracking-tight">Annual Trends of Bonus, CTC, Perks and Hike %</span>
+                <TrendingUp className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Annual Trends of Bonus, CTC, Perks and Hike %</span>
               </div>
-              <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-semibold">Multi-Year Progression</span>
+              <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/60 font-semibold">Multi-Year Progression</span>
             </div>
 
             <div className="flex-1 min-h-0 pt-1">
               {employee.finance_history.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={employee.finance_history} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                    <XAxis dataKey="Year" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
-                    <YAxis yAxisId="left" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v) => `₹${(v/100000).toFixed(1)}L`} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v) => `${(v*100).toFixed(0)}%`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="Year" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
+                    <YAxis yAxisId="left" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} tickFormatter={(v) => `₹${(v/100000).toFixed(1)}L`} />
+                    <YAxis yAxisId="right" orientation="right" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} tickFormatter={(v) => `${(v*100).toFixed(0)}%`} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      itemStyle={{ color: '#0f172a' }}
+                      contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: 'var(--shadow-soft)' }}
+                      itemStyle={{ color: 'var(--text)' }}
                     />
                     <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
                     <Bar yAxisId="left" dataKey="Base_Salary" fill="#0284c7" name="Base Salary" radius={[3, 3, 0, 0]} />
@@ -581,14 +582,14 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
 
           {/* Financial Breakdown Table */}
           <div className="glass-panel rounded-xl p-2 shrink-0 h-32 flex flex-col justify-between overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Financial Details Pivot Table</span>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Financial Details Pivot Table</span>
               <ExportButton data={employee.finance_history} filename={`financial_history_${employee.employee_number}.csv`} />
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar my-0.5">
-              <table className="w-full text-left text-[11px] text-slate-700">
-                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+              <table className="w-full text-left text-[11px] text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-[#162a45] text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-[#223755]">
                   <tr>
                     <th className="py-0.5 px-2">Year</th>
                     <th className="py-0.5 px-2 text-right">Base Salary</th>
@@ -596,21 +597,21 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
                     <th className="py-0.5 px-2 text-right">Perks</th>
                     <th className="py-0.5 px-2 text-right">Other Comp</th>
                     <th className="py-0.5 px-2 text-right">Monthly Sal</th>
-                    <th className="py-0.5 px-2 text-right font-bold text-slate-900">Total CTC</th>
+                    <th className="py-0.5 px-2 text-right font-bold text-slate-900 dark:text-slate-100">Total CTC</th>
                     <th className="py-0.5 px-2 text-right">Hike %</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-mono">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
                   {employee.finance_history.map((f, i) => (
-                    <tr key={i} className="hover:bg-slate-50/80">
-                      <td className="py-0.5 px-2 font-sans font-bold text-cyan-700">{f.Year}</td>
+                    <tr key={i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60">
+                      <td className="py-0.5 px-2 font-sans font-bold text-cyan-700 dark:text-cyan-400">{f.Year}</td>
                       <td className="py-0.5 px-2 text-right">₹{f.Base_Salary.toLocaleString()}</td>
-                      <td className="py-0.5 px-2 text-right text-emerald-700">₹{f.Bonus.toLocaleString()}</td>
-                      <td className="py-0.5 px-2 text-right text-amber-700">₹{f.Perks.toLocaleString()}</td>
+                      <td className="py-0.5 px-2 text-right text-emerald-700 dark:text-emerald-400">₹{f.Bonus.toLocaleString()}</td>
+                      <td className="py-0.5 px-2 text-right text-amber-700 dark:text-amber-400">₹{f.Perks.toLocaleString()}</td>
                       <td className="py-0.5 px-2 text-right">₹{f.Other_Comp.toLocaleString()}</td>
                       <td className="py-0.5 px-2 text-right">₹{f.M_Salary.toLocaleString()}</td>
-                      <td className="py-0.5 px-2 text-right font-bold text-slate-900">₹{f.Total_CTC.toLocaleString()}</td>
-                      <td className="py-0.5 px-2 text-right text-rose-600 font-bold">{(f.Hike * 100).toFixed(1)}%</td>
+                      <td className="py-0.5 px-2 text-right font-bold text-slate-900 dark:text-slate-100">₹{f.Total_CTC.toLocaleString()}</td>
+                      <td className="py-0.5 px-2 text-right text-rose-600 dark:text-rose-400 font-bold">{(f.Hike * 100).toFixed(1)}%</td>
                     </tr>
                   ))}
                 </tbody>

@@ -118,7 +118,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
       <div 
         className="rounded-xl border p-2.5 shrink-0" 
         style={{ 
-          background: 'linear-gradient(135deg, rgba(14,116,144,0.08), rgba(168,85,247,0.04), rgba(255,255,255,0.2), var(--surface))', 
+          background: 'linear-gradient(135deg, rgba(14,116,144,0.08), rgba(168,85,247,0.04), var(--panel), var(--surface))', 
           borderColor: 'var(--border)', 
           boxShadow: 'var(--shadow-soft)' 
         }}
@@ -126,43 +126,43 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
         <div className="grid grid-cols-[1.8fr_0.8fr] gap-3 items-center">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">Attendance Health</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-cyan-100 text-cyan-800 border border-cyan-300">
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 dark:text-slate-400">Attendance Health</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800">
                 ● CONTROLLED OPERATIONAL IMPACT
               </span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                 Month: January 2024
               </span>
             </div>
 
             {/* 3 Concise Bullet Insights */}
             <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-cyan-900 block truncate">Monthly Leave Rate</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">January leave rate held steady at 13.2%</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-cyan-900 dark:text-cyan-300 block truncate">Monthly Leave Rate</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">January leave rate held steady at 13.2%</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-purple-900 block truncate">Volume Concentration</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">Casual & Sick accounts for 64% of leaves</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-purple-900 dark:text-purple-300 block truncate">Volume Concentration</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Casual & Sick accounts for 64% of leaves</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-rose-900 block truncate">Peak Absenteeism</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">Peak absence observed on Jan 16 (12 on leave)</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-rose-900 dark:text-rose-300 block truncate">Peak Absenteeism</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Peak absence observed on Jan 16 (12 on leave)</p>
               </div>
             </div>
           </div>
 
           <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500">Leave Ratio</span>
+            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500 dark:text-slate-400">Leave Ratio</span>
             <div className="flex items-center gap-2">
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 block font-semibold">Leave Rate</span>
-                <span className="text-sm font-black text-cyan-800 font-mono">13.2%</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-semibold">Leave Rate</span>
+                <span className="text-sm font-black text-cyan-800 dark:text-cyan-300 font-mono">13.2%</span>
               </div>
-              <div className="h-7 w-px bg-slate-200" />
+              <div className="h-7 w-px bg-slate-200 dark:bg-slate-700" />
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 block font-semibold">Total Days</span>
-                <span className="text-sm font-black text-slate-900 font-mono">{data.total_leave_days}d</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-semibold">Total Days</span>
+                <span className="text-sm font-black text-slate-900 dark:text-slate-100 font-mono">{data.total_leave_days}d</span>
               </div>
             </div>
           </div>
@@ -210,24 +210,24 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
       <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
         {/* Left 5 cols: Interactive Visual Calendar Grid with Heatmap Overlay */}
         <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
-              <CalendarDays className="w-3.5 h-3.5 text-cyan-600" />
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Leave Heatmap Calendar (Jan 2024)</span>
+              <CalendarDays className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Leave Heatmap Calendar (Jan 2024)</span>
             </div>
-            <span className="text-[9px] text-slate-400 font-mono">Intensity: Heat Colored</span>
+            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Intensity: Heat Colored</span>
           </div>
 
           <div className="flex-1 flex flex-col justify-between my-1">
             {/* Weekdays */}
-            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 border-b border-slate-100 pb-1">
+            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-1">
               <span>Mon</span>
               <span>Tue</span>
               <span>Wed</span>
               <span>Thu</span>
               <span>Fri</span>
-              <span className="text-slate-400">Sat</span>
-              <span className="text-slate-400">Sun</span>
+              <span className="text-slate-400 dark:text-slate-500">Sat</span>
+              <span className="text-slate-400 dark:text-slate-500">Sun</span>
             </div>
 
             {/* Calendar Days with Heat Intensity */}
@@ -238,13 +238,13 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                 const isSelected = selectedDate === dateStr;
 
                 // Color cell based on leave intensity
-                let heatStyle = 'bg-slate-50 text-slate-600 hover:bg-slate-100';
+                let heatStyle = 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700';
                 if (count >= 10) {
-                  heatStyle = 'bg-rose-100 border border-rose-300 text-rose-900 font-bold hover:bg-rose-200';
+                  heatStyle = 'bg-rose-100 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200 font-bold hover:bg-rose-200 dark:hover:bg-rose-900';
                 } else if (count >= 5) {
-                  heatStyle = 'bg-amber-100 border border-amber-300 text-amber-900 font-bold hover:bg-amber-200';
+                  heatStyle = 'bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-bold hover:bg-amber-200 dark:hover:bg-amber-900';
                 } else if (count > 0) {
-                  heatStyle = 'bg-cyan-50 border border-cyan-200 text-cyan-900 font-semibold hover:bg-cyan-100';
+                  heatStyle = 'bg-cyan-50 dark:bg-cyan-950/80 border border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 font-semibold hover:bg-cyan-100 dark:hover:bg-cyan-900';
                 }
 
                 if (isSelected) {
@@ -268,17 +268,17 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100 shrink-0 font-medium">
-            <span>Selected Date: <strong className="text-slate-900 font-mono">{selectedDate}</strong></span>
+          <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 shrink-0 font-medium">
+            <span>Selected Date: <strong className="text-slate-900 dark:text-slate-100 font-mono">{selectedDate}</strong></span>
             <span><b>{eventsOnSelectedDate.length}</b> staff on leave</span>
           </div>
         </div>
 
         {/* Center 4 cols: Daily Roster on Selected Date */}
         <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">On Leave: {selectedDate}</span>
-            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 font-mono font-semibold">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">On Leave: {selectedDate}</span>
+            <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800 font-mono font-semibold">
               {eventsOnSelectedDate.length} Records
             </span>
           </div>
@@ -295,11 +295,11 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                       onSelectEmployee(ev.employee_number);
                     }
                   }}
-                  className="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:border-cyan-400 cursor-pointer transition-all flex items-center justify-between gap-2 shadow-2xs group"
+                  className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-cyan-400 dark:hover:border-cyan-500 cursor-pointer transition-all flex items-center justify-between gap-2 shadow-2xs group"
                 >
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 truncate group-hover:text-cyan-700">{ev.employee_name}</p>
-                    <p className="text-[10px] text-slate-500 font-medium truncate">{ev.department} · {ev.location}</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-cyan-700 dark:group-hover:text-cyan-400">{ev.employee_name}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">{ev.department} · {ev.location}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <span 
@@ -312,14 +312,14 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                     >
                       {ev.leave_type}
                     </span>
-                    <p className="text-[9px] text-slate-500 font-mono mt-0.5">{ev.days} Day(s)</p>
+                    <p className="text-[9px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">{ev.days} Day(s)</p>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs">
+              <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 text-xs">
                 <p>No leaves recorded for this date.</p>
-                <p className="text-[10px] text-slate-500 mt-1">Full workforce active.</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Full workforce active.</p>
               </div>
             )}
           </div>
@@ -327,9 +327,9 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
 
         {/* Right 3 cols: Workforce by Project Working Pie with Acronym Expansions */}
         <div className="col-span-3 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">Project Working Spread</span>
-            <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 font-semibold">Distribution</span>
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Project Working Spread</span>
+            <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 px-1.5 py-0.2 rounded border border-amber-200 dark:border-amber-800 font-semibold">Distribution</span>
           </div>
 
           <div className="flex-1 min-h-0 relative">
@@ -350,18 +350,18 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  itemStyle={{ color: '#0f172a' }}
+                  contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: 'var(--shadow-soft)' }}
+                  itemStyle={{ color: 'var(--text)' }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 shrink-0 text-center">
+          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 shrink-0 text-center">
             {formattedProjects.slice(0, 3).map((p, i) => (
-              <div key={p.project} className="p-1 rounded bg-slate-50 border border-slate-200">
-                <p className="text-[9px] text-slate-600 truncate font-bold">{p.project}</p>
-                <p className="text-[11px] font-bold text-slate-900 font-mono" style={{ color: PROJECT_COLORS[i] }}>{p.count}</p>
+              <div key={p.project} className="p-1 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <p className="text-[9px] text-slate-600 dark:text-slate-400 truncate font-bold">{p.project}</p>
+                <p className="text-[11px] font-bold text-slate-900 dark:text-slate-100 font-mono" style={{ color: PROJECT_COLORS[i] }}>{p.count}</p>
               </div>
             ))}
           </div>
@@ -370,10 +370,10 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
 
       {/* Bottom Grid: Breakdown of Workforce by Geography and Job Level (Pivot Table) */}
       <div className="glass-panel rounded-xl p-2.5 shrink-0 h-40 flex flex-col justify-between overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-1 shrink-0">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">Workforce Breakdown by Geography and Job Level</span>
-            <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200 font-semibold">Cross-Tabulation Matrix</span>
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Workforce Breakdown by Geography and Job Level</span>
+            <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 font-semibold">Cross-Tabulation Matrix</span>
           </div>
 
           <div className="relative flex items-center">
@@ -383,7 +383,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
               placeholder="Search location..."
               value={matrixSearch}
               onChange={(e) => setMatrixSearch(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-[11px] pl-6 pr-6 py-0.5 rounded-md focus:outline-none focus:border-cyan-500 w-44 hover:border-slate-300 transition-colors leading-none"
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-[11px] pl-6 pr-6 py-0.5 rounded-md focus:outline-none focus:border-cyan-500 w-44 hover:border-slate-300 dark:hover:border-slate-600 transition-colors leading-none"
             />
             {matrixSearch && (
               <button
@@ -397,42 +397,42 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
         </div>
 
         <div className="flex-1 overflow-auto custom-scrollbar my-0.5">
-          <table className="w-full text-left text-[11px] text-slate-700">
-            <thead className="sticky top-0 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 z-10">
+          <table className="w-full text-left text-[11px] text-slate-700 dark:text-slate-300">
+            <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs">
               <tr>
-                <th className="py-0.5 px-2 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleMatrixSort('location')}>
+                <th className="py-0.5 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleMatrixSort('location')}>
                   <div className="flex items-center gap-0.5">Location <MatrixSortIcon field="location" /></div>
                 </th>
                 {data.geography_grade_matrix.grades.map((g) => (
-                  <th key={g} className="py-0.5 px-1.5 text-center cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleMatrixSort(g)}>
+                  <th key={g} className="py-0.5 px-1.5 text-center cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleMatrixSort(g)}>
                     <div className="flex items-center justify-center gap-0.5">{g} <MatrixSortIcon field={g} /></div>
                   </th>
                 ))}
-                <th className="py-0.5 px-2 text-right font-bold text-slate-900 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleMatrixSort('total')}>
+                <th className="py-0.5 px-2 text-right font-bold text-slate-900 dark:text-slate-100 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleMatrixSort('total')}>
                   <div className="flex items-center justify-end gap-0.5">Total <MatrixSortIcon field="total" /></div>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-mono">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
               {sortedLocations.length > 0 ? (
                 sortedLocations.map((loc) => {
                   const row = data.geography_grade_matrix.matrix[loc] || {};
                   const rowTotal = Object.values(row).reduce((a, b) => a + b, 0);
                   return (
-                    <tr key={loc} className="hover:bg-slate-50/80">
-                      <td className="py-0.5 px-2 font-sans text-slate-900 font-medium">{loc}</td>
+                    <tr key={loc} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60">
+                      <td className="py-0.5 px-2 font-sans text-slate-900 dark:text-slate-100 font-medium">{loc}</td>
                       {data.geography_grade_matrix.grades.map((g) => (
                         <td key={g} className="py-0.5 px-1.5 text-center">
                           {row[g] || '-'}
                         </td>
                       ))}
-                      <td className="py-0.5 px-2 text-right font-bold text-cyan-700">{rowTotal}</td>
+                      <td className="py-0.5 px-2 text-right font-bold text-cyan-700 dark:text-cyan-400">{rowTotal}</td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={data.geography_grade_matrix.grades.length + 2} className="py-4 text-center text-slate-400 text-xs font-sans">
+                  <td colSpan={data.geography_grade_matrix.grades.length + 2} className="py-4 text-center text-slate-400 dark:text-slate-500 text-xs font-sans">
                     No matching locations found for "{matrixSearch}"
                   </td>
                 </tr>

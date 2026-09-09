@@ -48,10 +48,10 @@ const LOCATION_COLORS: Record<string, string> = {
 };
 
 const LOCATION_TINTS: Record<string, string> = {
-  Bangalore: 'bg-sky-50 border-sky-200 text-sky-800',
-  Hyderabad: 'bg-teal-50 border-teal-200 text-teal-800',
-  Chennai: 'bg-orange-50 border-orange-200 text-orange-800',
-  Pune: 'bg-purple-50 border-purple-200 text-purple-800',
+  Bangalore: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300',
+  Hyderabad: 'bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300',
+  Chennai: 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-300',
+  Pune: 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300',
 };
 
 /* Accent palette shared across all KPI slots */
@@ -65,46 +65,46 @@ const ACCENT: Record<Accent, {
   shield: string;
 }> = {
   teal: {
-    icon:   'bg-teal-50 text-teal-600 border border-teal-100',
-    badge:  'bg-teal-50 text-teal-700 border-teal-200',
+    icon:   'bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-800',
+    badge:  'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800',
     ring:   '#0d9488',
     track:  '#ccfbf1',
-    shield: 'text-teal-600',
+    shield: 'text-teal-600 dark:text-teal-400',
   },
   blue: {
-    icon:   'bg-blue-50 text-blue-600 border border-blue-100',
-    badge:  'bg-blue-50 text-blue-700 border-blue-200',
+    icon:   'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800',
+    badge:  'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
     ring:   '#2563eb',
     track:  '#dbeafe',
-    shield: 'text-blue-600',
+    shield: 'text-blue-600 dark:text-blue-400',
   },
   pink: {
-    icon:   'bg-pink-50 text-pink-600 border border-pink-100',
-    badge:  'bg-pink-50 text-pink-700 border-pink-200',
+    icon:   'bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 border border-pink-100 dark:border-pink-800',
+    badge:  'bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800',
     ring:   '#db2777',
     track:  '#fce7f3',
-    shield: 'text-pink-600',
+    shield: 'text-pink-600 dark:text-pink-400',
   },
   emerald: {
-    icon:   'bg-emerald-50 text-emerald-600 border border-emerald-100',
-    badge:  'bg-emerald-50 text-emerald-700 border-emerald-200',
+    icon:   'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800',
+    badge:  'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
     ring:   '#059669',
     track:  '#d1fae5',
-    shield: 'text-emerald-600',
+    shield: 'text-emerald-600 dark:text-emerald-400',
   },
   amber: {
-    icon:   'bg-amber-50 text-amber-600 border border-amber-100',
-    badge:  'bg-amber-50 text-amber-700 border-amber-200',
+    icon:   'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800',
+    badge:  'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
     ring:   '#d97706',
     track:  '#fef3c7',
-    shield: 'text-amber-600',
+    shield: 'text-amber-600 dark:text-amber-400',
   },
   purple: {
-    icon:   'bg-purple-50 text-purple-600 border border-purple-100',
-    badge:  'bg-purple-50 text-purple-700 border-purple-200',
+    icon:   'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800',
+    badge:  'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
     ring:   '#7c3aed',
     track:  '#ede9fe',
-    shield: 'text-purple-600',
+    shield: 'text-purple-600 dark:text-purple-400',
   },
 };
 
@@ -179,18 +179,18 @@ const KPISlot: React.FC<KPISlotProps> = ({
   return (
     <div
       className={`glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full transition-all ${
-        dominant ? 'border-l-4 border-l-cyan-600 bg-cyan-50/20 shadow-sm ring-1 ring-cyan-500/10' : ''
+        dominant ? 'border-l-4 border-l-cyan-600 shadow-sm ring-1 ring-cyan-500/20' : ''
       } ${onClick ? 'cursor-pointer hover:-translate-y-0.5 hover:border-cyan-400 hover:shadow-md' : ''}`}
       onClick={onClick}
       style={{
         background: dominant 
-          ? 'linear-gradient(180deg, rgba(240,253,250,0.98), rgba(248,250,252,0.96), var(--surface))' 
-          : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96), var(--surface))',
+          ? 'linear-gradient(180deg, var(--pill-bg), var(--surface))' 
+          : 'linear-gradient(180deg, var(--panel), var(--surface))',
       }}
     >
       {/* Row 1: title left | icon right */}
       <div className="flex items-center justify-between gap-1 shrink-0">
-        <span className={`text-[11px] font-bold tracking-[0.08em] uppercase truncate leading-tight ${dominant ? 'text-cyan-900' : 'text-slate-600'}`}>
+        <span className={`text-[11px] font-bold tracking-[0.08em] uppercase truncate leading-tight ${dominant ? 'text-cyan-900 dark:text-cyan-300' : 'text-slate-600 dark:text-slate-400'}`}>
           {title}
         </span>
         <div className={`rounded-lg flex items-center justify-center shrink-0 ${dominant ? 'w-7 h-7' : 'w-6 h-6'} ${a.icon}`}>
@@ -203,14 +203,14 @@ const KPISlot: React.FC<KPISlotProps> = ({
         <div className="flex items-center justify-between gap-1 my-1 min-h-0">
           <div className="flex flex-col justify-center min-w-0">
             <div className="flex items-baseline gap-1 flex-wrap">
-              <span className="text-xl font-extrabold text-slate-900 font-mono tracking-tight leading-none">
+              <span className="text-xl font-extrabold text-slate-900 dark:text-slate-100 font-mono tracking-tight leading-none">
                 {value}
               </span>
               <span className={`text-[10px] font-bold px-1.5 py-0 rounded border font-mono leading-tight shrink-0 ${a.badge}`}>
                 {badge}
               </span>
             </div>
-            <p className="text-[9px] text-slate-400 font-medium mt-0.5 leading-tight truncate">
+            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 leading-tight truncate">
               Diversity Ratio
             </p>
           </div>
@@ -236,7 +236,7 @@ const KPISlot: React.FC<KPISlotProps> = ({
         </div>
       ) : (
         <div className="my-1 flex items-baseline justify-between gap-1 shrink-0">
-          <span className={`font-black tracking-tight leading-none font-mono ${dominant ? 'text-2xl lg:text-3xl text-cyan-950' : 'text-xl text-slate-900'}`}>
+          <span className={`font-black tracking-tight leading-none font-mono ${dominant ? 'text-2xl lg:text-3xl text-cyan-950 dark:text-cyan-200' : 'text-xl text-slate-900 dark:text-slate-100'}`}>
             {value}
           </span>
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border font-mono shrink-0 ${a.badge}`}>
@@ -246,7 +246,7 @@ const KPISlot: React.FC<KPISlotProps> = ({
       )}
 
       {/* Row 3: divider + bottom info */}
-      <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100 text-[10px] shrink-0">
+      <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] shrink-0">
         {hasRing ? (
           <>
             <div className="flex items-center gap-1 min-w-0">
@@ -257,23 +257,23 @@ const KPISlot: React.FC<KPISlotProps> = ({
                 <p className="font-bold font-mono leading-none" style={{ color: a.ring }}>
                   {badge}
                 </p>
-                <p className="text-[9px] text-slate-400 leading-none mt-0.5 truncate">Active Women</p>
+                <p className="text-[9px] text-slate-400 dark:text-slate-500 leading-none mt-0.5 truncate">Active Women</p>
               </div>
             </div>
             {trend && (
               <div className="flex items-center gap-0.5 shrink-0">
-                <TrendingUp className="w-3 h-3 text-emerald-500" />
+                <TrendingUp className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
                 <div>
-                  <p className="font-bold text-emerald-600 font-mono leading-none">{trend}</p>
-                  <p className="text-[9px] text-slate-400 leading-none mt-0.5">vs Last Month</p>
+                  <p className="font-bold text-emerald-600 dark:text-emerald-400 font-mono leading-none">{trend}</p>
+                  <p className="text-[9px] text-slate-400 dark:text-slate-500 leading-none mt-0.5">vs Last Month</p>
                 </div>
               </div>
             )}
           </>
         ) : (
           <div className="flex items-center justify-between w-full text-[10px]">
-            <span className="truncate text-slate-500 font-medium">{subtitle}</span>
-            {dominant && <span className="text-[9px] font-bold text-cyan-700 bg-cyan-50 px-1 py-0.2 rounded font-mono">100% Roster</span>}
+            <span className="truncate text-slate-500 dark:text-slate-400 font-medium">{subtitle}</span>
+            {dominant && <span className="text-[9px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/50 px-1 py-0.2 rounded font-mono">100% Roster</span>}
           </div>
         )}
       </div>
@@ -328,7 +328,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       <div
         className="rounded-xl p-2.5 border shrink-0"
         style={{
-          background: 'linear-gradient(135deg, rgba(14,116,144,0.08), rgba(59,130,246,0.04), rgba(255,255,255,0.18), var(--surface))',
+          background: 'linear-gradient(135deg, rgba(14,116,144,0.12), rgba(59,130,246,0.06), var(--panel), var(--surface))',
           borderColor: 'var(--border)',
           boxShadow: 'var(--shadow-soft)',
         }}
@@ -336,41 +336,41 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         <div className="grid grid-cols-[1.8fr_0.8fr] gap-3 items-center">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">Executive Signal</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 dark:text-slate-400">Executive Signal</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
                 ● STABLE GROWTH · ACTIVE ROSTER
               </span>
             </div>
             
             {/* 3 Auto-generated bullet insights (max 8 words each) */}
             <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-cyan-900 block truncate">Delivery Hub Concentration</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">Bangalore anchors 50.8% of total workforce</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-cyan-900 dark:text-cyan-300 block truncate">Delivery Hub Concentration</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate mt-0.5">Bangalore anchors 50.8% of total workforce</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-rose-900 block truncate">Retention Stabilization</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">Attrition normalized to 1 exit in 2024</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-rose-900 dark:text-rose-300 block truncate">Retention Stabilization</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate mt-0.5">Attrition normalized to 1 exit in 2024</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-pink-900 block truncate">Workforce Diversity</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">Sustained at 30.7% women staff ratio</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-pink-900 dark:text-pink-300 block truncate">Workforce Diversity</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate mt-0.5">Sustained at 30.7% women staff ratio</p>
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 text-[10px]">
-            <div className="rounded-lg border px-2.5 py-1 text-center bg-white/70 border-slate-200 shadow-2xs">
-              <div className="uppercase tracking-[0.14em] text-slate-500 text-[9px] font-bold">Total Headcount</div>
-              <div className="font-black text-sm text-cyan-950 font-mono">{data.total_employees}</div>
+            <div className="rounded-lg border px-2.5 py-1 text-center bg-white/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 shadow-2xs">
+              <div className="uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 text-[9px] font-bold">Total Headcount</div>
+              <div className="font-black text-sm text-cyan-950 dark:text-cyan-200 font-mono">{data.total_employees}</div>
             </div>
-            <div className="rounded-lg border px-2.5 py-1 text-center bg-white/70 border-slate-200 shadow-2xs">
-              <div className="uppercase tracking-[0.14em] text-slate-500 text-[9px] font-bold">Women Mix</div>
-              <div className="font-black text-sm text-pink-700 font-mono">{data.pct_female}%</div>
+            <div className="rounded-lg border px-2.5 py-1 text-center bg-white/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 shadow-2xs">
+              <div className="uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 text-[9px] font-bold">Women Mix</div>
+              <div className="font-black text-sm text-pink-700 dark:text-pink-300 font-mono">{data.pct_female}%</div>
             </div>
-            <div className="rounded-lg border px-2.5 py-1 text-center bg-white/70 border-slate-200 shadow-2xs">
-              <div className="uppercase tracking-[0.14em] text-slate-500 text-[9px] font-bold">2024 Exits</div>
-              <div className="font-black text-sm text-rose-600 font-mono">
+            <div className="rounded-lg border px-2.5 py-1 text-center bg-white/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 shadow-2xs">
+              <div className="uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 text-[9px] font-bold">2024 Exits</div>
+              <div className="font-black text-sm text-rose-600 dark:text-rose-300 font-mono">
                 {data.attrition_by_year[data.attrition_by_year.length - 1]?.exits ?? 0}
               </div>
             </div>
@@ -427,7 +427,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* ══ ROW 2: 3-column chart area ══ */}
       <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
 
-        <div className="col-span-4 glass-panel rounded-xl p-2 flex flex-col justify-between overflow-hidden min-h-0" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.97), var(--surface))' }}>
+        <div className="col-span-4 glass-panel rounded-xl p-2 flex flex-col justify-between overflow-hidden min-h-0">
           <div className="flex items-center justify-between border-b pb-1.5 shrink-0" style={{ borderColor: 'var(--border)' }}>
             <span className="text-xs font-bold tracking-tight" style={{ color: 'var(--text)' }}>Hiring Mix</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded border font-semibold" style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.08)', borderColor: 'rgba(16,185,129,0.22)' }}>
@@ -439,51 +439,51 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <PieChart>
                 <Pie data={hiringData} cx="50%" cy="50%" innerRadius="48%" outerRadius="76%" paddingAngle={4} dataKey="value">
                   {hiringData.map((e, i) => (
-                    <Cell key={i} fill={e.color} stroke="#fff" strokeWidth={1.5} />
+                    <Cell key={i} fill={e.color} stroke="var(--surface)" strokeWidth={1.5} />
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0/0.1)' }}
-                  itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
+                  contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: 'var(--shadow-soft)' }}
+                  itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }}
                 />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-lg font-bold text-slate-900 font-mono">
+              <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">
                 {(data.recent_hirings['Joined 2023'] ?? 0) + (data.recent_hirings['Joined 2024'] ?? 0)}
               </span>
-              <span className="text-[9px] text-slate-500 font-medium">Recent (23/24)</span>
+              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">Recent (23/24)</span>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 shrink-0 text-center">
+          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 shrink-0 text-center">
             {hiringData.map((h) => (
-              <div key={h.name} className="p-1 rounded bg-slate-50 border border-slate-200/80">
-                <p className="text-[9px] text-slate-500 font-medium truncate">{h.name}</p>
+              <div key={h.name} className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium truncate">{h.name}</p>
                 <p className="text-[11px] font-bold font-mono" style={{ color: h.color }}>{h.value}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden min-h-0" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.97), var(--surface))' }}>
+        <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden min-h-0">
           <div className="flex items-center justify-between border-b pb-1.5 shrink-0" style={{ borderColor: 'var(--border)' }}>
             <div className="flex items-center gap-1.5">
               <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
               <span className="text-xs font-bold tracking-tight" style={{ color: 'var(--text)' }}>Attrition Trend</span>
             </div>
-            <span className="text-[10px] px-1.5 py-0.5 rounded border font-semibold text-rose-700 bg-rose-50 border-rose-200">
+            <span className="text-[10px] px-1.5 py-0.5 rounded border font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60">
               Click bar to drill down
             </span>
           </div>
           <div className="flex-1 min-h-[160px] pt-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.attrition_by_year} margin={{ top: 6, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="year" stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 10, fill: '#64748b' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="year" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
+                <YAxis stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0/0.1)' }}
-                  itemStyle={{ color: '#0f172a' }}
+                  contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: 'var(--shadow-soft)' }}
+                  itemStyle={{ color: 'var(--text)' }}
                 />
                 <Bar 
                   dataKey="exits" 
@@ -507,12 +507,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         <div className="col-span-3 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden min-h-0">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-cyan-600" />
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Delivery Footprint</span>
+              <Compass className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Delivery Footprint</span>
             </div>
-            <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200 font-semibold">
+            <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/50 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800/60 font-semibold">
               Hub Mix
             </span>
           </div>
@@ -522,11 +522,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <PieChart>
                 <Pie data={rankedLocs} cx="50%" cy="50%" innerRadius="48%" outerRadius="74%" paddingAngle={4} dataKey="count" onMouseEnter={(_, i) => setHoveredLocIndex(i)} onMouseLeave={() => setHoveredLocIndex(null)}>
                   {rankedLocs.map((e, i) => (
-                    <Cell key={i} fill={e.color} stroke={hoveredLocIndex === i ? '#0f172a' : '#fff'} strokeWidth={hoveredLocIndex === i ? 2.5 : 1.5} className="cursor-pointer" style={{ filter: hoveredLocIndex === i ? 'drop-shadow(0 2px 6px rgba(0,0,0,.15))' : 'none' }} />
+                    <Cell key={i} fill={e.color} stroke={hoveredLocIndex === i ? 'var(--text)' : 'var(--surface)'} strokeWidth={hoveredLocIndex === i ? 2.5 : 1.5} className="cursor-pointer" style={{ filter: hoveredLocIndex === i ? 'drop-shadow(0 2px 6px rgba(0,0,0,.15))' : 'none' }} />
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '11px', boxShadow: '0 4px 6px -1px rgb(0 0 0/0.1)' }}
+                  contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: 'var(--shadow-soft)' }}
                   formatter={(v: any, _: any, p: any) => [`${v} Employees (${p.payload.percentage}%)`, p.payload.location]}
                 />
               </PieChart>
@@ -535,30 +535,30 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               {activeHovered ? (
                 <>
                   <span className="text-[10px] font-bold truncate max-w-[60px]" style={{ color: activeHovered.color }}>{activeHovered.location}</span>
-                  <span className="text-base font-extrabold text-slate-900 font-mono">{activeHovered.count}</span>
-                  <span className="text-[9px] text-slate-500 font-semibold font-mono">{activeHovered.percentage}%</span>
+                  <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono">{activeHovered.count}</span>
+                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold font-mono">{activeHovered.percentage}%</span>
                 </>
               ) : (
                 <>
-                  <span className="text-base font-extrabold text-slate-900 font-mono">{data.total_employees}</span>
-                  <span className="text-[9px] text-slate-500 font-semibold uppercase tracking-wider">Total Emps</span>
+                  <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono">{data.total_employees}</span>
+                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Total Emps</span>
                 </>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-1 pt-1 border-t border-slate-100 shrink-0">
+          <div className="grid grid-cols-2 gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 shrink-0">
             {rankedLocs.slice(0, 4).map((loc, i) => {
               const hov = hoveredLocIndex === i;
               return (
-                <div key={loc.location} onMouseEnter={() => setHoveredLocIndex(i)} onMouseLeave={() => setHoveredLocIndex(null)} className={`p-1 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-1 text-[10px] ${hov ? `${LOCATION_TINTS[loc.location]} shadow-xs` : 'bg-slate-50 border-slate-200/80 hover:bg-slate-100/80'}`}>
+                <div key={loc.location} onMouseEnter={() => setHoveredLocIndex(i)} onMouseLeave={() => setHoveredLocIndex(null)} className={`p-1 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-1 text-[10px] ${hov ? `${LOCATION_TINTS[loc.location]} shadow-xs` : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100/80 dark:hover:bg-slate-700/60'}`}>
                   <div className="flex items-center gap-1 min-w-0">
                     <span className="text-[9px] font-extrabold px-1 rounded font-mono shrink-0" style={{ backgroundColor: `${loc.color}18`, color: loc.color }}>#{i + 1}</span>
-                    <span className="font-bold text-slate-800 truncate">{loc.location}</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{loc.location}</span>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="font-bold text-slate-900 font-mono">{loc.count}</span>
-                    <span className="text-[9px] text-slate-500 font-mono ml-0.5">({loc.percentage}%)</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100 font-mono">{loc.count}</span>
+                    <span className="text-[9px] text-slate-500 dark:text-slate-400 font-mono ml-0.5">({loc.percentage}%)</span>
                   </div>
                 </div>
               );
@@ -605,9 +605,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 <span className="text-xs font-bold block truncate" style={{ color: 'var(--text)' }}>
                   {label}
                 </span>
-                <p className="text-[9px] truncate text-slate-500">{sub}</p>
+                <p className="text-[9px] truncate text-slate-500 dark:text-slate-400">{sub}</p>
               </div>
-              <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-all group-hover:translate-x-0.5 text-slate-400 group-hover:text-slate-700" />
+              <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-all group-hover:translate-x-0.5 text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-200" />
             </button>
           );
         })}
@@ -616,19 +616,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* ══ Leavers Drill-Down Drawer/Modal ══ */}
       {selectedYearLeavers && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div className="bg-white dark:bg-[#0e1b2d] rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl border border-slate-200 dark:border-[#2b3d52] overflow-hidden">
+            <div className="p-4 border-b border-slate-200 dark:border-[#2b3d52] flex items-center justify-between bg-slate-50 dark:bg-[#12223a]">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   {selectedYearLeavers.year} Leavers Drill-Down
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {selectedYearLeavers.leavers.length} recorded exits during calendar year {selectedYearLeavers.year}
                 </p>
               </div>
               <button 
                 onClick={() => setSelectedYearLeavers(null)}
-                className="p-1.5 rounded-lg bg-slate-200/70 hover:bg-slate-200 text-slate-700 text-xs font-bold"
+                className="p-1.5 rounded-lg bg-slate-200/70 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold"
               >
                 ✕
               </button>
@@ -637,7 +637,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200 text-[10px] uppercase font-bold text-slate-500 bg-slate-50/60">
+                  <tr className="border-b border-slate-200 dark:border-[#2b3d52] text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 bg-slate-50/60 dark:bg-[#162a45]">
                     <th className="p-2">Employee</th>
                     <th className="p-2">Grade</th>
                     <th className="p-2">Department</th>
@@ -646,16 +646,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     <th className="p-2 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {selectedYearLeavers.leavers.map((leaver, i) => (
-                    <tr key={i} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-2 font-medium text-slate-900">
+                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-[#132238] transition-colors">
+                      <td className="p-2 font-medium text-slate-900 dark:text-slate-100">
                         {leaver['EMPLOYEE LABEL'] || leaver.name || `Employee #${leaver['EMPLOYEE NUMBER']}`}
                       </td>
-                      <td className="p-2 font-mono text-cyan-800 font-bold">{leaver['JOB LEVEL'] || 'E1'}</td>
-                      <td className="p-2 text-slate-600">{leaver['DEPARTMENT'] || 'Delivery'}</td>
-                      <td className="p-2 text-slate-600">{leaver['LOCATION'] || 'Bangalore'}</td>
-                      <td className="p-2 font-mono text-slate-700">{leaver['Infinite_Exp'] ? `${Number(leaver['Infinite_Exp']).toFixed(1)}y` : '—'}</td>
+                      <td className="p-2 font-mono text-cyan-800 dark:text-cyan-300 font-bold">{leaver['JOB LEVEL'] || 'E1'}</td>
+                      <td className="p-2 text-slate-600 dark:text-slate-300">{leaver['DEPARTMENT'] || 'Delivery'}</td>
+                      <td className="p-2 text-slate-600 dark:text-slate-300">{leaver['LOCATION'] || 'Bangalore'}</td>
+                      <td className="p-2 font-mono text-slate-700 dark:text-slate-300">{leaver['Infinite_Exp'] ? `${Number(leaver['Infinite_Exp']).toFixed(1)}y` : '—'}</td>
                       <td className="p-2 text-right">
                         <button
                           onClick={() => {
@@ -664,7 +664,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                               setSelectedYearLeavers(null);
                             }
                           }}
-                          className="px-2 py-1 rounded bg-cyan-50 hover:bg-cyan-100 text-cyan-800 font-bold text-[10px] border border-cyan-200"
+                          className="px-2 py-1 rounded bg-cyan-50 dark:bg-cyan-950/50 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 text-cyan-800 dark:text-cyan-300 font-bold text-[10px] border border-cyan-200 dark:border-cyan-800/60"
                         >
                           View Profile
                         </button>

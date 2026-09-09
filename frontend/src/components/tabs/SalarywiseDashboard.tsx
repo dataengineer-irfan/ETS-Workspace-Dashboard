@@ -110,7 +110,7 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
       <div 
         className="rounded-xl border p-2.5 shrink-0" 
         style={{ 
-          background: 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(16,185,129,0.04), rgba(255,255,255,0.2), var(--surface))', 
+          background: 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(16,185,129,0.04), var(--panel), var(--surface))', 
           borderColor: 'var(--border)', 
           boxShadow: 'var(--shadow-soft)' 
         }}
@@ -118,17 +118,17 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
         <div className="grid grid-cols-[1.8fr_0.8fr] gap-3 items-center">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">Compensation Intelligence</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 dark:text-slate-400">Compensation Intelligence</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                 ● FULL 590 ROSTER ANALYSIS
               </span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                 HR CONFIDENTIAL
               </span>
               {selectedManagerFilter && (
                 <button
                   onClick={() => setSelectedManagerFilter(null)}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1 hover:bg-rose-200"
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1 hover:bg-rose-200 dark:hover:bg-rose-900"
                 >
                   Filtered: {selectedManagerFilter} <X className="w-3 h-3" />
                 </button>
@@ -137,32 +137,32 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
 
             {/* 3 Concise Bullet Insights */}
             <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-emerald-900 block truncate">Total Payroll Outlay</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">₹45.83 Cr annual CTC across 54 managers</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-emerald-900 dark:text-emerald-300 block truncate">Total Payroll Outlay</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">₹45.83 Cr annual CTC across 54 managers</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-cyan-900 block truncate">Median Band Concentration</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">70.4% workforce earning between 5L-15L</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-cyan-900 dark:text-cyan-300 block truncate">Median Band Concentration</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">70.4% workforce earning between 5L-15L</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <span className="font-bold text-purple-900 block truncate">Executive Spread</span>
-                <p className="text-[11px] text-slate-600 truncate mt-0.5">Ceiling capped at ₹22.8L at M3 level</p>
+              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                <span className="font-bold text-purple-900 dark:text-purple-300 block truncate">Executive Spread</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Ceiling capped at ₹22.8L at M3 level</p>
               </div>
             </div>
           </div>
 
           <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500">Compensation Ratio</span>
+            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500 dark:text-slate-400">Compensation Ratio</span>
             <div className="flex items-center gap-2">
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 block font-semibold">Average CTC</span>
-                <span className="text-sm font-black text-slate-900 font-mono">₹{(data.avg_ctc / 100000).toFixed(2)}L</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-semibold">Average CTC</span>
+                <span className="text-sm font-black text-slate-900 dark:text-slate-100 font-mono">₹{(data.avg_ctc / 100000).toFixed(2)}L</span>
               </div>
-              <div className="h-7 w-px bg-slate-200" />
+              <div className="h-7 w-px bg-slate-200 dark:bg-slate-700" />
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 block font-semibold">Max Ceiling</span>
-                <span className="text-sm font-black text-purple-700 font-mono">₹{(data.max_ctc / 100000).toFixed(2)}L</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-semibold">Max Ceiling</span>
+                <span className="text-sm font-black text-purple-700 dark:text-purple-400 font-mono">₹{(data.max_ctc / 100000).toFixed(2)}L</span>
               </div>
             </div>
           </div>
@@ -210,11 +210,11 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
       <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
         {/* Left: 54 Managers x Grade CTC Matrix (8 Cols) */}
         <div className="col-span-8 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
-              <Grid className="w-3.5 h-3.5 text-cyan-600" />
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Manager Compensation Outlay</span>
-              <span className="text-[10px] text-slate-400 font-mono">Click row to filter earners</span>
+              <Grid className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Manager Compensation Outlay</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">Click row to filter earners</span>
             </div>
             
             <div className="flex items-center gap-2">
@@ -228,7 +228,7 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
                     setManagerSearch(e.target.value);
                     setManagerPage(1);
                   }}
-                  className="bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-[11px] pl-6 pr-6 py-0.5 rounded-md focus:outline-none focus:border-cyan-500 w-36 hover:border-slate-300 transition-colors leading-none"
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-[11px] pl-6 pr-6 py-0.5 rounded-md focus:outline-none focus:border-cyan-500 w-36 hover:border-slate-300 dark:hover:border-slate-600 transition-colors leading-none"
                 />
                 {managerSearch && (
                   <button
@@ -244,19 +244,19 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
               </div>
 
               {/* Pagination controls */}
-              <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium">
+              <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                 <span>Page {managerPage} of {totalManagerPages}</span>
                 <button
                   disabled={managerPage === 1}
                   onClick={() => setManagerPage((p) => Math.max(1, p - 1))}
-                  className="p-1 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 disabled:opacity-30"
+                  className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-30"
                 >
                   <ChevronLeft className="w-3 h-3" />
                 </button>
                 <button
                   disabled={managerPage >= totalManagerPages}
                   onClick={() => setManagerPage((p) => Math.min(totalManagerPages, p + 1))}
-                  className="p-1 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 disabled:opacity-30"
+                  className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-30"
                 >
                   <ChevronRight className="w-3 h-3" />
                 </button>
@@ -265,23 +265,23 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
           </div>
 
           <div className="flex-1 overflow-auto custom-scrollbar my-1">
-            <table className="w-full text-left text-[10px] text-slate-700">
-              <thead className="sticky top-0 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 z-10">
+            <table className="w-full text-left text-[10px] text-slate-700 dark:text-slate-300">
+              <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs">
                 <tr>
-                  <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleManagerSort('manager')}>
+                  <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleManagerSort('manager')}>
                     <div className="flex items-center gap-0.5">Reporting Manager ({allFilteredManagers.length}) <ManagerSortIcon field="manager" /></div>
                   </th>
                   {data.manager_grade_ctc_matrix.grades.map((g) => (
-                    <th key={g} className="py-1 px-1.5 text-center cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleManagerSort(g)}>
+                    <th key={g} className="py-1 px-1.5 text-center cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleManagerSort(g)}>
                       <div className="flex items-center justify-center gap-0.5">{g} <ManagerSortIcon field={g} /></div>
                     </th>
                   ))}
-                  <th className="py-1 px-2 text-right font-bold text-slate-900 cursor-pointer hover:text-cyan-700 select-none" onClick={() => toggleManagerSort('total')}>
+                  <th className="py-1 px-2 text-right font-bold text-slate-900 dark:text-slate-100 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleManagerSort('total')}>
                     <div className="flex items-center justify-end gap-0.5">Total CTC <ManagerSortIcon field="total" /></div>
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-mono">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
                 {paginatedManagers.length > 0 ? (
                   paginatedManagers.map((mgr) => {
                     const row = data.manager_grade_ctc_matrix.matrix[mgr] || {};
@@ -291,9 +291,9 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
                       <tr 
                         key={mgr} 
                         onClick={() => setSelectedManagerFilter(isSelected ? null : mgr)}
-                        className={`cursor-pointer transition-colors ${isSelected ? 'bg-cyan-100/70' : 'hover:bg-slate-50/80'}`}
+                        className={`cursor-pointer transition-colors ${isSelected ? 'bg-cyan-100/70 dark:bg-cyan-950/60' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/60'}`}
                       >
-                        <td className="py-1 px-2 font-sans text-slate-900 font-medium truncate max-w-[140px]">{mgr}</td>
+                        <td className="py-1 px-2 font-sans text-slate-900 dark:text-slate-100 font-medium truncate max-w-[140px]">{mgr}</td>
                         {data.manager_grade_ctc_matrix.grades.map((g) => {
                           const val = row[g] || 0;
                           return (
@@ -302,13 +302,13 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
                             </td>
                           );
                         })}
-                        <td className="py-1 px-2 text-right font-bold text-cyan-700">₹{(rowTotal / 100000).toFixed(1)}L</td>
+                        <td className="py-1 px-2 text-right font-bold text-cyan-700 dark:text-cyan-400">₹{(rowTotal / 100000).toFixed(1)}L</td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={data.manager_grade_ctc_matrix.grades.length + 2} className="py-4 text-center text-slate-400 text-xs font-sans">
+                    <td colSpan={data.manager_grade_ctc_matrix.grades.length + 2} className="py-4 text-center text-slate-400 dark:text-slate-500 text-xs font-sans">
                       No matching managers found for "{managerSearch}"
                     </td>
                   </tr>
@@ -320,16 +320,16 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
 
         {/* Right: Top Earners Table (4 Cols) */}
         <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-800 tracking-tight">Top Earners</span>
-              <div className="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded border border-slate-200">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Top Earners</span>
+              <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded border border-slate-200 dark:border-slate-700">
                 {[5, 10, 25].map((lim) => (
                   <button
                     key={lim}
                     onClick={() => setTopLimit(lim)}
-                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                      topLimit === lim ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-colors ${
+                      topLimit === lim ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                   >
                     Top {lim}
@@ -341,16 +341,16 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar my-1">
-            <table className="w-full text-left text-[11px] text-slate-700">
-              <thead className="sticky top-0 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 z-10">
+            <table className="w-full text-left text-[11px] text-slate-700 dark:text-slate-300">
+              <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs">
                 <tr>
                   <th className="py-1 px-2">#</th>
                   <th className="py-1 px-2">Employee</th>
                   <th className="py-1 px-2">Grade</th>
-                  <th className="py-1 px-2 text-right font-bold text-slate-900">Total CTC</th>
+                  <th className="py-1 px-2 text-right font-bold text-slate-900 dark:text-slate-100">Total CTC</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-mono">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
                 {displayedTopEarners.map((e, idx) => (
                   <tr 
                     key={e.employee_number}
@@ -361,18 +361,18 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
                         onSelectEmployee(e.employee_number);
                       }
                     }}
-                    className="hover:bg-slate-50/90 cursor-pointer transition-colors group"
+                    className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 cursor-pointer transition-colors group"
                   >
-                    <td className="py-1 px-2 text-slate-400 font-sans">{idx + 1}</td>
-                    <td className="py-1 px-2 font-sans font-medium text-slate-900 truncate max-w-[110px] group-hover:text-cyan-700">
+                    <td className="py-1 px-2 text-slate-400 dark:text-slate-500 font-sans">{idx + 1}</td>
+                    <td className="py-1 px-2 font-sans font-medium text-slate-900 dark:text-slate-100 truncate max-w-[110px] group-hover:text-cyan-700 dark:group-hover:text-cyan-400">
                       {e.name}
                     </td>
                     <td className="py-1 px-2 font-sans">
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200">
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-50 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
                         {e.job_level}
                       </span>
                     </td>
-                    <td className="py-1 px-2 text-right font-bold text-emerald-700">
+                    <td className="py-1 px-2 text-right font-bold text-emerald-700 dark:text-emerald-400">
                       ₹{(e.total_ctc / 100000).toFixed(2)}L
                     </td>
                   </tr>
@@ -385,27 +385,27 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
 
       {/* Lower Row: CTC Distribution Band Histogram */}
       <div className="glass-panel rounded-xl p-2 shrink-0 h-20 flex flex-col justify-between overflow-hidden">
-        <div className="flex items-center justify-between text-[10px] font-bold text-slate-700 pb-1 border-b border-slate-100 shrink-0">
+        <div className="flex items-center justify-between text-[10px] font-bold text-slate-700 dark:text-slate-300 pb-1 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <span className="uppercase tracking-wider">Workforce Compensation Distribution by Salary Band</span>
-          <span className="text-slate-400 font-mono">590 Employees Mapped</span>
+          <span className="text-slate-400 dark:text-slate-500 font-mono">590 Employees Mapped</span>
         </div>
 
         <div className="grid grid-cols-5 gap-2 pt-1 items-center">
           {histogram.map((band, idx) => (
-            <div key={idx} className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 flex flex-col justify-between">
+            <div key={idx} className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="font-bold text-slate-800">{band.band}</span>
-                <span className="font-bold font-mono text-cyan-800">{band.count} staff</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{band.band}</span>
+                <span className="font-bold font-mono text-cyan-800 dark:text-cyan-300">{band.count} staff</span>
               </div>
-              <div className="w-full bg-slate-200 rounded-full h-1.5 mt-1 overflow-hidden">
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-1 overflow-hidden">
                 <div 
                   className="h-full rounded-full transition-all" 
                   style={{ width: `${band.percentage}%`, backgroundColor: band.color || '#0284c7' }} 
                 />
               </div>
-              <div className="flex justify-between items-center text-[9px] text-slate-400 mt-0.5">
+              <div className="flex justify-between items-center text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
                 <span>Concentration</span>
-                <span className="font-bold font-mono text-slate-600">{band.percentage.toFixed(1)}%</span>
+                <span className="font-bold font-mono text-slate-600 dark:text-slate-300">{band.percentage.toFixed(1)}%</span>
               </div>
             </div>
           ))}

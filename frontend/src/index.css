@@ -23,7 +23,8 @@
     --shadow-soft: 0 14px 32px rgba(15, 23, 42, 0.08);
   }
 
-  .theme-light {
+  .theme-light,
+  html.light {
     color-scheme: light;
     --bg: #eff5fb;
     --bg-soft: #edf3fa;
@@ -43,23 +44,25 @@
     --shadow-soft: 0 14px 32px rgba(15, 23, 42, 0.08);
   }
 
-  .theme-dark {
+  .theme-dark,
+  .dark,
+  html.dark {
     color-scheme: dark;
     --bg: #061019;
-    --bg-soft: #0d1727;
+    --bg-soft: #0a1526;
     --surface: #0e1b2d;
-    --panel: #121f35;
-    --panel-alt: #172b40;
-    --border: #2b3d52;
-    --border-strong: #466686;
-    --text: #ecf7ff;
-    --muted: #bfd0ea;
+    --panel: #12223a;
+    --panel-alt: #162a45;
+    --border: #223755;
+    --border-strong: #385780;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
     --pill-bg: rgba(34, 211, 238, 0.12);
-    --cyan-strong: #67e8f9;
+    --cyan-strong: #38bdf8;
     --success: #34d399;
     --purple-strong: #c4b5fd;
-    --purple-soft: rgba(124, 58, 237, 0.18);
-    --purple-border: rgba(196, 181, 253, 0.35);
+    --purple-soft: rgba(124, 58, 237, 0.22);
+    --purple-border: rgba(196, 181, 253, 0.4);
     --shadow-soft: 0 18px 36px rgba(2, 6, 23, 0.72);
   }
 
@@ -78,7 +81,8 @@
   }
 
   .theme-light,
-  .theme-dark {
+  .theme-dark,
+  .dark {
     background: var(--bg);
     color: var(--text);
   }
@@ -132,24 +136,11 @@
   overflow: hidden;
 }
 
-.theme-dark .glass-panel {
-  background: linear-gradient(180deg, rgba(10,18,28,0.96), rgba(15,27,45,0.96), rgba(18,31,53,0.98));
+.theme-dark .glass-panel,
+.dark .glass-panel,
+html.dark .glass-panel {
+  background: linear-gradient(180deg, rgba(14,27,45,0.96), rgba(18,34,58,0.98));
   border-color: var(--border-strong);
-}
-
-.theme-dark .glass-card {
-  background: linear-gradient(180deg, rgba(15,27,45,0.96), rgba(16,31,49,0.98));
-  border-color: var(--border-strong);
-}
-
-.glass-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto auto 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, rgba(14,165,233,0.9), rgba(59,130,246,0.35), transparent);
-  opacity: 0.8;
 }
 
 .glass-card {
@@ -162,6 +153,20 @@
   background: var(--panel);
   border-color: var(--border-strong);
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+}
+
+.theme-dark .glass-card,
+.dark .glass-card,
+html.dark .glass-card {
+  background: linear-gradient(180deg, rgba(15,27,45,0.96), rgba(18,34,58,0.98));
+  border-color: var(--border);
+}
+
+.theme-dark .glass-card:hover,
+.dark .glass-card:hover,
+html.dark .glass-card:hover {
+  background: linear-gradient(180deg, rgba(18,34,58,0.98), rgba(22,42,70,0.98));
+  border-color: var(--border-strong);
 }
 
 /* Light Theme Micro Scrollbars for internal tables and lists */
