@@ -445,7 +445,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-2 select-none min-h-full">
+    <div className="flex-1 flex flex-col gap-2 select-none h-full min-h-0">
       
       {/* ══ ROW 1: 5-Card Executive KPI Band (Interactive Drilldowns) ══ */}
       <div className="grid grid-cols-5 gap-2 shrink-0">
@@ -560,10 +560,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       </div>
 
       {/* ══ ROW 2: WORKFORCE DYNAMICS & COMPOSITION (Growth + Diversity + Pyramid) ══ */}
-      <div className="grid grid-cols-12 gap-2 shrink-0">
+      <div className="grid grid-cols-12 gap-2 flex-1 min-h-0">
         
         {/* Module 1: Headcount & Hiring Growth (Combo Bar + Line) */}
-        <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[235px]">
+        <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
@@ -648,7 +648,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* Module 2: Diversity % Spotlight (Donut + Gender Avatars) */}
-        <div className="col-span-3 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[235px]">
+        <div className="col-span-3 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
@@ -792,7 +792,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* Module 3: Job Level Hierarchy (Pyramid Representation with Drilldown) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[235px]">
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
@@ -857,10 +857,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       </div>
 
       {/* ══ ROW 3: STABILITY, FOOTPRINT & DEPARTMENTS (Interactive Slicers) ══ */}
-      <div className="grid grid-cols-12 gap-2 shrink-0">
+      <div className="grid grid-cols-12 gap-2 flex-1 min-h-0">
         
         {/* Module 4: Stability & Tenure Bands (Clickable Horizontal Bars) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[220px]">
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
@@ -914,7 +914,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* Module 5: Regional Delivery Footprint Hubs (Clickable Donut & 4 Hub Chips) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[220px]">
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Compass className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
@@ -1053,7 +1053,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* Module 6: Department Allocation (Clickable Functional Units) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[220px]">
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -1107,52 +1107,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <span className="font-bold text-blue-600 dark:text-blue-400 font-mono">{top2Names} ({top2Pct.toFixed(1)}%)</span>
           </div>
         </div>
-      </div>
-
-      {/* ══ ROW 4: Executive Lens Navigation Dock (5 Cards) ══ */}
-      <div className="grid grid-cols-5 gap-2 shrink-0 h-12">
-        {[
-          { tab: 'statewise', label: 'Regional View', sub: 'Geographic Distribution', color: 'cyan' },
-          { tab: 'techwise', label: 'Capability View', sub: 'Skill Coverage & Depth', color: 'teal' },
-          { tab: 'salarywise', label: 'Compensation View', sub: 'CTC & Band Alignment', color: 'amber' },
-          { tab: 'salarywise2', label: 'Trend View', sub: 'Longitudinal CTC Growth', color: 'emerald' },
-          { tab: 'calendar', label: 'Attendance View', sub: 'Leave & Operations Health', color: 'purple' },
-        ].map(({ tab, label, sub, color }) => {
-          const borderColorMap: Record<string, string> = {
-            cyan: '#67e8f9',
-            teal: '#2dd4bf',
-            amber: '#fbbf24',
-            emerald: '#34d399',
-            purple: '#c4b5fd',
-          };
-          const textColorMap: Record<string, string> = {
-            cyan: '#0891b2',
-            teal: '#0f766e',
-            amber: '#b45309',
-            emerald: '#047857',
-            purple: '#6d28d9',
-          };
-
-          return (
-            <button
-              key={tab}
-              onClick={() => onNavigateTab(tab)}
-              className="glass-card rounded-xl p-2 flex items-center justify-between text-left transition-all group hover:scale-[1.01] hover:shadow-xs active:scale-[0.99]"
-              style={{ borderColor: borderColorMap[color] }}
-            >
-              <div className="min-w-0 pr-1">
-                <span className="text-[9px] font-bold uppercase tracking-[0.16em] block leading-tight" style={{ color: textColorMap[color] }}>
-                  Executive Lens
-                </span>
-                <span className="text-xs font-bold block truncate text-slate-800 dark:text-slate-100">
-                  {label}
-                </span>
-                <p className="text-[9px] truncate text-slate-500 dark:text-slate-400">{sub}</p>
-              </div>
-              <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-all group-hover:translate-x-0.5 text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-200" />
-            </button>
-          );
-        })}
       </div>
 
       {/* ══ Unified Interactive Drill-Down Modal ══ */}
