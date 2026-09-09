@@ -249,6 +249,8 @@ export const App: React.FC = () => {
             <EmployeeCalendarDashboard
               data={calendarData}
               loading={loading && !calendarData}
+              filters={filters}
+              setFilters={setFilters}
               onSelectEmployee={handleSelectEmployee}
               onOpenEmployeeProfile={handleOpenEmployeeProfile}
             />

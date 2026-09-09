@@ -1,7 +1,7 @@
 import React from 'react';
 import Select, { components } from 'react-select';
 import type { FilterParams, FilterOptions } from '../../types/dashboard';
-import { Filter, RotateCcw, Search, X } from 'lucide-react';
+import { Filter, RotateCcw, Search, X, CalendarDays } from 'lucide-react';
 
 interface FilterBarProps {
   filters: FilterParams;
@@ -257,22 +257,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           )}
         </div>
 
-        {/* State Slicer */}
-        <div className="w-24 min-w-[96px] shrink-0">
-          <Select
-            isMulti
-            options={mapOptions(options?.states)}
-            value={getMultiValue('state')}
-            onChange={onMultiChange('state')}
-            placeholder="State (All)"
-            styles={compactSelectStyles}
-            components={{ ValueContainer: CompactValueContainer }}
-            menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
-            isClearable={false}
-          />
-        </div>
-
-        {/* Project Slicer */}
+        {/* 1. Project Slicer */}
         <div className="w-28 min-w-[110px] shrink-0">
           <Select
             isMulti
@@ -287,7 +272,54 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           />
         </div>
 
-        {/* Job Level / Grade Slicer */}
+        {/* 2. Reporting Manager Slicer */}
+        <div className="w-36 min-w-[135px] shrink-0">
+          <Select
+            isMulti
+            options={mapOptions(options?.managers)}
+            value={getMultiValue('manager')}
+            onChange={onMultiChange('manager')}
+            placeholder="Manager (All)"
+            styles={compactSelectStyles}
+            components={{ ValueContainer: CompactValueContainer }}
+            menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+            isClearable={false}
+          />
+        </div>
+
+        {/* 3. Department Slicer */}
+        <div className="w-28 min-w-[105px] shrink-0">
+          <Select
+            isMulti
+            options={mapOptions(options?.departments)}
+            value={getMultiValue('department')}
+            onChange={onMultiChange('department')}
+            placeholder="Dept (All)"
+            styles={compactSelectStyles}
+            components={{ ValueContainer: CompactValueContainer }}
+            menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+            isClearable={false}
+          />
+        </div>
+
+        {/* Page 3 (Techwise / Skills): Skill Slicer placed between Department and Grade */}
+        {activeTab === 'techwise' && (
+          <div className="w-32 min-w-[120px] shrink-0">
+            <Select
+              isMulti
+              options={mapOptions(options?.skills)}
+              value={getMultiValue('skill_name')}
+              onChange={onMultiChange('skill_name')}
+              placeholder="Skill (All)"
+              styles={compactSelectStyles}
+              components={{ ValueContainer: CompactValueContainer }}
+              menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+              isClearable={false}
+            />
+          </div>
+        )}
+
+        {/* 4. Job Level / Grade Slicer */}
         <div className="w-24 min-w-[96px] shrink-0">
           <Select
             isMulti
@@ -302,23 +334,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           />
         </div>
 
-        {/* Department Slicer */}
-        <div className="w-28 min-w-[110px] shrink-0">
-          <Select
-            isMulti
-            options={mapOptions(options?.departments)}
-            value={getMultiValue('department')}
-            onChange={onMultiChange('department')}
-            placeholder="Dept (All)"
-            styles={compactSelectStyles}
-            components={{ ValueContainer: CompactValueContainer }}
-            menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
-            isClearable={false}
-          />
-        </div>
-
-        {/* Location Slicer */}
-        <div className="w-28 min-w-[110px] shrink-0">
+        {/* 5. Location Slicer */}
+        <div className="w-28 min-w-[105px] shrink-0">
           <Select
             isMulti
             options={mapOptions(options?.locations)}
@@ -332,22 +349,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           />
         </div>
 
-        {/* Reporting Manager Slicer */}
-        <div className="w-36 min-w-[140px] shrink-0">
-          <Select
-            isMulti
-            options={mapOptions(options?.managers)}
-            value={getMultiValue('manager')}
-            onChange={onMultiChange('manager')}
-            placeholder="Manager (All)"
-            styles={compactSelectStyles}
-            components={{ ValueContainer: CompactValueContainer }}
-            menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
-            isClearable={false}
-          />
-        </div>
-
-        {/* Year Slicer (Salarywise tabs) */}
+        {/* Pages 4 & 5 (Salarywise & Salarywise2): Year Slicer */}
         {(activeTab === 'salarywise' || activeTab === 'salarywise2') && (
           <div className="w-24 min-w-[90px] shrink-0">
             <Select
@@ -364,20 +366,63 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
         )}
 
-        {/* Skill Slicer (Techwise tab) */}
-        {activeTab === 'techwise' && (
-          <div className="w-28 min-w-[110px] shrink-0">
-            <Select
-              isMulti
-              options={mapOptions(options?.skills)}
-              value={getMultiValue('skill_name')}
-              onChange={onMultiChange('skill_name')}
-              placeholder="Skill (All)"
-              styles={compactSelectStyles}
-              components={{ ValueContainer: CompactValueContainer }}
-              menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
-              isClearable={false}
-            />
+        {/* Page 6 (Calendar / Leave): Power BI Style Date Slicer (Year, Month, Date) */}
+        {activeTab === 'calendar' && (
+          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700 shrink-0">
+            <div className="flex items-center gap-1 text-[10px] font-bold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider shrink-0">
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>Date:</span>
+            </div>
+
+            {/* Year Dropdown */}
+            <div className="w-24 min-w-[90px] shrink-0">
+              <Select
+                isMulti
+                options={mapOptions((options?.calendar_years || [2024, 2023, 2022, 2021, 2020, 2019]).map(String))}
+                value={getMultiValue('year')}
+                onChange={onMultiChange('year')}
+                placeholder="Year (All)"
+                styles={compactSelectStyles}
+                components={{ ValueContainer: CompactValueContainer }}
+                menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+                isClearable={false}
+              />
+            </div>
+
+            {/* Month Dropdown */}
+            <div className="w-26 min-w-[96px] shrink-0">
+              <Select
+                isMulti
+                options={mapOptions(options?.months || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])}
+                value={getMultiValue('month')}
+                onChange={onMultiChange('month')}
+                placeholder="Month (All)"
+                styles={compactSelectStyles}
+                components={{ ValueContainer: CompactValueContainer }}
+                menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+                isClearable={false}
+              />
+            </div>
+
+            {/* Specific Date Picker */}
+            <div className="relative flex items-center shrink-0">
+              <input
+                type="date"
+                value={filters.date || ''}
+                onChange={(e) => handleChange('date', e.target.value)}
+                className="h-7 bg-slate-50 dark:bg-[#12223a] border border-slate-200 dark:border-[#223755] text-slate-800 dark:text-slate-100 text-[11px] px-2 py-0.5 rounded-md focus:outline-none focus:border-cyan-500 font-mono transition-colors cursor-pointer"
+                title="Filter by specific date"
+              />
+              {filters.date && (
+                <button
+                  onClick={() => handleChange('date', '')}
+                  className="ml-1 text-slate-400 hover:text-rose-500 transition-colors"
+                  title="Clear specific date"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

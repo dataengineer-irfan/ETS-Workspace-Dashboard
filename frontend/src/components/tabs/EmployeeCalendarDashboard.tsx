@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { CalendarData } from '../../types/dashboard';
+import type { CalendarData, FilterParams } from '../../types/dashboard';
 import { KPICard } from '../common/KPICard';
 import { 
   CalendarDays, 
@@ -22,9 +22,14 @@ import {
 interface EmployeeCalendarDashboardProps {
   data: CalendarData | null;
   loading: boolean;
+  filters?: FilterParams;
+  setFilters?: React.Dispatch<React.SetStateAction<FilterParams>>;
   onSelectEmployee: (empNumber: number) => void;
   onOpenEmployeeProfile?: (empNumber: number) => void;
 }
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const LEAVE_COLORS: { [key: string]: string } = {
   'Casual / Sick': '#0284c7',
@@ -47,10 +52,52 @@ const PROJECT_COLORS = ['#0284c7', '#0d9488', '#d97706', '#8b5cf6'];
 export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps> = ({
   data,
   loading,
+  filters,
+  setFilters,
   onSelectEmployee,
   onOpenEmployeeProfile,
 }) => {
-  const [selectedDate, setSelectedDate] = useState<string>('2024-01-16');
+  const activeYear = React.useMemo(() => {
+    if (filters?.year) {
+      const yVal = Array.isArray(filters.year) ? filters.year[0] : filters.year;
+      if (yVal && !isNaN(Number(yVal))) return Number(yVal);
+    }
+    if (filters?.date) {
+      const parsed = new Date(filters.date);
+      if (!isNaN(parsed.getTime())) return parsed.getFullYear();
+    }
+    return 2024;
+  }, [filters?.year, filters?.date]);
+
+  const activeMonthIdx = React.useMemo(() => {
+    if (filters?.month) {
+      const mVal = Array.isArray(filters.month) ? filters.month[0] : filters.month;
+      const mIdx = MONTH_SHORT.findIndex(m => m.toLowerCase() === String(mVal).toLowerCase().slice(0, 3));
+      if (mIdx !== -1) return mIdx;
+    }
+    if (filters?.date) {
+      const parsed = new Date(filters.date);
+      if (!isNaN(parsed.getTime())) return parsed.getMonth();
+    }
+    return 0;
+  }, [filters?.month, filters?.date]);
+
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    if (filters?.date) return filters.date;
+    return '2024-01-16';
+  });
+
+  React.useEffect(() => {
+    if (filters?.date) {
+      setSelectedDate(filters.date);
+    } else {
+      const prefix = `${activeYear}-${String(activeMonthIdx + 1).padStart(2, '0')}`;
+      if (!selectedDate.startsWith(prefix)) {
+        setSelectedDate(`${prefix}-${activeYear === 2024 && activeMonthIdx === 0 ? '16' : '01'}`);
+      }
+    }
+  }, [filters?.date, activeYear, activeMonthIdx]);
+
   const [matrixSearch, setMatrixSearch] = useState<string>('');
   const [matrixSortField, setMatrixSortField] = useState<string>('location');
   const [matrixSortDir, setMatrixSortDir] = useState<'asc' | 'desc'>('asc');
@@ -104,17 +151,27 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
     (ev) => ev.start <= selectedDate && ev.end >= selectedDate
   );
 
-  const daysInJan = Array.from({ length: 31 }, (_, i) => i + 1);
+  const daysInMonthCount = new Date(activeYear, activeMonthIdx + 1, 0).getDate();
+  const daysInMonth = Array.from({ length: daysInMonthCount }, (_, i) => i + 1);
+  const firstDayWeekday = (new Date(activeYear, activeMonthIdx, 1).getDay() + 6) % 7;
 
-  // Project distribution with expanded labels
+  const handleSelectDay = (d: number) => {
+    const dateStr = `${activeYear}-${String(activeMonthIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    setSelectedDate(dateStr);
+  };
+
   const formattedProjects = (data.project_distribution || []).map((p) => ({
     ...p,
     fullName: PROJECT_NAMES[p.project] || p.project,
   }));
 
+  const primaryLeaveType = data.leave_type_breakdown?.[0]?.leave_type || 'Casual / Sick';
+  const primaryLeaveDays = data.leave_type_breakdown?.[0]?.total_days || 0;
+  const primaryLeavePct = data.total_leave_days > 0 ? Math.round((primaryLeaveDays / data.total_leave_days) * 100) : 0;
+  const avgDurationStr = data.unique_employees_on_leave > 0 ? (data.total_leave_days / data.unique_employees_on_leave).toFixed(1) : '0.0';
+
   return (
     <div className="flex-1 flex flex-col gap-1.5 overflow-hidden select-none">
-      {/* Leadership Brief Banner */}
       <div 
         className="rounded-xl border p-2.5 shrink-0" 
         style={{ 
@@ -131,23 +188,22 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                 ● CONTROLLED OPERATIONAL IMPACT
               </span>
               <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                Month: January 2024
+                Month: {MONTH_NAMES[activeMonthIdx]} {activeYear}
               </span>
             </div>
 
-            {/* 3 Concise Bullet Insights */}
             <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
               <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
                 <span className="font-bold text-cyan-900 dark:text-cyan-300 block truncate">Monthly Leave Rate</span>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">January leave rate held steady at 13.2%</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">{MONTH_NAMES[activeMonthIdx]} leave rate stands at {data.leave_rate_pct}%</p>
               </div>
               <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
                 <span className="font-bold text-purple-900 dark:text-purple-300 block truncate">Volume Concentration</span>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Casual & Sick accounts for 64% of leaves</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">{primaryLeaveType} accounts for {primaryLeavePct}% of leaves</p>
               </div>
               <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-                <span className="font-bold text-rose-900 dark:text-rose-300 block truncate">Peak Absenteeism</span>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Peak absence observed on Jan 16 (12 on leave)</p>
+                <span className="font-bold text-rose-900 dark:text-rose-300 block truncate">Workforce Impact</span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">{data.unique_employees_on_leave} staff logged {data.total_leave_days}d total absence</p>
               </div>
             </div>
           </div>
@@ -157,7 +213,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
             <div className="flex items-center gap-2">
               <div className="text-right">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-semibold">Leave Rate</span>
-                <span className="text-sm font-black text-cyan-800 dark:text-cyan-300 font-mono">13.2%</span>
+                <span className="text-sm font-black text-cyan-800 dark:text-cyan-300 font-mono">{data.leave_rate_pct}%</span>
               </div>
               <div className="h-7 w-px bg-slate-200 dark:bg-slate-700" />
               <div className="text-right">
@@ -169,36 +225,35 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
         </div>
       </div>
 
-      {/* Top 4 KPI Cards (Dominant Unique Employees on Leave) */}
       <div className="grid grid-cols-4 gap-1.5 shrink-0">
         <KPICard
           dominant={true}
           title="Employees On Leave"
           value={data.unique_employees_on_leave}
-          subtitle="78 Staff · 13.2% Workforce Leave Rate"
+          subtitle={`${data.unique_employees_on_leave} Staff · ${data.leave_rate_pct}% Workforce Leave Rate`}
           icon={Users}
-          badge="13.2% Rate"
+          badge={`${data.leave_rate_pct}% Rate`}
           badgeColor="cyan"
         />
         <KPICard
           title="Total Leave Days"
           value={`${data.total_leave_days} Days`}
-          subtitle="January logged absence duration"
+          subtitle={`${MONTH_NAMES[activeMonthIdx]} logged absence duration`}
           icon={CalendarDays}
           badge="Utilization"
           badgeColor="emerald"
         />
         <KPICard
           title="Primary Leave Type"
-          value="Casual / Sick"
-          subtitle="64% of total time-off requests"
+          value={primaryLeaveType}
+          subtitle={`${primaryLeavePct}% of total time-off requests`}
           icon={Clock}
           badge="Predominant"
           badgeColor="purple"
         />
         <KPICard
           title="Average Duration"
-          value="1.0 Day"
+          value={`${avgDurationStr} Day`}
           subtitle="Average time-off length per incident"
           icon={CalendarDays}
           badge="Average"
@@ -206,20 +261,17 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
         />
       </div>
 
-      {/* Middle Grid: Interactive Visual Calendar with Heatmap + Daily Inspector + Project Spread */}
       <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
-        {/* Left 5 cols: Interactive Visual Calendar Grid with Heatmap Overlay */}
         <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
               <CalendarDays className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Leave Heatmap Calendar (Jan 2024)</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Leave Heatmap Calendar ({MONTH_SHORT[activeMonthIdx]} {activeYear})</span>
             </div>
             <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Intensity: Heat Colored</span>
           </div>
 
           <div className="flex-1 flex flex-col justify-between my-1">
-            {/* Weekdays */}
             <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-1">
               <span>Mon</span>
               <span>Tue</span>
@@ -230,14 +282,15 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
               <span className="text-slate-400 dark:text-slate-500">Sun</span>
             </div>
 
-            {/* Calendar Days with Heat Intensity */}
             <div className="grid grid-cols-7 gap-1 flex-1 py-1">
-              {daysInJan.map((d) => {
-                const dateStr = `2024-01-${String(d).padStart(2, '0')}`;
+              {Array.from({ length: firstDayWeekday }).map((_, idx) => (
+                <div key={`pad-${idx}`} className="h-7 rounded opacity-0 pointer-events-none" />
+              ))}
+              {daysInMonth.map((d) => {
+                const dateStr = `${activeYear}-${String(activeMonthIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const count = data.daily_leave_counts?.[dateStr] || 0;
                 const isSelected = selectedDate === dateStr;
 
-                // Color cell based on leave intensity
                 let heatStyle = 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700';
                 if (count >= 10) {
                   heatStyle = 'bg-rose-100 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200 font-bold hover:bg-rose-200 dark:hover:bg-rose-900';
@@ -254,7 +307,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                 return (
                   <button
                     key={d}
-                    onClick={() => setSelectedDate(dateStr)}
+                    onClick={() => handleSelectDay(d)}
                     className={`h-7 rounded flex flex-col items-center justify-center relative text-[11px] font-mono transition-all ${heatStyle}`}
                     title={`${dateStr}: ${count} on leave`}
                   >

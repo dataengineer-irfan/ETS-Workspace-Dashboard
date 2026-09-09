@@ -6,6 +6,10 @@ export interface FilterParams {
   project?: string | string[];
   manager?: string | string[];
   year?: number | number[];
+  month?: string | string[];
+  date?: string;
+  start_date?: string;
+  end_date?: string;
   skill_name?: string | string[];
   salary_bin?: string | string[];
   search?: string;
@@ -19,6 +23,8 @@ export interface FilterOptions {
   projects: string[];
   managers: string[];
   years: number[];
+  calendar_years?: number[];
+  months?: string[];
   skills: string[];
   salary_bins: string[];
 }

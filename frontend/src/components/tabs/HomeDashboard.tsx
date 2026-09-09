@@ -304,6 +304,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   setFilters,
 }) => {
   const [hoveredLocIndex, setHoveredLocIndex] = useState<number | null>(null);
+  const [hoveredGenderIndex, setHoveredGenderIndex] = useState<number | null>(null);
   const [activeDrilldown, setActiveDrilldown] = useState<ActiveDrilldown | null>(null);
   const [drilldownSearch, setDrilldownSearch] = useState('');
 
@@ -338,9 +339,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   // Gender data for center spotlight
   const genderDonutData = [
-    { name: 'Male', value: data.male_count || 409, color: '#0284c7' },
-    { name: 'Female', value: data.female_count || 181, color: '#ec4899' },
+    { name: 'Female', value: data.female_count || 181, color: '#ec4899', percentage: data.pct_female },
+    { name: 'Male', value: data.male_count || 409, color: '#0284c7', percentage: data.pct_male },
   ];
+
+  const activeHoveredGender = hoveredGenderIndex !== null ? genderDonutData[hoveredGenderIndex] : null;
 
   // Job Level Pyramid Hierarchy Data
   const pyramidTiers = data.grade_hierarchy && data.grade_hierarchy.length > 0
@@ -568,7 +571,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       <div className="grid grid-cols-12 gap-2 flex-1 min-h-0">
         
         {/* Module 1: Headcount & Hiring Growth (Combo Bar + Line) */}
-        <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
@@ -586,7 +589,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={growthHistory}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                margin={{ top: 10, right: 0, left: -22, bottom: 0 }}
                 onClick={(e: any) => {
                   if (e?.activePayload?.[0]?.payload) {
                     const yr = e.activePayload[0].payload.year;
@@ -636,163 +639,197 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           {/* Dynamic metric summary badges */}
-          <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
+          <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
             <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 block">Peak Joiners</span>
-              <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 font-mono">{peakYear.joiners} in {peakYear.year}</span>
+              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Peak Joiners</span>
+              <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 font-mono">{peakYear.joiners} in {peakYear.year}</span>
             </div>
             <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 block">Current Scope</span>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">{data.total_employees} Active</span>
+              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Current Scope</span>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">{data.total_employees} Active</span>
             </div>
             <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 block">Stability Index</span>
-              <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 font-mono">{retentionRate}% Retained</span>
+              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Stability Index</span>
+              <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 font-mono">{retentionRate}% Retained</span>
             </div>
           </div>
         </div>
 
-        {/* Module 2: Diversity % Spotlight (Donut + Gender Avatars) */}
-        <div className="col-span-3 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
+        {/* Module 2: Diversity % Spotlight (Big Donut on Left, Slim Legend on Right) */}
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
-              Diversity % Spotlight
-            </span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Diversity % Spotlight</span>
+            </div>
             <span className="text-[10px] text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/60 px-1.5 py-0.5 rounded border border-pink-200 dark:border-pink-800 font-bold font-mono">
               {data.pct_female}% Women
             </span>
           </div>
 
-          <div
-            className="flex-1 min-h-[120px] relative flex items-center justify-center cursor-pointer group"
-            onClick={() => {
-              const women = (employeeList || [])
-                .filter((e) => (e as any).GENDER === 'Female' || (e as any).gender === 'Female')
-                .map((e) => ({
-                  id: e['EMPLOYEE NUMBER'],
-                  name: e['EMPLOYEE LABEL'],
-                  job_level: e['JOB LEVEL'],
-                  job_title: e['JOB TITLE'],
-                  department: e['DEPARTMENT'],
-                  location: e['LOCATION'],
-                  total_exp: e['Total_Exp'],
-                }));
-              openDrilldown(
-                'Diversity Spotlight: Female Staff',
-                `${data.female_count} women professionals (${data.pct_female}% diversity ratio)`,
-                `${data.female_count} Women`,
-                women.length > 0 ? women : allDrilldownItems
-              );
-            }}
-            title="Click to view diversity roster"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={genderDonutData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="46%"
-                  outerRadius="68%"
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {genderDonutData.map((e, i) => (
-                    <Cell key={i} fill={e.color} stroke="var(--surface)" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--surface)',
-                    borderColor: 'var(--border)',
-                    borderRadius: '8px',
-                    fontSize: '11px',
-                    boxShadow: 'var(--shadow-soft)',
-                  }}
-                  formatter={(v: any, name: any) => [`${v} Employees (${name === 'Female' ? data.pct_female : data.pct_male}%)`, name]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group-hover:scale-105 transition-transform">
-              <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono leading-none">
-                {data.total_employees}
-              </span>
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                Total Staff
-              </span>
+          <div className="flex-1 grid grid-cols-12 gap-2 items-center min-h-0 py-1">
+            {/* Left: Big Hero Donut (7 cols) */}
+            <div className="col-span-7 h-full relative flex items-center justify-center min-h-[140px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={genderDonutData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="50%"
+                    outerRadius="80%"
+                    paddingAngle={3}
+                    dataKey="value"
+                    onMouseEnter={(_, i) => setHoveredGenderIndex(i)}
+                    onMouseLeave={() => setHoveredGenderIndex(null)}
+                    onClick={(e: any) => {
+                      const genderName = e?.name || e?.payload?.name;
+                      if (genderName) {
+                        const items = (employeeList || [])
+                          .filter((emp) => ((emp as any).GENDER === genderName || (emp as any).gender === genderName))
+                          .map((emp) => ({
+                            id: emp['EMPLOYEE NUMBER'],
+                            name: emp['EMPLOYEE LABEL'],
+                            job_level: emp['JOB LEVEL'],
+                            job_title: emp['JOB TITLE'],
+                            department: emp['DEPARTMENT'],
+                            location: emp['LOCATION'],
+                            total_exp: emp['Total_Exp'],
+                            gender: emp['GENDER'],
+                          }));
+                        openDrilldown(
+                          `${genderName} Workforce Representation`,
+                          `${genderName === 'Female' ? data.female_count : data.male_count} ${genderName.toLowerCase()} employees (${genderName === 'Female' ? data.pct_female : data.pct_male}%)`,
+                          `${genderName === 'Female' ? data.female_count : data.male_count} Staff`,
+                          items.length > 0 ? items : allDrilldownItems
+                        );
+                      }
+                    }}
+                  >
+                    {genderDonutData.map((e, i) => (
+                      <Cell
+                        key={i}
+                        fill={e.color}
+                        stroke={hoveredGenderIndex === i ? 'var(--text)' : 'var(--surface)'}
+                        strokeWidth={hoveredGenderIndex === i ? 2.5 : 1.5}
+                        className="cursor-pointer"
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--surface)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      boxShadow: 'var(--shadow-soft)',
+                    }}
+                    formatter={(v: any, _: any, p: any) => [`${v} Staff (${p.payload.percentage}%)`, p.payload.name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                {activeHoveredGender ? (
+                  <>
+                    <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHoveredGender.color }}>
+                      {activeHoveredGender.name}
+                    </span>
+                    <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                      {activeHoveredGender.value}
+                    </span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
+                      {activeHoveredGender.percentage}%
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                      {data.total_employees}
+                    </span>
+                    <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                      Total Staff
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Slim, High-Density Legend (5 cols) */}
+            <div className="col-span-5 flex flex-col justify-center gap-2 h-full pl-1 border-l border-slate-100 dark:border-slate-800/80">
+              {genderDonutData.map((g, i) => {
+                const hov = hoveredGenderIndex === i;
+                const isFemale = g.name === 'Female';
+                return (
+                  <div
+                    key={g.name}
+                    onMouseEnter={() => setHoveredGenderIndex(i)}
+                    onMouseLeave={() => setHoveredGenderIndex(null)}
+                    onClick={() => {
+                      const items = (employeeList || [])
+                        .filter((e) => (e as any).GENDER === g.name || (e as any).gender === g.name)
+                        .map((e) => ({
+                          id: e['EMPLOYEE NUMBER'],
+                          name: e['EMPLOYEE LABEL'],
+                          job_level: e['JOB LEVEL'],
+                          job_title: e['JOB TITLE'],
+                          department: e['DEPARTMENT'],
+                          location: e['LOCATION'],
+                          total_exp: e['Total_Exp'],
+                          gender: e['GENDER'],
+                        }));
+                      openDrilldown(
+                        `${g.name} Workforce Representation`,
+                        `${g.value} ${g.name.toLowerCase()} employees (${g.percentage}%)`,
+                        `${g.value} Staff`,
+                        items.length > 0 ? items : allDrilldownItems
+                      );
+                    }}
+                    className={`px-1.5 py-1.5 rounded-md transition-all cursor-pointer flex flex-col gap-1 ${
+                      hov
+                        ? isFemale
+                          ? 'bg-pink-50 dark:bg-pink-950/40 shadow-2xs'
+                          : 'bg-sky-50 dark:bg-sky-950/40 shadow-2xs'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                    title={`Click to view ${g.name} workforce roster`}
+                  >
+                    <div className="flex items-center justify-between gap-1 text-[11px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: g.color }}
+                        />
+                        <span className={`font-semibold truncate text-[11px] ${
+                          hov
+                            ? isFemale
+                              ? 'text-pink-600 dark:text-pink-400 font-bold'
+                              : 'text-sky-600 dark:text-sky-400 font-bold'
+                            : 'text-slate-700 dark:text-slate-200'
+                        }`}>
+                          {g.name}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                        <b className="text-slate-800 dark:text-slate-100 font-bold">{g.value}</b> ({g.percentage}%)
+                      </span>
+                    </div>
+                    {/* Slim progress bar */}
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.max(4, g.percentage)}%`, backgroundColor: g.color }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Gender breakdown footer cards with interactive drilldown */}
-          <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 shrink-0">
-            <div
-              onClick={() => {
-                const men = (employeeList || [])
-                  .filter((e) => (e as any).GENDER === 'Male' || (e as any).gender === 'Male')
-                  .map((e) => ({
-                    id: e['EMPLOYEE NUMBER'],
-                    name: e['EMPLOYEE LABEL'],
-                    job_level: e['JOB LEVEL'],
-                    job_title: e['JOB TITLE'],
-                    department: e['DEPARTMENT'],
-                    location: e['LOCATION'],
-                    total_exp: e['Total_Exp'],
-                  }));
-                openDrilldown(
-                  'Male Workforce Representation',
-                  `${data.male_count} male employees (${data.pct_male}%)`,
-                  `${data.male_count} Staff`,
-                  men.length > 0 ? men : allDrilldownItems
-                );
-              }}
-              className="p-1.5 rounded-lg bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-xs transition-all"
-            >
-              <div className="flex items-center gap-1 min-w-0">
-                <div className="w-4 h-4 rounded bg-sky-500/20 text-sky-600 dark:text-sky-300 flex items-center justify-center shrink-0">
-                  <MaleSVG cls="w-2.5 h-2.5" />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[10px] font-bold text-sky-900 dark:text-sky-200 block leading-tight truncate">Male</span>
-                  <span className="text-[9px] text-sky-600 dark:text-sky-400 font-mono leading-none">{data.pct_male}%</span>
-                </div>
-              </div>
-              <span className="text-xs font-black text-sky-950 dark:text-sky-100 font-mono shrink-0 pl-1">{data.male_count}</span>
-            </div>
-
-            <div
-              onClick={() => {
-                const women = (employeeList || [])
-                  .filter((e) => (e as any).GENDER === 'Female' || (e as any).gender === 'Female')
-                  .map((e) => ({
-                    id: e['EMPLOYEE NUMBER'],
-                    name: e['EMPLOYEE LABEL'],
-                    job_level: e['JOB LEVEL'],
-                    job_title: e['JOB TITLE'],
-                    department: e['DEPARTMENT'],
-                    location: e['LOCATION'],
-                    total_exp: e['Total_Exp'],
-                  }));
-                openDrilldown(
-                  'Female Workforce Representation',
-                  `${data.female_count} women professionals (${data.pct_female}%)`,
-                  `${data.female_count} Women`,
-                  women.length > 0 ? women : allDrilldownItems
-                );
-              }}
-              className="p-1.5 rounded-lg bg-pink-50/70 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-xs transition-all"
-            >
-              <div className="flex items-center gap-1 min-w-0">
-                <div className="w-4 h-4 rounded bg-pink-500/20 text-pink-600 dark:text-pink-300 flex items-center justify-center shrink-0">
-                  <FemaleSVG cls="w-2.5 h-2.5" />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[10px] font-bold text-pink-900 dark:text-pink-200 block leading-tight truncate">Female</span>
-                  <span className="text-[9px] text-pink-600 dark:text-pink-400 font-mono leading-none">{data.pct_female}%</span>
-                </div>
-              </div>
-              <span className="text-xs font-black text-pink-950 dark:text-pink-100 font-mono shrink-0 pl-1">{data.female_count}</span>
-            </div>
+          {/* Sub-footer insight */}
+          <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+            <span>Ratio Balance: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{(data.male_count / (data.female_count || 1)).toFixed(1)} : 1 (M:F)</strong></span>
+            <span className="font-mono text-pink-600 dark:text-pink-400 font-bold">{data.pct_female}% Female</span>
           </div>
         </div>
 
@@ -936,7 +973,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
 
-        {/* Module 5: Regional Delivery Footprint Hubs (Clickable Donut & 4 Hub Chips) */}
+        {/* Module 5: Regional Delivery Footprint Hubs (Big Donut on Left, Slim Legend on Right) */}
         <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
@@ -948,130 +985,148 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </span>
           </div>
 
-          <div className="flex-1 min-h-[110px] relative flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={rankedLocs}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="46%"
-                  outerRadius="70%"
-                  paddingAngle={4}
-                  dataKey="count"
-                  onMouseEnter={(_, i) => setHoveredLocIndex(i)}
-                  onMouseLeave={() => setHoveredLocIndex(null)}
-                  onClick={(e: any) => {
-                    const locName = e?.location || e?.payload?.location;
-                    if (locName) {
+          <div className="flex-1 grid grid-cols-12 gap-2 items-center min-h-0 py-1">
+            {/* Left: Big Hero Donut (7 cols) */}
+            <div className="col-span-7 h-full relative flex items-center justify-center min-h-[140px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={rankedLocs}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="50%"
+                    outerRadius="80%"
+                    paddingAngle={3}
+                    dataKey="count"
+                    onMouseEnter={(_, i) => setHoveredLocIndex(i)}
+                    onMouseLeave={() => setHoveredLocIndex(null)}
+                    onClick={(e: any) => {
+                      const locName = e?.location || e?.payload?.location;
+                      if (locName) {
+                        const items = allDrilldownItems.filter(
+                          (item) => item.location.toLowerCase() === locName.toLowerCase()
+                        );
+                        const locData = rankedLocs.find((l) => l.location.toLowerCase() === locName.toLowerCase());
+                        openDrilldown(
+                          `${locName} Delivery Hub`,
+                          `${locData?.count || items.length} team members stationed in ${locName} (${locData?.percentage || 0}% of workforce)`,
+                          `${locData?.count || items.length} Staff`,
+                          items,
+                          'location',
+                          [locName]
+                        );
+                      }
+                    }}
+                  >
+                    {rankedLocs.map((e, i) => (
+                      <Cell
+                        key={i}
+                        fill={e.color}
+                        stroke={hoveredLocIndex === i ? 'var(--text)' : 'var(--surface)'}
+                        strokeWidth={hoveredLocIndex === i ? 2.5 : 1.5}
+                        className="cursor-pointer"
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--surface)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      boxShadow: 'var(--shadow-soft)',
+                    }}
+                    formatter={(v: any, _: any, p: any) => [`${v} Staff (${p.payload.percentage}%)`, p.payload.location]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                {activeHovered ? (
+                  <>
+                    <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHovered.color }}>
+                      {activeHovered.location}
+                    </span>
+                    <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                      {activeHovered.count}
+                    </span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
+                      {activeHovered.percentage}%
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                      {data.total_employees}
+                    </span>
+                    <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                      Total Staff
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Slim, High-Density Legend (5 cols) */}
+            <div className="col-span-5 flex flex-col justify-center gap-1.5 h-full pl-1 border-l border-slate-100 dark:border-slate-800/80">
+              {rankedLocs.slice(0, 4).map((loc, i) => {
+                const hov = hoveredLocIndex === i;
+                return (
+                  <div
+                    key={loc.location}
+                    onMouseEnter={() => setHoveredLocIndex(i)}
+                    onMouseLeave={() => setHoveredLocIndex(null)}
+                    onClick={() => {
                       const items = allDrilldownItems.filter(
-                        (item) => item.location.toLowerCase() === locName.toLowerCase()
+                        (item) => item.location.toLowerCase() === loc.location.toLowerCase()
                       );
-                      const locData = rankedLocs.find((l) => l.location.toLowerCase() === locName.toLowerCase());
+                      const locData = rankedLocs.find((l) => l.location.toLowerCase() === loc.location.toLowerCase());
                       openDrilldown(
-                        `${locName} Delivery Hub`,
-                        `${locData?.count || items.length} team members stationed in ${locName} (${locData?.percentage || 0}% of workforce)`,
+                        `${loc.location} Delivery Hub`,
+                        `${locData?.count || items.length} team members stationed in ${loc.location} (${locData?.percentage || 0}% of workforce)`,
                         `${locData?.count || items.length} Staff`,
                         items,
                         'location',
-                        [locName]
+                        [loc.location]
                       );
-                    }
-                  }}
-                >
-                  {rankedLocs.map((e, i) => (
-                    <Cell
-                      key={i}
-                      fill={e.color}
-                      stroke={hoveredLocIndex === i ? 'var(--text)' : 'var(--surface)'}
-                      strokeWidth={hoveredLocIndex === i ? 2.5 : 1.5}
-                      className="cursor-pointer"
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--surface)',
-                    borderColor: 'var(--border)',
-                    borderRadius: '8px',
-                    fontSize: '11px',
-                    boxShadow: 'var(--shadow-soft)',
-                  }}
-                  formatter={(v: any, _: any, p: any) => [`${v} Staff (${p.payload.percentage}%)`, p.payload.location]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              {activeHovered ? (
-                <>
-                  <span className="text-[10px] font-bold truncate max-w-[60px]" style={{ color: activeHovered.color }}>
-                    {activeHovered.location}
-                  </span>
-                  <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono leading-none">
-                    {activeHovered.count}
-                  </span>
-                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
-                    {activeHovered.percentage}%
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono leading-none">
-                    {data.total_employees}
-                  </span>
-                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                    Total Staff
-                  </span>
-                </>
-              )}
+                    }}
+                    className={`px-1.5 py-1 rounded-md transition-all cursor-pointer flex flex-col gap-0.5 ${
+                      hov
+                        ? 'bg-slate-100 dark:bg-slate-800 shadow-2xs'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                    title={`Click to view employees in ${loc.location}`}
+                  >
+                    <div className="flex items-center justify-between gap-1 text-[11px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: loc.color }}
+                        />
+                        <span className={`font-semibold truncate text-[11px] ${hov ? 'text-cyan-600 dark:text-cyan-400 font-bold' : 'text-slate-700 dark:text-slate-200'}`}>
+                          {loc.location}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                        <b className="text-slate-800 dark:text-slate-100 font-bold">{loc.count}</b> ({loc.percentage}%)
+                      </span>
+                    </div>
+                    {/* Slim progress bar */}
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.max(3, loc.percentage)}%`, backgroundColor: loc.color }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* 4 Location Chips in 2x2 Grid with full visibility and click-to-filter */}
-          <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 shrink-0">
-            {rankedLocs.slice(0, 4).map((loc, i) => {
-              const hov = hoveredLocIndex === i;
-              return (
-                <div
-                  key={loc.location}
-                  onMouseEnter={() => setHoveredLocIndex(i)}
-                  onMouseLeave={() => setHoveredLocIndex(null)}
-                  onClick={() => {
-                    const items = allDrilldownItems.filter(
-                      (item) => item.location.toLowerCase() === loc.location.toLowerCase()
-                    );
-                    openDrilldown(
-                      `${loc.location} Delivery Hub`,
-                      `${loc.count} team members stationed in ${loc.location} (${loc.percentage}% of workforce)`,
-                      `${loc.count} Staff`,
-                      items,
-                      'location',
-                      [loc.location]
-                    );
-                  }}
-                  className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-1 text-[10px] hover:scale-[1.02] ${
-                    hov
-                      ? `${LOCATION_TINTS[loc.location]} shadow-xs ring-1 ring-cyan-400/50`
-                      : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100/80 dark:hover:bg-slate-700/60'
-                  }`}
-                  title={`Click to view employees in ${loc.location}`}
-                >
-                  <div className="flex items-center gap-1 min-w-0">
-                    <span
-                      className="text-[9px] font-extrabold px-1 rounded font-mono shrink-0"
-                      style={{ backgroundColor: `${loc.color}18`, color: loc.color }}
-                    >
-                      #{i + 1}
-                    </span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{loc.location}</span>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-slate-900 dark:text-slate-100 font-mono">{loc.count}</span>
-                    <span className="text-[9px] text-slate-500 dark:text-slate-400 font-mono ml-0.5">({loc.percentage}%)</span>
-                  </div>
-                </div>
-              );
-            })}
+          {/* Sub-footer insight */}
+          <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+            <span>Primary Hub: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{rankedLocs[0]?.location || 'N/A'}</strong></span>
+            <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{rankedLocs[0]?.percentage || 0}% load</span>
           </div>
         </div>
 

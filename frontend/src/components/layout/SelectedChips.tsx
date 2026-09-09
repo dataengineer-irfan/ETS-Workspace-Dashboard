@@ -7,11 +7,25 @@ interface Props {
   setFilters: React.Dispatch<React.SetStateAction<FilterParams>>;
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  project: 'Project',
+  manager: 'Manager',
+  department: 'Dept',
+  skill_name: 'Skill',
+  job_level: 'Grade',
+  location: 'Location',
+  year: 'Year',
+  month: 'Month',
+  date: 'Date',
+  state: 'State',
+  search: 'Search',
+};
+
 export const SelectedChips: React.FC<Props> = ({ filters, setFilters }) => {
   const rawEntries = Object.entries(filters || {}) as [string, any][];
   if (rawEntries.length === 0) return null;
 
-  const preferredOrder = ['project', 'manager', 'department', 'job_level', 'location', 'state', 'skill_name', 'year', 'search'];
+  const preferredOrder = ['project', 'manager', 'department', 'skill_name', 'job_level', 'location', 'year', 'month', 'date', 'state', 'search'];
   const entries = rawEntries.sort((a, b) => {
     const ai = preferredOrder.indexOf(a[0]);
     const bi = preferredOrder.indexOf(b[0]);
@@ -59,7 +73,7 @@ export const SelectedChips: React.FC<Props> = ({ filters, setFilters }) => {
           return (
             <div key={k} className="flex items-center gap-1">
               <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-mono">
-                {k}
+                {FIELD_LABELS[k] || k}
               </span>
               <div className="flex items-center gap-1">
                 {vals.map((vv: any) => (

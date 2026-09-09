@@ -135,6 +135,9 @@ class AnalyticsEngine:
         skills = sorted(list(df_skill['Skill Name'].dropna().unique()))
         salary_bins = ['< 5L', '5-10L', '10-15L', '15-20L', '20L+']
         
+        calendar_years = sorted([int(y) for y in data_loader.df_leave['START DATE'].dt.year.dropna().unique()], reverse=True)
+        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        
         return {
             'states': states,
             'job_levels': job_levels,
@@ -143,6 +146,8 @@ class AnalyticsEngine:
             'projects': projects,
             'managers': managers,
             'years': years,
+            'calendar_years': calendar_years,
+            'months': months,
             'skills': skills,
             'salary_bins': salary_bins
         }
@@ -768,6 +773,13 @@ class AnalyticsEngine:
         years = [int(y) for y in parse_filter_list(filters.get('year')) if str(y).isdigit()]
         if years:
             df_fin = df_fin[df_fin['Year'].isin(years)]
+        projects = parse_filter_list(filters.get('project'))
+        if projects:
+            projects_upper = [p.upper() for p in projects]
+            matched = df_fin['Project Working'].astype(str).str.upper().isin(projects_upper)
+            if any(p == 'NH' for p in projects_upper):
+                matched = matched | (df_fin['Project Working'].astype(str).str.upper() == 'NH PROJECTS')
+            df_fin = df_fin[matched]
         states = parse_filter_list(filters.get('state'))
         if states:
             df_fin = df_fin[df_fin['State'].astype(str).str.upper().isin([s.upper() for s in states])]
@@ -894,33 +906,115 @@ class AnalyticsEngine:
         filters = filters or {}
         df_leave = data_loader.df_leave.copy()
         
-        leave_types = parse_filter_list(filters.get('leave_type'))
-        if leave_types:
-            pattern = '|'.join(re.escape(l) for l in leave_types)
-            df_leave = df_leave[df_leave['LEAVE TYPE'].astype(str).str.contains(pattern, case=False, regex=True, na=False)]
-        departments = parse_filter_list(filters.get('department'))
-        if departments:
-            df_leave = df_leave[df_leave['DEPARTMENT'].astype(str).str.upper().isin([d.upper() for d in departments])]
+        # 1. Standard employee-level filters
+        projects = parse_filter_list(filters.get('project'))
+        if projects:
+            projects_upper = [p.upper() for p in projects]
+            matched = df_leave['Project Working'].astype(str).str.upper().isin(projects_upper)
+            if any(p == 'NH' for p in projects_upper):
+                matched = matched | (df_leave['Project Working'].astype(str).str.upper() == 'NH PROJECTS')
+            df_leave = df_leave[matched]
+
         managers = parse_filter_list(filters.get('manager'))
         if managers:
             pattern = '|'.join(re.escape(m) for m in managers)
             df_leave = df_leave[df_leave['MANAGER'].astype(str).str.contains(pattern, case=False, regex=True, na=False)]
-            
-        total_days = float(df_leave['DAY VALUE'].sum())
-        unique_emps = int(df_leave['EMPLOYEE NUMBER'].nunique())
-        leave_rate_pct = round((unique_emps / 590) * 100, 1)
-        
-        type_counts = df_leave['LEAVE TYPE'].value_counts()
+
+        departments = parse_filter_list(filters.get('department'))
+        if departments:
+            df_leave = df_leave[df_leave['DEPARTMENT'].astype(str).str.upper().isin([d.upper() for d in departments])]
+
+        grades = parse_filter_list(filters.get('job_level'))
+        if grades:
+            df_leave = df_leave[df_leave['JOB LEVEL'].astype(str).str.upper().isin([g.upper() for g in grades])]
+
+        locations = parse_filter_list(filters.get('location'))
+        if locations:
+            df_leave = df_leave[df_leave['LOCATION'].astype(str).str.upper().isin([l.upper() for l in locations])]
+
+        leave_types = parse_filter_list(filters.get('leave_type'))
+        if leave_types:
+            pattern = '|'.join(re.escape(l) for l in leave_types)
+            df_leave = df_leave[df_leave['LEAVE TYPE'].astype(str).str.contains(pattern, case=False, regex=True, na=False)]
+
+        search_q = str(filters.get('search') or '').lower().strip()
+        if search_q and search_q not in ('', 'none', 'null', 'undefined'):
+            df_leave = df_leave[
+                df_leave['EMPLOYEE'].astype(str).str.lower().str.contains(search_q, regex=False, na=False) |
+                df_leave['EMPLOYEE NUMBER'].astype(str).str.contains(search_q, regex=False, na=False) |
+                df_leave['DEPARTMENT'].astype(str).str.lower().str.contains(search_q, regex=False, na=False) |
+                df_leave['MANAGER'].astype(str).str.lower().str.contains(search_q, regex=False, na=False)
+            ]
+
+        # 2. Date Slicer filters (Year, Month, Date)
+        years = parse_filter_list(filters.get('year'))
+        if years:
+            years_int = [int(y) for y in years if str(y).isdigit()]
+            if years_int:
+                df_leave = df_leave[df_leave['START DATE'].dt.year.isin(years_int)]
+
+        MONTH_MAP = {
+            'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+            'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+        }
+        months = parse_filter_list(filters.get('month'))
+        if months:
+            m_nums = []
+            for m in months:
+                m_str = str(m).strip().lower()
+                m_short = m_str[:3]
+                if m_short in MONTH_MAP:
+                    m_nums.append(MONTH_MAP[m_short])
+                elif m_str.isdigit():
+                    m_nums.append(int(m_str))
+            if m_nums:
+                df_leave = df_leave[df_leave['START DATE'].dt.month.isin(m_nums)]
+
+        selected_date = filters.get('date')
+        if selected_date and str(selected_date).strip() not in ('', 'all', 'none', 'null', 'undefined'):
+            try:
+                dt = pd.to_datetime(str(selected_date).strip()).normalize()
+                end_d = df_leave['END DATE'].fillna(df_leave['START DATE'])
+                df_leave = df_leave[(df_leave['START DATE'] <= dt) & (end_d >= dt)]
+            except Exception:
+                pass
+
+        start_date = filters.get('start_date')
+        if start_date and str(start_date).strip() not in ('', 'all', 'none', 'null', 'undefined'):
+            try:
+                s_dt = pd.to_datetime(str(start_date).strip()).normalize()
+                df_leave = df_leave[df_leave['END DATE'].fillna(df_leave['START DATE']) >= s_dt]
+            except Exception:
+                pass
+
+        end_date = filters.get('end_date')
+        if end_date and str(end_date).strip() not in ('', 'all', 'none', 'null', 'undefined'):
+            try:
+                e_dt = pd.to_datetime(str(end_date).strip()).normalize()
+                df_leave = df_leave[df_leave['START DATE'] <= e_dt]
+            except Exception:
+                pass
+
+        # 3. Synchronized cohort for employee distribution
+        df_emp_filtered = apply_employee_filters(data_loader.df_employees, filters)
+        total_cohort = len(df_emp_filtered) if len(df_emp_filtered) > 0 else 590
+
+        total_days = float(df_leave['DAY VALUE'].sum()) if not df_leave.empty else 0.0
+        unique_emps = int(df_leave['EMPLOYEE NUMBER'].nunique()) if not df_leave.empty else 0
+        leave_rate_pct = round((unique_emps / total_cohort) * 100, 1) if total_cohort > 0 else 0.0
+
         type_breakdown = []
-        for l_type, count in type_counts.items():
-            days_sum = float(df_leave[df_leave['LEAVE TYPE'] == l_type]['DAY VALUE'].sum())
-            type_breakdown.append({
-                'leave_type': str(l_type),
-                'records_count': int(count),
-                'total_days': round(days_sum, 1)
-            })
-            
-        proj_counts = data_loader.df_employees['Project Working'].value_counts()
+        if not df_leave.empty:
+            type_counts = df_leave['LEAVE TYPE'].value_counts()
+            for l_type, count in type_counts.items():
+                days_sum = float(df_leave[df_leave['LEAVE TYPE'] == l_type]['DAY VALUE'].sum())
+                type_breakdown.append({
+                    'leave_type': str(l_type),
+                    'records_count': int(count),
+                    'total_days': round(days_sum, 1)
+                })
+
+        proj_counts = df_emp_filtered['Project Working'].value_counts()
         proj_dist = []
         project_names = {
             'NH': 'NH (New Hampshire)',
@@ -933,23 +1027,26 @@ class AnalyticsEngine:
                 'project_name': project_names.get(str(p), str(p)),
                 'count': int(count)
             })
-            
-        mgr_grade = df_leave.groupby(['MANAGER', 'JOB LEVEL'])['DAY VALUE'].sum().unstack(fill_value=0)
-        top_mgrs = df_leave['MANAGER'].value_counts().head(10).index
-        mgr_grade = mgr_grade.loc[mgr_grade.index.intersection(top_mgrs)]
-        manager_grade_matrix = {
-            'managers': list(mgr_grade.index),
-            'grades': sort_grades(list(mgr_grade.columns)),
-            'matrix': {k: {gk: round(float(gv), 1) for gk, gv in v.items()} for k, v in mgr_grade.to_dict(orient='index').items()}
-        }
-        
-        geo_grade = data_loader.df_employees.groupby(['LOCATION', 'JOB LEVEL']).size().unstack(fill_value=0)
+
+        if not df_leave.empty:
+            mgr_grade = df_leave.groupby(['MANAGER', 'JOB LEVEL'])['DAY VALUE'].sum().unstack(fill_value=0)
+            top_mgrs = df_leave['MANAGER'].value_counts().head(10).index
+            mgr_grade = mgr_grade.loc[mgr_grade.index.intersection(top_mgrs)]
+            manager_grade_matrix = {
+                'managers': list(mgr_grade.index),
+                'grades': sort_grades(list(mgr_grade.columns)),
+                'matrix': {k: {gk: round(float(gv), 1) for gk, gv in v.items()} for k, v in mgr_grade.to_dict(orient='index').items()}
+            }
+        else:
+            manager_grade_matrix = {'managers': [], 'grades': [], 'matrix': {}}
+
+        geo_grade = df_emp_filtered.groupby(['LOCATION', 'JOB LEVEL']).size().unstack(fill_value=0)
         geo_grade_matrix = {
             'locations': list(geo_grade.index),
             'grades': sort_grades(list(geo_grade.columns)),
             'matrix': {k: {gk: int(gv) for gk, gv in v.items()} for k, v in geo_grade.to_dict(orient='index').items()}
         }
-        
+
         # Compute daily leave counts for heat overlay in calendar
         daily_counts = {}
         events = []
@@ -970,7 +1067,7 @@ class AnalyticsEngine:
                     'department': str(row.get('DEPARTMENT', 'Core')),
                     'location': str(row.get('LOCATION', 'Bangalore'))
                 })
-                
+
         return {
             'total_leave_days': round(total_days, 1),
             'unique_employees_on_leave': unique_emps,

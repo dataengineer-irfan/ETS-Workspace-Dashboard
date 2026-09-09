@@ -119,7 +119,7 @@ class DataLoader:
         
         # Merge with employee metadata for fast slicing
         df_fin = df_fin.merge(
-            self.df_employees[['EMPLOYEE NUMBER', 'EMPLOYEE LABEL', 'JOB LEVEL', 'DEPARTMENT', 'LOCATION', 'State', 'MANAGER']],
+            self.df_employees[['EMPLOYEE NUMBER', 'EMPLOYEE LABEL', 'JOB LEVEL', 'DEPARTMENT', 'LOCATION', 'State', 'MANAGER', 'Project Working']],
             on='EMPLOYEE NUMBER',
             how='left'
         )
