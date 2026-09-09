@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/employee", tags=["Employee Details"])
 def get_employee_search_list(request: Request):
     filters = extract_request_filters(request)
     df_emp = apply_employee_filters(data_loader.df_employees, filters)
-    cols = ['EMPLOYEE NUMBER', 'EMPLOYEE LABEL', 'JOB TITLE', 'JOB LEVEL', 'DEPARTMENT', 'LOCATION', 'State', 'Project Working', 'MANAGER', 'EMP_CTC1', 'M_Salary', 'Total_Exp']
+    cols = ['EMPLOYEE NUMBER', 'EMPLOYEE LABEL', 'JOB TITLE', 'JOB LEVEL', 'DEPARTMENT', 'LOCATION', 'State', 'Project Working', 'MANAGER', 'EMP_CTC1', 'M_Salary', 'Total_Exp', 'Infinite_Exp', 'GENDER']
     cols_exist = [c for c in cols if c in df_emp.columns]
     res_df = df_emp[cols_exist].copy().fillna('')
     return sanitize_list(res_df.to_dict(orient='records'))

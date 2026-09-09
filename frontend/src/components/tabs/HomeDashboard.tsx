@@ -278,6 +278,7 @@ interface DrilldownItem {
   total_exp?: number;
   infinite_exp?: number;
   manager?: string;
+  gender?: string;
   exit_date?: string;
 }
 
@@ -289,6 +290,7 @@ interface ActiveDrilldown {
   filterValue?: any;
   items: DrilldownItem[];
   isExitList?: boolean;
+  isTenureList?: boolean;
 }
 
 /* ─── Main Dashboard ──────────────────────────────────────────── */
@@ -408,9 +410,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     job_title: e['JOB TITLE'] || 'Engineer',
     department: e['DEPARTMENT'] || 'Delivery',
     location: e['LOCATION'] || 'Bangalore',
-    total_exp: e['Total_Exp'],
-    infinite_exp: (e as any)['Infinite_Exp'],
+    total_exp: e['Total_Exp'] !== undefined && e['Total_Exp'] !== null && e['Total_Exp'] !== ('' as any) ? Number(e['Total_Exp']) : undefined,
+    infinite_exp: e['Infinite_Exp'] !== undefined && e['Infinite_Exp'] !== null && e['Infinite_Exp'] !== ('' as any) ? Number(e['Infinite_Exp']) : undefined,
     manager: e['MANAGER'],
+    gender: e['GENDER'],
   }));
 
   const openDrilldown = (
@@ -420,7 +423,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     items: DrilldownItem[],
     filterKey?: keyof FilterParams,
     filterValue?: any,
-    isExitList = false
+    isExitList = false,
+    isTenureList = false
   ) => {
     setDrilldownSearch('');
     setActiveDrilldown({
@@ -431,6 +435,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       filterKey,
       filterValue,
       isExitList,
+      isTenureList,
     });
   };
 
@@ -873,20 +878,37 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
           {/* Horizontal Progress Bars */}
           <div className="flex-1 flex flex-col justify-around py-1.5 min-h-0">
-            {stabilityBands.map((band: any) => (
-              <div
-                key={band.band}
-                onClick={() => {
-                  openDrilldown(
-                    `Tenure Band: ${band.band} (${band.label})`,
-                    `${band.count} employees with ${band.band} tenure at ETS (${band.percentage}% of workforce)`,
-                    `${band.count} Staff`,
-                    allDrilldownItems
-                  );
-                }}
-                className="flex flex-col gap-0.5 cursor-pointer group p-0.5 rounded hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
-                title={`Click to view employees in ${band.band} tenure band`}
-              >
+            {stabilityBands.map((band: any) => {
+              const bandFilters: Record<string, (exp: number) => boolean> = {
+                '< 1 Yr': (exp) => exp < 1,
+                '1 to 3 Yrs': (exp) => exp >= 1 && exp < 3,
+                '3 to 5 Yrs': (exp) => exp >= 3 && exp < 5,
+                '5 to 10 Yrs': (exp) => exp >= 5 && exp < 10,
+                '10+ Yrs': (exp) => exp >= 10,
+              };
+              const filterFn = bandFilters[band.band];
+              const bandItems = filterFn
+                ? allDrilldownItems.filter((e) => e.infinite_exp !== undefined && filterFn(e.infinite_exp))
+                : allDrilldownItems;
+
+              return (
+                <div
+                  key={band.band}
+                  onClick={() => {
+                    openDrilldown(
+                      `Tenure Band: ${band.band} (${band.label})`,
+                      `${bandItems.length} employees with ${band.band} tenure at ETS (${band.percentage}% of workforce)`,
+                      `${bandItems.length} Staff`,
+                      bandItems,
+                      undefined,
+                      undefined,
+                      false,
+                      true
+                    );
+                  }}
+                  className="flex flex-col gap-0.5 cursor-pointer group p-0.5 rounded hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                  title={`Click to view ${bandItems.length} employees in ${band.band} tenure band`}
+                >
                 <div className="flex items-center justify-between text-[10px]">
                   <span className="font-semibold text-slate-700 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors">
                     {band.band}
@@ -902,7 +924,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   />
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
 
           <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
@@ -1201,7 +1224,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                         <th className="p-2">Title</th>
                         <th className="p-2">Department</th>
                         <th className="p-2">Location</th>
-                        <th className="p-2">{activeDrilldown.isExitList ? 'Exit Date' : 'Experience'}</th>
+                        <th className="p-2">
+                          {activeDrilldown.isExitList ? 'Exit Date' : activeDrilldown.isTenureList ? 'Company Tenure' : 'Experience'}
+                        </th>
                         <th className="p-2 text-right">360 View</th>
                       </tr>
                     </thead>
@@ -1224,9 +1249,29 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                           <td className="p-2 text-slate-600 dark:text-slate-300">{emp.department}</td>
                           <td className="p-2 text-slate-600 dark:text-slate-300">{emp.location}</td>
                           <td className="p-2 font-mono text-slate-600 dark:text-slate-300">
-                            {activeDrilldown.isExitList
-                              ? emp.exit_date || 'Separated'
-                              : emp.total_exp ? `${emp.total_exp}y` : '—'}
+                            {activeDrilldown.isExitList ? (
+                              emp.exit_date || 'Separated'
+                            ) : activeDrilldown.isTenureList ? (
+                              <div className="flex flex-col">
+                                <span className="font-bold text-teal-600 dark:text-teal-400">
+                                  {emp.infinite_exp !== undefined ? `${emp.infinite_exp.toFixed(1)}y ETS` : '—'}
+                                </span>
+                                <span className="text-[9px] text-slate-400">
+                                  Total: {emp.total_exp !== undefined ? `${emp.total_exp.toFixed(1)}y` : '—'}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col">
+                                <span className="font-medium text-slate-800 dark:text-slate-200">
+                                  {emp.total_exp !== undefined ? `${emp.total_exp.toFixed(1)}y` : '—'}
+                                </span>
+                                {emp.infinite_exp !== undefined && (
+                                  <span className="text-[9px] text-teal-600 dark:text-teal-400 font-medium">
+                                    ETS: {emp.infinite_exp.toFixed(1)}y
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td className="p-2 text-right">
                             <button

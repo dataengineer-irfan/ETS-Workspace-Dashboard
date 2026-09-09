@@ -119,6 +119,8 @@ export interface EmployeeListItem {
   'EMP_CTC1'?: number;
   'M_Salary'?: number;
   'Total_Exp'?: number;
+  'Infinite_Exp'?: number;
+  'GENDER'?: string;
 }
 
 export interface EmployeeDetails {
