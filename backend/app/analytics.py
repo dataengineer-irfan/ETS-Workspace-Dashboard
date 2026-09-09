@@ -542,11 +542,19 @@ class AnalyticsEngine:
         for cs in critical_skills:
             matching = data_loader.df_skills[data_loader.df_skills['Skill Name'].str.lower() == cs.lower()]
             bench_count = len(matching)
+            required_target = 15
+            deficit = max(0, required_target - bench_count)
             status = 'Adequate' if bench_count >= 4 else ('Moderate' if bench_count >= 2 else 'Critical Gap')
+            priority = 'Critical' if bench_count <= 1 else ('High' if bench_count == 2 else ('Moderate' if bench_count == 3 else 'Normal'))
             coverage_gaps.append({
                 'skill_name': cs,
+                'skill': cs,
                 'verified_bench': bench_count,
+                'current': bench_count,
+                'required': required_target,
+                'deficit': deficit,
                 'status': status,
+                'priority': priority,
                 'unmapped_risk': 'High' if bench_count < 2 else 'Medium'
             })
             
@@ -579,7 +587,7 @@ class AnalyticsEngine:
             'skill_roster': skill_roster,
             'verified_specialists': verified_specialists,
             'coverage_gaps': coverage_gaps,
-            'audit_headline': f"21 verified skills mapped across 6 specialists · {round(missing_count / len(df_emp) * 100, 1)}% inventory unassigned (Action Required: Initiate Skill Audit)"
+            'audit_headline': f"{len(data_loader.df_skills)} verified skills mapped across {len(verified_specialists)} specialists · {round(missing_count / max(1, len(df_emp)) * 100, 1)}% inventory unassigned (Action Required: Initiate Skill Audit)"
         }
 
     @staticmethod
