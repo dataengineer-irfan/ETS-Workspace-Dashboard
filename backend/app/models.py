@@ -27,6 +27,10 @@ class HomeKPIs(BaseModel):
     location_distribution: List[Dict[str, Any]]
     attrition_rate_current: Optional[float] = None
     attrition_trend_dir: Optional[str] = None
+    grade_hierarchy: Optional[List[Dict[str, Any]]] = None
+    tenure_stability_bands: Optional[List[Dict[str, Any]]] = None
+    headcount_growth_history: Optional[List[Dict[str, Any]]] = None
+    department_distribution: Optional[List[Dict[str, Any]]] = None
 
 class StatewiseKPIs(BaseModel):
     selected_sdm: str

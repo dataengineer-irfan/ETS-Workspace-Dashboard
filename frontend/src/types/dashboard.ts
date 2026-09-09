@@ -37,6 +37,30 @@ export interface HomeKPIs {
   location_distribution: { location: string; count: number; percentage: number }[];
   attrition_rate_current?: number;
   attrition_trend_dir?: string;
+  grade_hierarchy?: {
+    tier: string;
+    grades: string[];
+    description: string;
+    count: number;
+    percentage: number;
+  }[];
+  tenure_stability_bands?: {
+    band: string;
+    label: string;
+    count: number;
+    percentage: number;
+  }[];
+  headcount_growth_history?: {
+    year: string;
+    joiners: number;
+    exits: number;
+    headcount: number;
+  }[];
+  department_distribution?: {
+    department: string;
+    count: number;
+    percentage: number;
+  }[];
 }
 
 export interface StatewiseKPIs {

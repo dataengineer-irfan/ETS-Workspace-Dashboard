@@ -165,7 +165,11 @@ class AnalyticsEngine:
                 'avg_total_exp': 0.0,
                 'recent_hirings': {'Joined 2024': 0, 'Joined 2023': 0, 'Joined Earlier': 0},
                 'attrition_by_year': [],
-                'location_distribution': []
+                'location_distribution': [],
+                'grade_hierarchy': [],
+                'tenure_stability_bands': [],
+                'headcount_growth_history': [],
+                'department_distribution': []
             }
         
         male_count = int((df['GENDER'] == 'Male').sum())
@@ -222,6 +226,70 @@ class AnalyticsEngine:
             pct = round((count / total) * 100, 2)
             loc_dist.append({'location': loc, 'count': int(count), 'percentage': pct})
             
+        # Grade Hierarchy Tiers (Executive Pyramid)
+        tier_defs = [
+            {'tier': 'Executive Leadership', 'grades': ['E8', 'E9', 'E10'], 'description': 'Strategic & Executive Advisory'},
+            {'tier': 'Senior Delivery & Leads', 'grades': ['E5', 'E6', 'E7'], 'description': 'Program Delivery & Technical Leadership'},
+            {'tier': 'Core Engineering & Specialists', 'grades': ['E3', 'E4'], 'description': 'Senior Engineers & Domain Specialists'},
+            {'tier': 'Associate & Foundation', 'grades': ['E1', 'E2'], 'description': 'Software Engineers & Analysts'},
+        ]
+        grade_hierarchy = []
+        for t in tier_defs:
+            t_count = int(df['JOB LEVEL'].isin(t['grades']).sum())
+            t_pct = round((t_count / total) * 100, 1) if total > 0 else 0.0
+            grade_hierarchy.append({
+                'tier': t['tier'],
+                'grades': t['grades'],
+                'description': t['description'],
+                'count': t_count,
+                'percentage': t_pct
+            })
+
+        # Tenure Stability Bands (<1y, 1-3y, 3-5y, 5-10y, 10y+)
+        band_defs = [
+            ('< 1 Yr', 'Onboarding & Ramp-up', df['Infinite_Exp'] < 1),
+            ('1 to 3 Yrs', 'Core Productive Staff', (df['Infinite_Exp'] >= 1) & (df['Infinite_Exp'] < 3)),
+            ('3 to 5 Yrs', 'Established Contributors', (df['Infinite_Exp'] >= 3) & (df['Infinite_Exp'] < 5)),
+            ('5 to 10 Yrs', 'Senior Domain Anchors', (df['Infinite_Exp'] >= 5) & (df['Infinite_Exp'] < 10)),
+            ('10+ Yrs', 'Veteran Leadership', df['Infinite_Exp'] >= 10),
+        ]
+        tenure_stability_bands = []
+        for band_name, label, mask in band_defs:
+            b_count = int(mask.sum())
+            b_pct = round((b_count / total) * 100, 1) if total > 0 else 0.0
+            tenure_stability_bands.append({
+                'band': band_name,
+                'label': label,
+                'count': b_count,
+                'percentage': b_pct
+            })
+
+        # Longitudinal Headcount Growth History (2020-2024)
+        growth_years = [2020, 2021, 2022, 2023, 2024]
+        headcount_growth_history = []
+        cum_hc = int((df['START DATE'].dt.year < 2020).sum())
+        for yr in growth_years:
+            yr_joiners = int((df['START DATE'].dt.year == yr).sum())
+            yr_exits = int((df['EXIT DATE'].dt.year == yr).sum())
+            cum_hc = cum_hc + yr_joiners - yr_exits
+            headcount_growth_history.append({
+                'year': str(yr),
+                'joiners': yr_joiners,
+                'exits': yr_exits,
+                'headcount': max(0, min(total, cum_hc if yr < 2024 else total))
+            })
+
+        # Department Distribution
+        dept_counts = df['DEPARTMENT'].value_counts()
+        department_distribution = []
+        for dept, count in dept_counts.items():
+            pct = round((count / total) * 100, 1) if total > 0 else 0.0
+            department_distribution.append({
+                'department': str(dept),
+                'count': int(count),
+                'percentage': pct
+            })
+
         return {
             'total_employees': total,
             'male_count': male_count,
@@ -239,7 +307,11 @@ class AnalyticsEngine:
             'attrition_by_year': attrition_by_year,
             'location_distribution': loc_dist,
             'attrition_rate_current': current_attr_rate,
-            'attrition_trend_dir': attrition_trend_dir
+            'attrition_trend_dir': attrition_trend_dir,
+            'grade_hierarchy': grade_hierarchy,
+            'tenure_stability_bands': tenure_stability_bands,
+            'headcount_growth_history': headcount_growth_history,
+            'department_distribution': department_distribution
         }
 
     @staticmethod
