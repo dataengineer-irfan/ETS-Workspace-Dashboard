@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import type { HomeKPIs } from '../../types/dashboard';
+import React, { useState, useMemo } from 'react';
+import type { HomeKPIs, EmployeeListItem, FilterParams } from '../../types/dashboard';
 import {
   Users,
   Clock,
@@ -13,7 +13,11 @@ import {
   Layers,
   BarChart3,
   Building2,
+  Search,
+  Filter,
+  ExternalLink,
   LucideIcon,
+  X,
 } from 'lucide-react';
 import {
   PieChart,
@@ -31,21 +35,17 @@ import {
   Line,
 } from 'recharts';
 
-interface HomeDashboardProps {
+export interface HomeDashboardProps {
   data: HomeKPIs | null;
   loading: boolean;
   onNavigateTab: (tab: string) => void;
   onOpenEmployeeProfile?: (empNumber: number) => void;
+  employeeList?: EmployeeListItem[];
+  filters?: FilterParams;
+  setFilters?: React.Dispatch<React.SetStateAction<FilterParams>>;
 }
 
 /* ─── Color tokens ────────────────────────────────────────────── */
-const HIRING_COLORS: Record<string, string> = {
-  'Joined 2024': '#10b981',
-  'Joined 2023': '#0284c7',
-  'Joined Earlier': '#f59e0b',
-};
-const FALLBACK_HIRING = ['#10b981', '#0284c7', '#f59e0b'];
-
 const LOCATION_COLORS: Record<string, string> = {
   Bangalore: '#0284c7',
   Hyderabad: '#0d9488',
@@ -60,7 +60,6 @@ const LOCATION_TINTS: Record<string, string> = {
   Pune: 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300',
 };
 
-/* Accent palette shared across all KPI slots */
 type Accent = 'teal' | 'blue' | 'pink' | 'emerald' | 'amber' | 'purple' | 'cyan';
 
 const ACCENT: Record<Accent, {
@@ -191,9 +190,9 @@ const KPISlot: React.FC<KPISlotProps> = ({
 
   return (
     <div
-      className={`glass-panel rounded-xl p-2 flex flex-col justify-between h-full transition-all ${
-        dominant ? 'border-l-4 border-l-cyan-600 shadow-sm ring-1 ring-cyan-500/20' : ''
-      } ${onClick ? 'cursor-pointer hover:-translate-y-0.5 hover:border-cyan-400 hover:shadow-md' : ''}`}
+      className={`glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full transition-all group ${
+        dominant ? 'border-l-4 border-l-cyan-600 shadow-xs ring-1 ring-cyan-500/20' : ''
+      } ${onClick ? 'cursor-pointer hover:-translate-y-0.5 hover:border-cyan-400 hover:shadow-md active:scale-[0.99]' : ''}`}
       onClick={onClick}
       style={{
         background: dominant 
@@ -206,20 +205,20 @@ const KPISlot: React.FC<KPISlotProps> = ({
         <span className={`text-[10px] font-bold tracking-[0.08em] uppercase truncate leading-tight ${dominant ? 'text-cyan-900 dark:text-cyan-300' : 'text-slate-600 dark:text-slate-400'}`}>
           {title}
         </span>
-        <div className={`rounded-md flex items-center justify-center shrink-0 ${dominant ? 'w-6 h-6' : 'w-5 h-5'} ${a.icon}`}>
+        <div className={`rounded-md flex items-center justify-center shrink-0 ${dominant ? 'w-6 h-6' : 'w-5 h-5'} ${a.icon} group-hover:scale-110 transition-transform`}>
           {iconNode ? iconNode : Icon ? <Icon className={dominant ? 'w-3.5 h-3.5' : 'w-3 h-3'} /> : null}
         </div>
       </div>
 
       {/* Row 2: value + ring (for gender) or value + badge */}
       {hasRing ? (
-        <div className="flex items-center justify-between gap-1 my-0.5 min-h-0">
+        <div className="flex items-center justify-between gap-1 my-1 min-h-0">
           <div className="flex flex-col justify-center min-w-0">
             <div className="flex items-baseline gap-1">
               <span className="text-xl font-extrabold text-slate-900 dark:text-slate-100 font-mono tracking-tight leading-none">
                 {value}
               </span>
-              <span className={`text-[9px] font-bold px-1.5 py-0 rounded border font-mono leading-tight shrink-0 ${a.badge}`}>
+              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border font-mono leading-tight shrink-0 ${a.badge}`}>
                 {badge}
               </span>
             </div>
@@ -228,7 +227,7 @@ const KPISlot: React.FC<KPISlotProps> = ({
             </p>
           </div>
 
-          <div className="relative w-10 h-10 flex-shrink-0 flex items-center justify-center">
+          <div className="relative w-10 h-10 shrink-0 flex items-center justify-center">
             <svg className="w-10 h-10 -rotate-90" viewBox="0 0 48 48">
               <circle cx="24" cy="24" r={RING_R} stroke={a.track} strokeWidth="3.5" fill="transparent" />
               <circle
@@ -248,7 +247,7 @@ const KPISlot: React.FC<KPISlotProps> = ({
           </div>
         </div>
       ) : (
-        <div className="my-0.5 flex items-baseline justify-between gap-1 shrink-0">
+        <div className="my-1 flex items-baseline justify-between gap-1 shrink-0">
           <span className={`font-black tracking-tight leading-none font-mono ${dominant ? 'text-2xl text-cyan-950 dark:text-cyan-200' : 'text-xl text-slate-900 dark:text-slate-100'}`}>
             {value}
           </span>
@@ -268,27 +267,47 @@ const KPISlot: React.FC<KPISlotProps> = ({
   );
 };
 
+/* ─── Drilldown Modal Types ───────────────────────────────────── */
+interface DrilldownItem {
+  id: number;
+  name: string;
+  job_level: string;
+  job_title: string;
+  department: string;
+  location: string;
+  total_exp?: number;
+  infinite_exp?: number;
+  manager?: string;
+  exit_date?: string;
+}
+
+interface ActiveDrilldown {
+  title: string;
+  subtitle: string;
+  badge?: string;
+  filterKey?: keyof FilterParams;
+  filterValue?: any;
+  items: DrilldownItem[];
+  isExitList?: boolean;
+}
+
 /* ─── Main Dashboard ──────────────────────────────────────────── */
 export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   data,
   loading,
   onNavigateTab,
   onOpenEmployeeProfile,
+  employeeList,
+  filters,
+  setFilters,
 }) => {
   const [hoveredLocIndex, setHoveredLocIndex] = useState<number | null>(null);
-  const [selectedLens, setSelectedLens] = useState<'regional' | 'capability' | 'compensation' | 'attendance'>('regional');
-  const [selectedYearLeavers, setSelectedYearLeavers] = useState<{ year: string; leavers: any[] } | null>(null);
-
-  const lenses = [
-    { id: 'regional', label: 'Regional view', description: 'Delivery footprint', action: () => onNavigateTab('statewise') },
-    { id: 'capability', label: 'Capability view', description: 'Skill depth', action: () => onNavigateTab('techwise') },
-    { id: 'compensation', label: 'Compensation view', description: 'Pay structure', action: () => onNavigateTab('salarywise') },
-    { id: 'attendance', label: 'Health view', description: 'Leave & attendance', action: () => onNavigateTab('calendar') },
-  ] as const;
+  const [activeDrilldown, setActiveDrilldown] = useState<ActiveDrilldown | null>(null);
+  const [drilldownSearch, setDrilldownSearch] = useState('');
 
   if (loading || !data) {
     return (
-      <div className="flex-1 flex items-center justify-center text-slate-500 text-xs">
+      <div className="flex-1 flex items-center justify-center text-slate-500 text-xs min-h-[300px]">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin" />
           <span>Loading ETS Executive Dashboard...</span>
@@ -356,11 +375,80 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   const currentYearExits = data.attrition_by_year[data.attrition_by_year.length - 1]?.exits ?? 4;
 
+  // Dynamic calculated metrics for growth summary cards
+  const peakYear = growthHistory.reduce(
+    (max, cur) => (cur.joiners > max.joiners ? cur : max),
+    growthHistory[0] || { year: '2022', joiners: 240 }
+  );
+  const currentAttrRate = data.attrition_rate_current !== undefined ? data.attrition_rate_current : 0.7;
+  const retentionRate = (100 - currentAttrRate).toFixed(1);
+
+  // Dynamic label for stability band footer (1 to 3 Yrs)
+  const coreTenureBand = stabilityBands.find((b: any) => b.band.includes('1 to 3')) || stabilityBands[1];
+  const stabilityFooterText = coreTenureBand
+    ? `${coreTenureBand.percentage}% in ${coreTenureBand.band} Band`
+    : 'High Retention Base';
+
+  // Dynamic label for department distribution footer (top 2 departments)
+  const top2 = deptList.slice(0, 2);
+  const top2Pct = top2.reduce((acc: number, cur: any) => acc + (cur.percentage || 0), 0);
+  const top2Names = top2.map((d: any) => d.department).join(' & ');
+
+  // Dynamic label for pyramid structure
+  const assocTier = pyramidTiers.find((t: any) => t.tier.toLowerCase().includes('associate'));
+  const coreTier = pyramidTiers.find((t: any) => t.tier.toLowerCase().includes('core'));
+  const isBroadBase = (assocTier?.percentage || 0) >= (coreTier?.percentage || 0);
+  const pyramidLabel = isBroadBase ? 'Broad-Base Foundation' : 'Core-Heavy Structure';
+
+  // Convert employeeList to DrilldownItem format for lightning-fast drilldown modals
+  const allDrilldownItems: DrilldownItem[] = (employeeList || []).map((e) => ({
+    id: e['EMPLOYEE NUMBER'],
+    name: e['EMPLOYEE LABEL'] || `Employee #${e['EMPLOYEE NUMBER']}`,
+    job_level: e['JOB LEVEL'] || '—',
+    job_title: e['JOB TITLE'] || 'Engineer',
+    department: e['DEPARTMENT'] || 'Delivery',
+    location: e['LOCATION'] || 'Bangalore',
+    total_exp: e['Total_Exp'],
+    infinite_exp: (e as any)['Infinite_Exp'],
+    manager: e['MANAGER'],
+  }));
+
+  const openDrilldown = (
+    title: string,
+    subtitle: string,
+    badge: string,
+    items: DrilldownItem[],
+    filterKey?: keyof FilterParams,
+    filterValue?: any,
+    isExitList = false
+  ) => {
+    setDrilldownSearch('');
+    setActiveDrilldown({
+      title,
+      subtitle,
+      badge,
+      items,
+      filterKey,
+      filterValue,
+      isExitList,
+    });
+  };
+
+  const applyDrilldownFilter = () => {
+    if (!activeDrilldown || !activeDrilldown.filterKey || !setFilters) return;
+    const { filterKey, filterValue } = activeDrilldown;
+    setFilters((prev) => ({
+      ...prev,
+      [filterKey]: Array.isArray(filterValue) ? filterValue : [filterValue],
+    }));
+    setActiveDrilldown(null);
+  };
+
   return (
-    <div className="flex-1 flex flex-col gap-1.5 overflow-hidden select-none">
+    <div className="flex-1 flex flex-col gap-2 select-none min-h-full">
       
-      {/* ══ ROW 1: 5-Card Executive KPI Band (Inspired by Reference Top Bar) ══ */}
-      <div className="grid grid-cols-5 gap-1.5 shrink-0" style={{ gridAutoRows: '1fr' }}>
+      {/* ══ ROW 1: 5-Card Executive KPI Band (Interactive Drilldowns) ══ */}
+      <div className="grid grid-cols-5 gap-2 shrink-0">
         <KPISlot
           accent="cyan"
           dominant={true}
@@ -369,7 +457,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           badge="Enterprise"
           subtitle="Active ETS enterprise workforce"
           Icon={Users}
-          onClick={() => onNavigateTab('statewise')}
+          onClick={() => {
+            openDrilldown(
+              'Enterprise Workforce Roster',
+              `All ${data.total_employees} active staff members in current scope`,
+              `${data.total_employees} Staff`,
+              allDrilldownItems
+            );
+          }}
         />
 
         <KPISlot
@@ -377,9 +472,34 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           title="Active & Retention"
           value={data.total_employees}
           badge={`${currentYearExits} Exits`}
-          subtitle="Low attrition · 99.3% Stability"
+          subtitle={`Low attrition · ${retentionRate}% Stability`}
           Icon={Shield}
-          onClick={() => onNavigateTab('statewise')}
+          onClick={() => {
+            const allLeavers: DrilldownItem[] = [];
+            data.attrition_by_year.forEach((ay) => {
+              (ay.leavers || []).forEach((l: any) => {
+                allLeavers.push({
+                  id: l.employee_number || l['EMPLOYEE NUMBER'],
+                  name: l.name || l['EMPLOYEE LABEL'] || `Former Employee #${l.employee_number}`,
+                  job_level: l.job_title ? l.job_title.split(' ')[0] : 'E1',
+                  job_title: l.job_title || 'Engineer',
+                  department: l.department || 'Delivery',
+                  location: l.location || 'Bangalore',
+                  infinite_exp: l.tenure,
+                  exit_date: l.exit_date || ay.year,
+                });
+              });
+            });
+            openDrilldown(
+              'Workforce Separations & Historical Exits',
+              `${allLeavers.length || currentYearExits} recorded separations (${currentAttrRate}% current attrition)`,
+              `${allLeavers.length || currentYearExits} Exits`,
+              allLeavers,
+              undefined,
+              undefined,
+              true
+            );
+          }}
         />
 
         <KPISlot
@@ -389,7 +509,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           badge="Company"
           subtitle="Average tenure within ETS"
           Icon={Clock}
-          onClick={() => onNavigateTab('statewise')}
+          onClick={() => {
+            openDrilldown(
+              'Workforce Tenure Overview',
+              `Average company tenure is ${data.avg_infinite_exp} years across ${data.total_employees} active staff`,
+              `Avg ${data.avg_infinite_exp}y`,
+              allDrilldownItems
+            );
+          }}
         />
 
         <KPISlot
@@ -400,7 +527,25 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           subtitle={`${data.female_count} Female · ${data.male_count} Male staff`}
           iconNode={<FemaleSVG cls="w-3.5 h-3.5" />}
           pct={data.pct_female}
-          onClick={() => onNavigateTab('statewise')}
+          onClick={() => {
+            const women = (employeeList || [])
+              .filter((e) => (e as any).GENDER === 'Female' || (e as any).gender === 'Female')
+              .map((e) => ({
+                id: e['EMPLOYEE NUMBER'],
+                name: e['EMPLOYEE LABEL'],
+                job_level: e['JOB LEVEL'],
+                job_title: e['JOB TITLE'],
+                department: e['DEPARTMENT'],
+                location: e['LOCATION'],
+                total_exp: e['Total_Exp'],
+              }));
+            openDrilldown(
+              'Female Workforce Representation',
+              `${data.female_count} women professionals (${data.pct_female}% diversity ratio)`,
+              `${data.female_count} Women`,
+              women.length > 0 ? women : allDrilldownItems
+            );
+          }}
         />
 
         <KPISlot
@@ -415,11 +560,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       </div>
 
       {/* ══ ROW 2: WORKFORCE DYNAMICS & COMPOSITION (Growth + Diversity + Pyramid) ══ */}
-      <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
+      <div className="grid grid-cols-12 gap-2 shrink-0">
         
         {/* Module 1: Headcount & Hiring Growth (Combo Bar + Line) */}
-        <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden min-h-0">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+        <div className="col-span-5 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[235px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
@@ -434,7 +579,35 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
           <div className="flex-1 min-h-[140px] pt-1">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={growthHistory} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <ComposedChart
+                data={growthHistory}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                onClick={(e: any) => {
+                  if (e?.activePayload?.[0]?.payload) {
+                    const yr = e.activePayload[0].payload.year;
+                    const yrAttrition = data.attrition_by_year.find((a) => a.year === yr);
+                    const leavers = (yrAttrition?.leavers || []).map((l: any) => ({
+                      id: l.employee_number || l['EMPLOYEE NUMBER'],
+                      name: l.name || l['EMPLOYEE LABEL'],
+                      job_level: '—',
+                      job_title: l.job_title || 'Engineer',
+                      department: l.department || 'Delivery',
+                      location: l.location || 'Bangalore',
+                      infinite_exp: l.tenure,
+                      exit_date: l.exit_date,
+                    }));
+                    openDrilldown(
+                      `Year ${yr} Workforce Dynamics`,
+                      `${e.activePayload[0].payload.joiners} joiners, ${e.activePayload[0].payload.exits} exits, ${e.activePayload[0].payload.headcount} active headcount`,
+                      `Year ${yr}`,
+                      leavers.length > 0 ? leavers : allDrilldownItems,
+                      undefined,
+                      undefined,
+                      leavers.length > 0
+                    );
+                  }
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} opacity={0.6} />
                 <XAxis dataKey="year" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
                 <YAxis yAxisId="left" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
@@ -451,32 +624,32 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   itemStyle={{ color: 'var(--text)' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
-                <Bar yAxisId="left" dataKey="joiners" fill="#0284c7" name="Joiners" radius={[3, 3, 0, 0]} />
+                <Bar yAxisId="left" dataKey="joiners" fill="#0284c7" name="Joiners" radius={[3, 3, 0, 0]} className="cursor-pointer" />
                 <Line yAxisId="right" type="monotone" dataKey="headcount" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: '#10b981' }} name="Active Headcount" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Quick metric summary badges */}
-          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
+          {/* Dynamic metric summary badges */}
+          <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
             <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
               <span className="text-[9px] text-slate-500 dark:text-slate-400 block">Peak Joiners</span>
-              <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 font-mono">240 in 2022</span>
+              <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 font-mono">{peakYear.joiners} in {peakYear.year}</span>
             </div>
             <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 block">Baseline Roster</span>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">590 Active</span>
+              <span className="text-[9px] text-slate-500 dark:text-slate-400 block">Current Scope</span>
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">{data.total_employees} Active</span>
             </div>
             <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 block">2024 Stability</span>
-              <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 font-mono">99.3% Retained</span>
+              <span className="text-[9px] text-slate-500 dark:text-slate-400 block">Stability Index</span>
+              <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 font-mono">{retentionRate}% Retained</span>
             </div>
           </div>
         </div>
 
         {/* Module 2: Diversity % Spotlight (Donut + Gender Avatars) */}
-        <div className="col-span-3 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden min-h-0">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+        <div className="col-span-3 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[235px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
               Diversity % Spotlight
@@ -486,7 +659,29 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </span>
           </div>
 
-          <div className="flex-1 min-h-[120px] relative flex items-center justify-center">
+          <div
+            className="flex-1 min-h-[120px] relative flex items-center justify-center cursor-pointer group"
+            onClick={() => {
+              const women = (employeeList || [])
+                .filter((e) => (e as any).GENDER === 'Female' || (e as any).gender === 'Female')
+                .map((e) => ({
+                  id: e['EMPLOYEE NUMBER'],
+                  name: e['EMPLOYEE LABEL'],
+                  job_level: e['JOB LEVEL'],
+                  job_title: e['JOB TITLE'],
+                  department: e['DEPARTMENT'],
+                  location: e['LOCATION'],
+                  total_exp: e['Total_Exp'],
+                }));
+              openDrilldown(
+                'Diversity Spotlight: Female Staff',
+                `${data.female_count} women professionals (${data.pct_female}% diversity ratio)`,
+                `${data.female_count} Women`,
+                women.length > 0 ? women : allDrilldownItems
+              );
+            }}
+            title="Click to view diversity roster"
+          >
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -514,19 +709,40 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group-hover:scale-105 transition-transform">
+              <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono leading-none">
                 {data.total_employees}
               </span>
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
                 Total Staff
               </span>
             </div>
           </div>
 
-          {/* Gender breakdown footer cards */}
-          <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800 shrink-0">
-            <div className="p-1 rounded-lg bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 flex items-center justify-between">
+          {/* Gender breakdown footer cards with interactive drilldown */}
+          <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 shrink-0">
+            <div
+              onClick={() => {
+                const men = (employeeList || [])
+                  .filter((e) => (e as any).GENDER === 'Male' || (e as any).gender === 'Male')
+                  .map((e) => ({
+                    id: e['EMPLOYEE NUMBER'],
+                    name: e['EMPLOYEE LABEL'],
+                    job_level: e['JOB LEVEL'],
+                    job_title: e['JOB TITLE'],
+                    department: e['DEPARTMENT'],
+                    location: e['LOCATION'],
+                    total_exp: e['Total_Exp'],
+                  }));
+                openDrilldown(
+                  'Male Workforce Representation',
+                  `${data.male_count} male employees (${data.pct_male}%)`,
+                  `${data.male_count} Staff`,
+                  men.length > 0 ? men : allDrilldownItems
+                );
+              }}
+              className="p-1.5 rounded-lg bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-xs transition-all"
+            >
               <div className="flex items-center gap-1 min-w-0">
                 <div className="w-4 h-4 rounded bg-sky-500/20 text-sky-600 dark:text-sky-300 flex items-center justify-center shrink-0">
                   <MaleSVG cls="w-2.5 h-2.5" />
@@ -539,7 +755,28 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <span className="text-xs font-black text-sky-950 dark:text-sky-100 font-mono shrink-0 pl-1">{data.male_count}</span>
             </div>
 
-            <div className="p-1 rounded-lg bg-pink-50/70 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800 flex items-center justify-between">
+            <div
+              onClick={() => {
+                const women = (employeeList || [])
+                  .filter((e) => (e as any).GENDER === 'Female' || (e as any).gender === 'Female')
+                  .map((e) => ({
+                    id: e['EMPLOYEE NUMBER'],
+                    name: e['EMPLOYEE LABEL'],
+                    job_level: e['JOB LEVEL'],
+                    job_title: e['JOB TITLE'],
+                    department: e['DEPARTMENT'],
+                    location: e['LOCATION'],
+                    total_exp: e['Total_Exp'],
+                  }));
+                openDrilldown(
+                  'Female Workforce Representation',
+                  `${data.female_count} women professionals (${data.pct_female}%)`,
+                  `${data.female_count} Women`,
+                  women.length > 0 ? women : allDrilldownItems
+                );
+              }}
+              className="p-1.5 rounded-lg bg-pink-50/70 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-xs transition-all"
+            >
               <div className="flex items-center gap-1 min-w-0">
                 <div className="w-4 h-4 rounded bg-pink-500/20 text-pink-600 dark:text-pink-300 flex items-center justify-center shrink-0">
                   <FemaleSVG cls="w-2.5 h-2.5" />
@@ -554,9 +791,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
 
-        {/* Module 3: Job Level Hierarchy (Pyramid Representation) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden min-h-0">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+        {/* Module 3: Job Level Hierarchy (Pyramid Representation with Drilldown) */}
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[235px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
@@ -569,21 +806,33 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </span>
           </div>
 
-          {/* Stepped Tiered Pyramid */}
-          <div className="flex-1 flex flex-col justify-center gap-1.5 py-1 min-h-0">
+          {/* Stepped Tiered Pyramid with Interactive Click */}
+          <div className="flex-1 flex flex-col justify-between py-1.5 min-h-0 gap-1.5">
             {pyramidTiers.map((tier: any, idx: number) => {
               const widths = ['w-[68%]', 'w-[80%]', 'w-[90%]', 'w-full'];
               const bgColors = [
-                'bg-purple-50/80 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200',
-                'bg-cyan-50/80 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200',
-                'bg-teal-50/80 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200',
-                'bg-emerald-50/80 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200',
+                'bg-purple-50/80 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 hover:border-purple-400',
+                'bg-cyan-50/80 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 hover:border-cyan-400',
+                'bg-teal-50/80 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 hover:border-teal-400',
+                'bg-emerald-50/80 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 hover:border-emerald-400',
               ];
 
               return (
                 <div
                   key={tier.tier}
-                  className={`${widths[idx]} mx-auto px-2 py-1 rounded-lg border flex items-center justify-between shadow-2xs transition-all hover:scale-[1.01] ${bgColors[idx]}`}
+                  onClick={() => {
+                    const items = allDrilldownItems.filter((e) => tier.grades?.includes(e.job_level));
+                    openDrilldown(
+                      `${tier.tier} (${tier.grades?.join(', ')})`,
+                      `${tier.count} staff members in this organizational grade tier (${tier.percentage}% of workforce)`,
+                      `${tier.count} Staff`,
+                      items,
+                      'job_level',
+                      tier.grades
+                    );
+                  }}
+                  className={`${widths[idx]} mx-auto px-2.5 py-1 rounded-lg border flex items-center justify-between shadow-2xs transition-all cursor-pointer hover:scale-[1.02] hover:shadow-sm active:scale-[0.99] ${bgColors[idx]}`}
+                  title={`Click to view roster for ${tier.tier}`}
                 >
                   <div className="min-w-0 flex items-center gap-1.5 flex-1 pr-1">
                     <span className="text-[10px] font-bold truncate">{tier.tier}</span>
@@ -600,19 +849,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             })}
           </div>
 
-          <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-            <span>Organizational Balance:</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">Healthy Broad-Base Pyramid</span>
+          <div className="pt-1.5 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+            <span>Organizational Structure:</span>
+            <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">{pyramidLabel}</span>
           </div>
         </div>
       </div>
 
-      {/* ══ ROW 3: STABILITY, FOOTPRINT & DEPARTMENTS (Inspired by Reference Bottom Row) ══ */}
-      <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
+      {/* ══ ROW 3: STABILITY, FOOTPRINT & DEPARTMENTS (Interactive Slicers) ══ */}
+      <div className="grid grid-cols-12 gap-2 shrink-0">
         
-        {/* Module 4: Stability & Tenure Bands (Horizontal Bars) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden min-h-0">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+        {/* Module 4: Stability & Tenure Bands (Clickable Horizontal Bars) */}
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[220px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Workforce Stability & Tenure</span>
@@ -623,18 +872,32 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           {/* Horizontal Progress Bars */}
-          <div className="flex-1 flex flex-col justify-around py-1 min-h-0">
+          <div className="flex-1 flex flex-col justify-around py-1.5 min-h-0">
             {stabilityBands.map((band: any) => (
-              <div key={band.band} className="flex flex-col gap-0.5">
+              <div
+                key={band.band}
+                onClick={() => {
+                  openDrilldown(
+                    `Tenure Band: ${band.band} (${band.label})`,
+                    `${band.count} employees with ${band.band} tenure at ETS (${band.percentage}% of workforce)`,
+                    `${band.count} Staff`,
+                    allDrilldownItems
+                  );
+                }}
+                className="flex flex-col gap-0.5 cursor-pointer group p-0.5 rounded hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                title={`Click to view employees in ${band.band} tenure band`}
+              >
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">{band.band}</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors">
+                    {band.band}
+                  </span>
                   <span className="font-mono text-slate-500 dark:text-slate-400 text-[9px]">
                     <b className="text-slate-800 dark:text-slate-200 font-bold">{band.count}</b> ({band.percentage}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-teal-500 to-cyan-500 h-full rounded-full transition-all duration-500"
+                    className="bg-gradient-to-r from-teal-500 to-cyan-500 h-full rounded-full transition-all duration-500 group-hover:brightness-110"
                     style={{ width: `${Math.max(4, band.percentage)}%` }}
                   />
                 </div>
@@ -642,15 +905,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             ))}
           </div>
 
-          <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-            <span>67.8% in 1–3 Yr Core Delivery Band</span>
-            <span className="text-teal-600 dark:text-teal-400 font-bold">High Stability</span>
+          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+            <span>{stabilityFooterText}</span>
+            <span className="text-teal-600 dark:text-teal-400 font-bold">
+              {data.avg_infinite_exp >= 2.5 ? 'High Stability' : 'Active Ramp-up'}
+            </span>
           </div>
         </div>
 
-        {/* Module 5: Regional Delivery Footprint Hubs */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden min-h-0">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+        {/* Module 5: Regional Delivery Footprint Hubs (Clickable Donut & 4 Hub Chips) */}
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[220px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Compass className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Delivery Footprint</span>
@@ -660,7 +925,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </span>
           </div>
 
-          <div className="flex-1 min-h-[120px] relative flex items-center justify-center">
+          <div className="flex-1 min-h-[110px] relative flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -668,11 +933,28 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   cx="50%"
                   cy="50%"
                   innerRadius="46%"
-                  outerRadius="72%"
+                  outerRadius="70%"
                   paddingAngle={4}
                   dataKey="count"
                   onMouseEnter={(_, i) => setHoveredLocIndex(i)}
                   onMouseLeave={() => setHoveredLocIndex(null)}
+                  onClick={(e: any) => {
+                    const locName = e?.location || e?.payload?.location;
+                    if (locName) {
+                      const items = allDrilldownItems.filter(
+                        (item) => item.location.toLowerCase() === locName.toLowerCase()
+                      );
+                      const locData = rankedLocs.find((l) => l.location.toLowerCase() === locName.toLowerCase());
+                      openDrilldown(
+                        `${locName} Delivery Hub`,
+                        `${locData?.count || items.length} team members stationed in ${locName} (${locData?.percentage || 0}% of workforce)`,
+                        `${locData?.count || items.length} Staff`,
+                        items,
+                        'location',
+                        [locName]
+                      );
+                    }
+                  }}
                 >
                   {rankedLocs.map((e, i) => (
                     <Cell
@@ -702,19 +984,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   <span className="text-[10px] font-bold truncate max-w-[60px]" style={{ color: activeHovered.color }}>
                     {activeHovered.location}
                   </span>
-                  <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono">
+                  <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono leading-none">
                     {activeHovered.count}
                   </span>
-                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold font-mono">
+                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
                     {activeHovered.percentage}%
                   </span>
                 </>
               ) : (
                 <>
-                  <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono">
+                  <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono leading-none">
                     {data.total_employees}
                   </span>
-                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
                     Total Staff
                   </span>
                 </>
@@ -722,7 +1004,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 shrink-0">
+          {/* 4 Location Chips in 2x2 Grid with full visibility and click-to-filter */}
+          <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 shrink-0">
             {rankedLocs.slice(0, 4).map((loc, i) => {
               const hov = hoveredLocIndex === i;
               return (
@@ -730,11 +1013,25 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   key={loc.location}
                   onMouseEnter={() => setHoveredLocIndex(i)}
                   onMouseLeave={() => setHoveredLocIndex(null)}
-                  className={`p-1 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-1 text-[10px] ${
+                  onClick={() => {
+                    const items = allDrilldownItems.filter(
+                      (item) => item.location.toLowerCase() === loc.location.toLowerCase()
+                    );
+                    openDrilldown(
+                      `${loc.location} Delivery Hub`,
+                      `${loc.count} team members stationed in ${loc.location} (${loc.percentage}% of workforce)`,
+                      `${loc.count} Staff`,
+                      items,
+                      'location',
+                      [loc.location]
+                    );
+                  }}
+                  className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-1 text-[10px] hover:scale-[1.02] ${
                     hov
-                      ? `${LOCATION_TINTS[loc.location]} shadow-xs`
+                      ? `${LOCATION_TINTS[loc.location]} shadow-xs ring-1 ring-cyan-400/50`
                       : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100/80 dark:hover:bg-slate-700/60'
                   }`}
+                  title={`Click to view employees in ${loc.location}`}
                 >
                   <div className="flex items-center gap-1 min-w-0">
                     <span
@@ -755,30 +1052,49 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
 
-        {/* Module 6: Department Distribution (Functional Breakdown) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden min-h-0">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+        {/* Module 6: Department Allocation (Clickable Functional Units) */}
+        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-[220px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Department Allocation</span>
             </div>
             <span className="text-[10px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-semibold font-mono">
-              6 Units
+              {deptList.length} Units
             </span>
           </div>
 
-          <div className="flex-1 flex flex-col justify-around py-1 min-h-0">
+          <div className="flex-1 flex flex-col justify-around py-1.5 min-h-0">
             {deptList.map((d: any) => (
-              <div key={d.department} className="flex flex-col gap-0.5">
+              <div
+                key={d.department}
+                onClick={() => {
+                  const items = allDrilldownItems.filter(
+                    (item) => item.department.toLowerCase() === d.department.toLowerCase()
+                  );
+                  openDrilldown(
+                    `${d.department} Department Team`,
+                    `${d.count} specialists allocated to ${d.department} (${d.percentage}% of workforce)`,
+                    `${d.count} Staff`,
+                    items,
+                    'department',
+                    [d.department]
+                  );
+                }}
+                className="flex flex-col gap-0.5 cursor-pointer group p-0.5 rounded hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                title={`Click to view team members in ${d.department}`}
+              >
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{d.department}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors">
+                    {d.department}
+                  </span>
                   <span className="font-mono text-[9px] text-slate-500 dark:text-slate-400">
                     <b className="text-slate-900 dark:text-slate-100">{d.count}</b> ({d.percentage}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                   <div
-                    className="bg-blue-500 dark:bg-blue-400 h-full rounded-full transition-all duration-500"
+                    className="bg-blue-500 dark:bg-blue-400 h-full rounded-full transition-all duration-500 group-hover:brightness-110"
                     style={{ width: `${Math.max(4, d.percentage)}%` }}
                   />
                 </div>
@@ -786,21 +1102,21 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             ))}
           </div>
 
-          <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
             <span>Primary Focus:</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400 font-mono">IT & Core Delivery (90.8%)</span>
+            <span className="font-bold text-blue-600 dark:text-blue-400 font-mono">{top2Names} ({top2Pct.toFixed(1)}%)</span>
           </div>
         </div>
       </div>
 
       {/* ══ ROW 4: Executive Lens Navigation Dock (5 Cards) ══ */}
-      <div className="grid grid-cols-5 gap-1.5 shrink-0 h-12">
+      <div className="grid grid-cols-5 gap-2 shrink-0 h-12">
         {[
-          { tab: 'statewise', label: 'Regional View', sub: '4 Hubs · 238 in BLR', color: 'cyan' },
-          { tab: 'techwise', label: 'Capability View', sub: '21 Skills · 5 Verified', color: 'teal' },
-          { tab: 'salarywise', label: 'Compensation View', sub: '₹45.8Cr · 54 Managers', color: 'amber' },
-          { tab: 'salarywise2', label: 'Trend View', sub: '5-Year CTC Evolution', color: 'emerald' },
-          { tab: 'calendar', label: 'Attendance View', sub: '13.2% Leave Rate', color: 'purple' },
+          { tab: 'statewise', label: 'Regional View', sub: 'Geographic Distribution', color: 'cyan' },
+          { tab: 'techwise', label: 'Capability View', sub: 'Skill Coverage & Depth', color: 'teal' },
+          { tab: 'salarywise', label: 'Compensation View', sub: 'CTC & Band Alignment', color: 'amber' },
+          { tab: 'salarywise2', label: 'Trend View', sub: 'Longitudinal CTC Growth', color: 'emerald' },
+          { tab: 'calendar', label: 'Attendance View', sub: 'Leave & Operations Health', color: 'purple' },
         ].map(({ tab, label, sub, color }) => {
           const borderColorMap: Record<string, string> = {
             cyan: '#67e8f9',
@@ -821,7 +1137,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <button
               key={tab}
               onClick={() => onNavigateTab(tab)}
-              className="glass-card rounded-xl p-2 flex items-center justify-between text-left transition-all group hover:scale-[1.01]"
+              className="glass-card rounded-xl p-2 flex items-center justify-between text-left transition-all group hover:scale-[1.01] hover:shadow-xs active:scale-[0.99]"
               style={{ borderColor: borderColorMap[color] }}
             >
               <div className="min-w-0 pr-1">
@@ -839,72 +1155,155 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         })}
       </div>
 
-      {/* ══ Leavers Drill-Down Drawer/Modal ══ */}
-      {selectedYearLeavers && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-[#0e1b2d] rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl border border-slate-200 dark:border-[#2b3d52] overflow-hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-[#2b3d52] flex items-center justify-between bg-slate-50 dark:bg-[#12223a]">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {selectedYearLeavers.year} Leavers Drill-Down
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {selectedYearLeavers.leavers.length} recorded exits during calendar year {selectedYearLeavers.year}
+      {/* ══ Unified Interactive Drill-Down Modal ══ */}
+      {activeDrilldown && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#0c1829] rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-[#0f1f35] shrink-0">
+              <div className="min-w-0 pr-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                    {activeDrilldown.title}
+                  </h3>
+                  {activeDrilldown.badge && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 font-mono shrink-0">
+                      {activeDrilldown.badge}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  {activeDrilldown.subtitle}
                 </p>
               </div>
-              <button 
-                onClick={() => setSelectedYearLeavers(null)}
-                className="p-1.5 rounded-lg bg-slate-200/70 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold"
-              >
-                ✕
-              </button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {activeDrilldown.filterKey && setFilters && (
+                  <button
+                    onClick={applyDrilldownFilter}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-xs"
+                    title="Apply this segment as a global filter"
+                  >
+                    <Filter className="w-3 h-3" />
+                    <span>Filter Dashboard</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setActiveDrilldown(null)}
+                  className="p-1.5 rounded-lg bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-[#2b3d52] text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 bg-slate-50/60 dark:bg-[#162a45]">
-                    <th className="p-2">Employee</th>
-                    <th className="p-2">Grade</th>
-                    <th className="p-2">Department</th>
-                    <th className="p-2">Location</th>
-                    <th className="p-2">Tenure</th>
-                    <th className="p-2 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {selectedYearLeavers.leavers.map((leaver, i) => (
-                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-[#132238] transition-colors">
-                      <td className="p-2 font-medium text-slate-900 dark:text-slate-100">
-                        {leaver['EMPLOYEE LABEL'] || leaver.name || `Employee #${leaver['EMPLOYEE NUMBER']}`}
-                      </td>
-                      <td className="p-2 font-mono text-cyan-800 dark:text-cyan-300 font-bold">{leaver['JOB LEVEL'] || 'E1'}</td>
-                      <td className="p-2 text-slate-600 dark:text-slate-300">{leaver['DEPARTMENT'] || 'Delivery'}</td>
-                      <td className="p-2 text-slate-600 dark:text-slate-300">{leaver['LOCATION'] || 'Bangalore'}</td>
-                      <td className="p-2 font-mono text-slate-700 dark:text-slate-300">{leaver['Infinite_Exp'] ? `${Number(leaver['Infinite_Exp']).toFixed(1)}y` : '—'}</td>
-                      <td className="p-2 text-right">
-                        <button
-                          onClick={() => {
-                            if (onOpenEmployeeProfile && leaver['EMPLOYEE NUMBER']) {
-                              onOpenEmployeeProfile(leaver['EMPLOYEE NUMBER']);
-                              setSelectedYearLeavers(null);
-                            }
-                          }}
-                          className="px-2 py-1 rounded bg-cyan-50 dark:bg-cyan-950/50 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 text-cyan-800 dark:text-cyan-300 font-bold text-[10px] border border-cyan-200 dark:border-cyan-800/60"
+            {/* Modal Search Bar */}
+            <div className="px-3.5 py-2 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#0c1829] flex items-center gap-2 shrink-0">
+              <Search className="w-3.5 h-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name, ID, grade, department, or location..."
+                value={drilldownSearch}
+                onChange={(e) => setDrilldownSearch(e.target.value)}
+                className="w-full bg-transparent text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-hidden"
+              />
+              {drilldownSearch && (
+                <button onClick={() => setDrilldownSearch('')} className="text-slate-400 hover:text-slate-600 text-xs">
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Modal Table Content */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 min-h-[260px]">
+              {(() => {
+                const q = drilldownSearch.toLowerCase().trim();
+                const filtered = activeDrilldown.items.filter((item) => {
+                  if (!q) return true;
+                  return (
+                    item.name.toLowerCase().includes(q) ||
+                    String(item.id).includes(q) ||
+                    item.job_level.toLowerCase().includes(q) ||
+                    item.job_title.toLowerCase().includes(q) ||
+                    item.department.toLowerCase().includes(q) ||
+                    item.location.toLowerCase().includes(q)
+                  );
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-slate-400 text-xs">
+                      No matching records found in this segment.
+                    </div>
+                  );
+                }
+
+                return (
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-[#12223a]">
+                        <th className="p-2">Employee</th>
+                        <th className="p-2">Grade</th>
+                        <th className="p-2">Title</th>
+                        <th className="p-2">Department</th>
+                        <th className="p-2">Location</th>
+                        <th className="p-2">{activeDrilldown.isExitList ? 'Exit Date' : 'Experience'}</th>
+                        <th className="p-2 text-right">360 View</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                      {filtered.slice(0, 100).map((emp) => (
+                        <tr
+                          key={emp.id}
+                          className="hover:bg-cyan-500/5 dark:hover:bg-cyan-500/10 transition-colors"
                         >
-                          View Profile
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          <td className="p-2">
+                            <span className="font-bold text-slate-900 dark:text-slate-100 block">{emp.name}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">#{emp.id}</span>
+                          </td>
+                          <td className="p-2 font-mono font-bold text-cyan-700 dark:text-cyan-300">
+                            {emp.job_level}
+                          </td>
+                          <td className="p-2 text-slate-600 dark:text-slate-300 truncate max-w-[140px]" title={emp.job_title}>
+                            {emp.job_title}
+                          </td>
+                          <td className="p-2 text-slate-600 dark:text-slate-300">{emp.department}</td>
+                          <td className="p-2 text-slate-600 dark:text-slate-300">{emp.location}</td>
+                          <td className="p-2 font-mono text-slate-600 dark:text-slate-300">
+                            {activeDrilldown.isExitList
+                              ? emp.exit_date || 'Separated'
+                              : emp.total_exp ? `${emp.total_exp}y` : '—'}
+                          </td>
+                          <td className="p-2 text-right">
+                            <button
+                              onClick={() => {
+                                if (onOpenEmployeeProfile && emp.id) {
+                                  onOpenEmployeeProfile(emp.id);
+                                  setActiveDrilldown(null);
+                                }
+                              }}
+                              className="px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 font-bold text-[10px] border border-cyan-500/20 inline-flex items-center gap-1 transition-all"
+                            >
+                              <span>Profile</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
             </div>
 
-            <div className="p-3 border-t border-slate-200 bg-slate-50 flex justify-end">
-              <button 
-                onClick={() => setSelectedYearLeavers(null)}
-                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold"
+            {/* Modal Footer */}
+            <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0f1f35] flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                Showing up to {Math.min(100, activeDrilldown.items.length)} of {activeDrilldown.items.length} records · Click "Profile" for 360 view
+              </span>
+              <button
+                onClick={() => setActiveDrilldown(null)}
+                className="px-3.5 py-1.5 rounded-lg bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white text-xs font-bold transition-all"
               >
                 Close
               </button>

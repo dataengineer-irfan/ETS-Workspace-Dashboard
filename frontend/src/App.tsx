@@ -193,6 +193,9 @@ export const App: React.FC = () => {
               loading={loading && !homeData}
               onNavigateTab={setActiveTab}
               onOpenEmployeeProfile={handleOpenEmployeeProfile}
+              employeeList={employeeList}
+              filters={filters}
+              setFilters={setFilters}
             />
           )}
 
