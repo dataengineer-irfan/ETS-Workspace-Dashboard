@@ -80,11 +80,17 @@ class EmployeeDetails(BaseModel):
     leave_records: Optional[List[Dict[str, Any]]] = None
 
 class TechwiseKPIs(BaseModel):
+    total_headcount: Optional[int] = 590
     total_unique_skills: int
     most_common_skill: str
+    avg_skill_experience: Optional[float] = 0.0
+    cross_skilled_count: Optional[int] = 0
+    cross_skilled_pct: Optional[float] = 0.0
     missing_skills_count: int
     skill_distribution: List[Dict[str, Any]]
+    skill_depth_distribution: Optional[List[Dict[str, Any]]] = None
     manager_grade_matrix: Dict[str, Any]
+    manager_skill_matrix: Optional[Dict[str, Any]] = None
     skill_roster: List[Dict[str, Any]]
     verified_specialists: Optional[List[Dict[str, Any]]] = None
     coverage_gaps: Optional[List[Dict[str, Any]]] = None

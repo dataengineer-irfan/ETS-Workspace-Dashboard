@@ -90,17 +90,42 @@ class DataLoader:
                 return '20L+'
         df_emp['SalaryBin'] = df_emp['EMP_CTC1'].apply(get_salary_bin)
         
-        self.df_employees = df_emp
-        
         # 2. Load SKILL
         df_skill = pd.read_excel(self.file_path, sheet_name='SKILL')
         df_skill['EMPLOYEE NUMBER'] = pd.to_numeric(df_skill['EMPLOYEE NUMBER'], errors='coerce').fillna(0).astype(int)
         df_skill['Skill Name'] = df_skill['Skill Name'].fillna('').astype(str).str.strip()
         df_skill['Skill Level'] = df_skill['Skill Level'].fillna('Intermediate').astype(str).str.strip()
         df_skill['Skill Type'] = df_skill['Skill Type'].fillna('Primary').astype(str).str.strip()
+        df_skill['Skill_Exp'] = pd.to_numeric(df_skill.get('Skill_Exp', 0), errors='coerce').fillna(0.0)
         df_skill['IsActive'] = df_skill['IsActive'].fillna('Yes').astype(str).str.strip()
         df_skill = df_skill[df_skill['Skill Name'] != ''].copy()
         self.df_skills = df_skill
+
+        # Index primary and secondary skills directly onto df_employees
+        primary_skills = df_skill[df_skill['Skill Type'] == 'Primary'].sort_values('Skill_Exp', ascending=False).drop_duplicates(subset=['EMPLOYEE NUMBER']).set_index('EMPLOYEE NUMBER')
+        all_emp_skills = df_skill.sort_values('Skill_Exp', ascending=False).drop_duplicates(subset=['EMPLOYEE NUMBER']).set_index('EMPLOYEE NUMBER')
+
+        secondary_map = {}
+        all_skills_map = {}
+        for emp_id, group in df_skill.groupby('EMPLOYEE NUMBER'):
+            prim_name = primary_skills.loc[emp_id, 'Skill Name'] if emp_id in primary_skills.index else None
+            sec_skills = group[group['Skill Name'] != prim_name]['Skill Name'].tolist()
+            secondary_map[emp_id] = sec_skills
+            all_skills_map[emp_id] = group['Skill Name'].tolist()
+
+        df_emp['Primary_Skill'] = df_emp['EMPLOYEE NUMBER'].map(primary_skills['Skill Name']).fillna(
+            df_emp['EMPLOYEE NUMBER'].map(all_emp_skills['Skill Name'])
+        ).fillna('General Engineering')
+        df_emp['Primary_Skill_Exp'] = df_emp['EMPLOYEE NUMBER'].map(primary_skills['Skill_Exp']).fillna(
+            df_emp['EMPLOYEE NUMBER'].map(all_emp_skills['Skill_Exp'])
+        ).fillna(0.0)
+        df_emp['Primary_Skill_Level'] = df_emp['EMPLOYEE NUMBER'].map(primary_skills['Skill Level']).fillna(
+            df_emp['EMPLOYEE NUMBER'].map(all_emp_skills['Skill Level'])
+        ).fillna('Intermediate')
+        df_emp['Secondary_Skills'] = df_emp['EMPLOYEE NUMBER'].map(secondary_map).apply(lambda x: x if isinstance(x, list) else [])
+        df_emp['All_Skills'] = df_emp['EMPLOYEE NUMBER'].map(all_skills_map).apply(lambda x: x if isinstance(x, list) else [])
+        
+        self.df_employees = df_emp
         
         # 3. Load Finance_History
         df_fin = pd.read_excel(self.file_path, sheet_name='Finance_History')

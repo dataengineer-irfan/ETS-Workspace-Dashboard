@@ -222,6 +222,8 @@ export const App: React.FC = () => {
             <TechwiseDashboard
               data={techwiseData}
               loading={loading && !techwiseData}
+              filters={filters}
+              setFilters={setFilters}
               onSelectEmployee={handleSelectEmployee}
               onOpenEmployeeProfile={handleOpenEmployeeProfile}
             />

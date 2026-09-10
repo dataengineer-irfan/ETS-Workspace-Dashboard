@@ -210,28 +210,57 @@ export interface EmployeeDetails {
 }
 
 export interface TechwiseKPIs {
+  total_headcount?: number;
   total_unique_skills: number;
   most_common_skill: string;
+  avg_skill_experience?: number;
+  cross_skilled_count?: number;
+  cross_skilled_pct?: number;
   missing_skills_count: number;
   skill_distribution: {
     skill_name: string;
     employee_count: number;
+    percentage?: number;
     advanced_count: number;
     intermediate_count: number;
+    beginner_count?: number;
+    avg_exp?: number;
+    min_exp?: number;
+    max_exp?: number;
+  }[];
+  skill_depth_distribution?: {
+    band: string;
+    count: number;
+    percentage: number;
   }[];
   manager_grade_matrix: {
     managers: string[];
     grades: string[];
     matrix: { [manager: string]: { [grade: string]: number } };
   };
+  manager_skill_matrix?: {
+    managers: string[];
+    manager_totals: { [manager: string]: number };
+    skills: string[];
+    matrix: { [manager: string]: { [skill: string]: number } };
+  };
   skill_roster: {
     employee_number: number;
     name: string;
+    job_title?: string;
     job_level: string;
     manager: string;
     location: string;
+    department?: string;
+    project?: string;
+    primary_skill?: string;
+    primary_skill_exp?: number;
+    primary_skill_level?: string;
+    secondary_skills?: string[];
     skills: string[];
     has_missing_skills: boolean;
+    total_exp?: number;
+    infinite_exp?: number;
   }[];
   verified_specialists?: any[];
   coverage_gaps?: any[];

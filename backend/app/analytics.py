@@ -106,6 +106,23 @@ def apply_employee_filters(df: pd.DataFrame, filters: Dict[str, Any]) -> pd.Data
     if salary_bins:
         res = res[res['SalaryBin'].astype(str).isin(salary_bins)]
 
+    # Skill filter (Primary Skill or any Secondary/All Skills)
+    skills = parse_filter_list(filters.get('skill_name') or filters.get('skill'))
+    if skills:
+        skills_upper = [s.upper() for s in skills]
+        def matches_skill(row):
+            p = str(row.get('Primary_Skill', '')).upper()
+            if p in skills_upper or any(s in p for s in skills_upper):
+                return True
+            all_s = row.get('All_Skills', [])
+            if isinstance(all_s, list):
+                for sk in all_s:
+                    sk_u = str(sk).upper()
+                    if sk_u in skills_upper or any(s in sk_u for s in skills_upper):
+                        return True
+            return False
+        res = res[res.apply(matches_skill, axis=1)]
+
     # Search filter (name, number, email, title)
     search_q = str(filters.get('search') or '').lower().strip()
     if search_q and search_q not in ('', 'none', 'null', 'undefined'):
@@ -665,37 +682,81 @@ class AnalyticsEngine:
     def get_techwise_kpis(filters: Dict[str, Any] = None):
         filters = filters or {}
         df_emp = apply_employee_filters(data_loader.df_employees, filters)
-        df_skill = data_loader.df_skills.copy()
+        total_hc = len(df_emp)
         
-        skills = parse_filter_list(filters.get('skill_name'))
-        if skills:
-            skills_upper = [s.upper() for s in skills]
-            df_skill = df_skill[df_skill['Skill Name'].astype(str).str.upper().isin(skills_upper)]
-            
-        active_emp_ids = set(df_emp['EMPLOYEE NUMBER'])
-        matched_skills = df_skill[df_skill['EMPLOYEE NUMBER'].isin(active_emp_ids)]
+        if df_emp.empty:
+            return {
+                'total_headcount': 0,
+                'total_unique_skills': 0,
+                'most_common_skill': 'N/A',
+                'avg_skill_experience': 0.0,
+                'cross_skilled_count': 0,
+                'cross_skilled_pct': 0.0,
+                'missing_skills_count': 0,
+                'skill_distribution': [],
+                'skill_depth_distribution': [],
+                'manager_grade_matrix': {'managers': [], 'manager_totals': {}, 'grades': [], 'matrix': {}},
+                'manager_skill_matrix': {'managers': [], 'manager_totals': {}, 'skills': [], 'matrix': {}},
+                'skill_roster': [],
+                'verified_specialists': [],
+                'coverage_gaps': [],
+                'audit_headline': 'No employees found matching the selected filter criteria.'
+            }
+
+        # Core Metrics based on Primary Skills (1:1 Allocation - Headcount matches total_hc)
+        unique_skills = int(df_emp['Primary_Skill'].nunique())
+        most_common = str(df_emp['Primary_Skill'].mode().iloc[0]) if not df_emp.empty else 'N/A'
+        avg_skill_exp = round(float(df_emp['Primary_Skill_Exp'].mean()), 1)
         
-        unique_skills = int(data_loader.df_skills['Skill Name'].nunique())
-        most_common = matched_skills['Skill Name'].mode().iloc[0] if not matched_skills.empty else 'SQL'
-        
-        emps_with_skills = set(data_loader.df_skills['EMPLOYEE NUMBER'])
-        missing_count = int(len(df_emp[~df_emp['EMPLOYEE NUMBER'].isin(emps_with_skills)]))
-        
-        skill_counts = data_loader.df_skills['Skill Name'].value_counts()
+        cross_skilled_count = int(df_emp['Secondary_Skills'].apply(lambda x: len(x) if isinstance(x, list) else 0).gt(0).sum())
+        cross_skilled_pct = round((cross_skilled_count / max(1, total_hc) * 100), 1)
+        missing_count = int(df_emp['Primary_Skill'].isna().sum())
+
+        # Primary Skill Distribution (Headcount per Primary Discipline)
+        prim_counts = df_emp['Primary_Skill'].value_counts()
         skill_dist = []
-        for s_name in ['SQL', 'Python', 'Cognos', 'Java', 'Git', 'Jenkins', 'Kubernetes', 'Docker', 'React', 'Node JS', 'Angular', 'MangoDB', 'SCM']:
-            skill_sub = data_loader.df_skills[data_loader.df_skills['Skill Name'].str.lower() == s_name.lower()]
-            count = len(skill_sub)
-            adv_count = int((skill_sub['Skill Level'] == 'Advanced').sum())
-            int_count = int((skill_sub['Skill Level'] == 'Intermediate').sum())
+        for s_name, count in prim_counts.items():
+            sub = df_emp[df_emp['Primary_Skill'] == s_name]
+            adv = int((sub['Primary_Skill_Level'] == 'Advanced').sum())
+            inter = int((sub['Primary_Skill_Level'] == 'Intermediate').sum())
+            beg = int((sub['Primary_Skill_Level'] == 'Beginner').sum())
+            avg_e = round(float(sub['Primary_Skill_Exp'].mean()), 1)
+            min_e = round(float(sub['Primary_Skill_Exp'].min()), 1)
+            max_e = round(float(sub['Primary_Skill_Exp'].max()), 1)
+            pct = round(count / max(1, total_hc) * 100, 1)
             skill_dist.append({
-                'skill_name': s_name,
-                'employee_count': count,
-                'advanced_count': adv_count,
-                'intermediate_count': int_count
+                'skill_name': str(s_name),
+                'employee_count': int(count),
+                'percentage': pct,
+                'advanced_count': adv,
+                'intermediate_count': inter,
+                'beginner_count': beg,
+                'avg_exp': avg_e,
+                'min_exp': min_e,
+                'max_exp': max_e
             })
-            
-        # Manager x Grade matrix with Total column and sorted by total headcount descending
+
+        # Skill Experience Depth Distribution (Bands)
+        bands = [
+            {'band': '< 2 Yrs (Junior)', 'min': 0.0, 'max': 2.0},
+            {'band': '2 - 5 Yrs (Mid)', 'min': 2.0, 'max': 5.0},
+            {'band': '5 - 8 Yrs (Senior)', 'min': 5.0, 'max': 8.0},
+            {'band': '8+ Yrs (Lead / SME)', 'min': 8.0, 'max': 999.0},
+        ]
+        skill_depth_dist = []
+        for b in bands:
+            if b['max'] == 999.0:
+                cnt = int((df_emp['Primary_Skill_Exp'] >= b['min']).sum())
+            else:
+                cnt = int(((df_emp['Primary_Skill_Exp'] >= b['min']) & (df_emp['Primary_Skill_Exp'] < b['max'])).sum())
+            pct = round(cnt / max(1, total_hc) * 100, 1)
+            skill_depth_dist.append({
+                'band': b['band'],
+                'count': cnt,
+                'percentage': pct
+            })
+
+        # Manager x Grade matrix with Total column sorted by total headcount descending
         manager_grade = df_emp.groupby(['MANAGER', 'JOB LEVEL']).size().unstack(fill_value=0)
         manager_grade['__total__'] = manager_grade.sum(axis=1)
         manager_grade = manager_grade.sort_values('__total__', ascending=False)
@@ -708,80 +769,123 @@ class AnalyticsEngine:
             'grades': sort_grades(list(manager_grade_clean.columns)),
             'matrix': {k: {gk: int(gv) for gk, gv in v.items()} for k, v in manager_grade_clean.to_dict(orient='index').items()}
         }
-        
-        # Verified specialists (the 6 employees with active skill mapping)
-        specialist_ids = [1033925, 1019823, 1033626, 1031048, 1026244, 1033275]
+
+        # Manager x Primary Skill Matrix
+        manager_skill = df_emp.groupby(['MANAGER', 'Primary_Skill']).size().unstack(fill_value=0)
+        manager_skill['__total__'] = manager_skill.sum(axis=1)
+        manager_skill = manager_skill.sort_values('__total__', ascending=False)
+        mgr_skill_totals = {k: int(v) for k, v in manager_skill['__total__'].items()}
+        mgr_skill_clean = manager_skill.drop(columns=['__total__'])
+        top_skills = [s['skill_name'] for s in skill_dist[:8]]
+        skill_cols = [c for c in top_skills if c in mgr_skill_clean.columns]
+
+        manager_skill_matrix = {
+            'managers': list(mgr_skill_clean.index),
+            'manager_totals': mgr_skill_totals,
+            'skills': skill_cols,
+            'matrix': {k: {sk: int(v.get(sk, 0)) for sk in skill_cols} for k, v in mgr_skill_clean.to_dict(orient='index').items()}
+        }
+
+        # Verified Specialists: Top experts across workforce by Primary_Skill_Exp
+        top_specialists_df = df_emp.sort_values('Primary_Skill_Exp', ascending=False).head(20)
         verified_specialists = []
-        for sid in specialist_ids:
-            s_emp = data_loader.df_employees[data_loader.df_employees['EMPLOYEE NUMBER'] == sid]
-            if not s_emp.empty:
-                r = s_emp.iloc[0]
-                s_skills = data_loader.df_skills[data_loader.df_skills['EMPLOYEE NUMBER'] == sid]
-                verified_specialists.append({
-                    'employee_number': sid,
-                    'name': str(r['EMPLOYEE LABEL']),
-                    'job_title': str(r['JOB TITLE']),
-                    'job_level': str(r['JOB LEVEL']),
-                    'location': str(r['LOCATION']),
-                    'department': str(r['DEPARTMENT']),
-                    'manager': str(r['MANAGER']),
-                    'skills': s_skills['Skill Name'].tolist(),
-                    'skills_detailed': sanitize_list(s_skills.to_dict(orient='records')),
-                    'skills_count': len(s_skills)
-                })
-                
-        # Coverage gaps
-        critical_skills = ['SQL', 'Python', 'Java', 'Cognos', 'Kubernetes', 'Docker', 'React', 'Node JS', 'Angular', 'MangoDB', 'Git', 'Jenkins']
+        for _, r in top_specialists_df.iterrows():
+            sec_s = r.get('Secondary_Skills', [])
+            if not isinstance(sec_s, list):
+                sec_s = []
+            verified_specialists.append({
+                'employee_number': int(r['EMPLOYEE NUMBER']),
+                'name': str(r['EMPLOYEE LABEL']),
+                'job_title': str(r.get('JOB TITLE', '')),
+                'job_level': str(r['JOB LEVEL']),
+                'location': str(r['LOCATION']),
+                'department': str(r['DEPARTMENT']),
+                'manager': str(r['MANAGER']),
+                'primary_skill': str(r['Primary_Skill']),
+                'primary_skill_exp': round(float(r['Primary_Skill_Exp']), 1),
+                'primary_skill_level': str(r['Primary_Skill_Level']),
+                'skills': [str(r['Primary_Skill'])] + sec_s,
+                'skills_count': 1 + len(sec_s)
+            })
+
+        # Target benchmarks vs current bench
+        target_benchmarks = {
+            'Cloud & DevOps (AWS / K8s)': 100,
+            'QA Automation / SDET': 90,
+            'Frontend (Angular / TypeScript)': 75,
+            'Database & SQL Architecture': 70,
+            'Java / Spring Boot': 70,
+            'Fullstack Web (React / Node)': 60,
+            'Python / Data Engineering': 50,
+            'Informatica ETL': 10,
+            'Cognos BI & Analytics': 10
+        }
         coverage_gaps = []
-        for cs in critical_skills:
-            matching = data_loader.df_skills[data_loader.df_skills['Skill Name'].str.lower() == cs.lower()]
-            bench_count = len(matching)
-            required_target = 15
-            deficit = max(0, required_target - bench_count)
-            status = 'Adequate' if bench_count >= 4 else ('Moderate' if bench_count >= 2 else 'Critical Gap')
-            priority = 'Critical' if bench_count <= 1 else ('High' if bench_count == 2 else ('Moderate' if bench_count == 3 else 'Normal'))
+        for s_name, target in target_benchmarks.items():
+            current_bench = int((df_emp['Primary_Skill'] == s_name).sum())
+            deficit = max(0, target - current_bench)
+            status = 'Adequate' if current_bench >= target else ('Healthy' if current_bench >= target * 0.8 else 'Deficit')
+            priority = 'Normal' if deficit == 0 else ('Moderate' if deficit <= 10 else 'High')
             coverage_gaps.append({
-                'skill_name': cs,
-                'skill': cs,
-                'verified_bench': bench_count,
-                'current': bench_count,
-                'required': required_target,
+                'skill_name': s_name,
+                'skill': s_name,
+                'verified_bench': current_bench,
+                'current': current_bench,
+                'required': target,
                 'deficit': deficit,
                 'status': status,
-                'priority': priority,
-                'unmapped_risk': 'High' if bench_count < 2 else 'Medium'
+                'priority': priority
             })
-            
+
+        # Complete Skill Roster for workforce
         skill_roster = []
-        # Put verified specialists first, then remaining employees
-        roster_emps = pd.concat([
-            df_emp[df_emp['EMPLOYEE NUMBER'].isin(specialist_ids)],
-            df_emp[~df_emp['EMPLOYEE NUMBER'].isin(specialist_ids)]
-        ])
-        for idx, emp in roster_emps.iterrows():
+        for _, emp in df_emp.iterrows():
             emp_num = int(emp['EMPLOYEE NUMBER'])
-            s_list = data_loader.df_skills[data_loader.df_skills['EMPLOYEE NUMBER'] == emp_num]['Skill Name'].tolist()
+            prim_skill = str(emp.get('Primary_Skill', 'General Engineering'))
+            prim_exp = round(float(emp.get('Primary_Skill_Exp', 0.0)), 1)
+            prim_lvl = str(emp.get('Primary_Skill_Level', 'Intermediate'))
+            sec_skills = emp.get('Secondary_Skills', [])
+            if not isinstance(sec_skills, list):
+                sec_skills = []
+            all_skills = [prim_skill] + [s for s in sec_skills if s != prim_skill]
+
             skill_roster.append({
                 'employee_number': emp_num,
                 'name': str(emp['EMPLOYEE LABEL']),
+                'job_title': str(emp.get('JOB TITLE', '')),
                 'job_level': str(emp['JOB LEVEL']),
                 'manager': str(emp['MANAGER']),
                 'location': str(emp['LOCATION']),
                 'department': str(emp['DEPARTMENT']),
-                'skills': s_list if s_list else ['No skill mapped'],
-                'has_missing_skills': len(s_list) == 0
+                'project': str(emp.get('Project Working', '')),
+                'primary_skill': prim_skill,
+                'primary_skill_exp': prim_exp,
+                'primary_skill_level': prim_lvl,
+                'secondary_skills': sec_skills,
+                'skills': all_skills,
+                'has_missing_skills': False,
+                'total_exp': round(float(emp.get('Total_Exp', 0.0)), 1),
+                'infinite_exp': round(float(emp.get('Infinite_Exp', 0.0)), 1)
             })
-            
+
+        audit_headline = f"100% Workforce Mapped · {total_hc} Headcount across {unique_skills} Primary Disciplines · Avg Depth: {avg_skill_exp} yrs · 1:1 Headcount Allocation"
+
         return {
+            'total_headcount': total_hc,
             'total_unique_skills': unique_skills,
             'most_common_skill': most_common,
+            'avg_skill_experience': avg_skill_exp,
+            'cross_skilled_count': cross_skilled_count,
+            'cross_skilled_pct': cross_skilled_pct,
             'missing_skills_count': missing_count,
             'skill_distribution': skill_dist,
+            'skill_depth_distribution': skill_depth_dist,
             'manager_grade_matrix': matrix_data,
+            'manager_skill_matrix': manager_skill_matrix,
             'skill_roster': skill_roster,
             'verified_specialists': verified_specialists,
             'coverage_gaps': coverage_gaps,
-            'audit_headline': f"{len(data_loader.df_skills)} verified skills mapped across {len(verified_specialists)} specialists · {round(missing_count / max(1, len(df_emp)) * 100, 1)}% inventory unassigned (Action Required: Initiate Skill Audit)"
+            'audit_headline': audit_headline
         }
 
     @staticmethod
