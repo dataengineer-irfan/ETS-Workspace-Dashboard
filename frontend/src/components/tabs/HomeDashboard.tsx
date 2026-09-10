@@ -18,7 +18,10 @@ import {
   ExternalLink,
   LucideIcon,
   X,
+  MapPin,
+  PieChart as PieChartIcon,
 } from 'lucide-react';
+import { IndiaDeliveryMap } from '../common/IndiaDeliveryMap';
 import {
   PieChart,
   Pie,
@@ -305,6 +308,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 }) => {
   const [hoveredLocIndex, setHoveredLocIndex] = useState<number | null>(null);
   const [hoveredGenderIndex, setHoveredGenderIndex] = useState<number | null>(null);
+  const [footprintView, setFootprintView] = useState<'map' | 'donut'>('map');
   const [activeDrilldown, setActiveDrilldown] = useState<ActiveDrilldown | null>(null);
   const [drilldownSearch, setDrilldownSearch] = useState('');
 
@@ -325,6 +329,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     .map((l) => ({ ...l, color: LOCATION_COLORS[l.location] ?? '#0284c7' }));
 
   const activeHovered = hoveredLocIndex !== null ? rankedLocs[hoveredLocIndex] : null;
+  const hoveredLocName = hoveredLocIndex !== null ? rankedLocs[hoveredLocIndex]?.location || null : null;
+
+  const setHoveredLocByName = (name: string | null) => {
+    if (!name) {
+      setHoveredLocIndex(null);
+      return;
+    }
+    const idx = rankedLocs.findIndex((l) => l.location.toLowerCase() === name.toLowerCase());
+    setHoveredLocIndex(idx !== -1 ? idx : null);
+  };
 
   // Growth Data fallback
   const growthHistory = data.headcount_growth_history && data.headcount_growth_history.length > 0
@@ -450,6 +464,21 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       [filterKey]: Array.isArray(filterValue) ? filterValue : [filterValue],
     }));
     setActiveDrilldown(null);
+  };
+
+  const handleSelectLocation = (locName: string) => {
+    const items = allDrilldownItems.filter(
+      (item) => item.location.toLowerCase() === locName.toLowerCase()
+    );
+    const locData = rankedLocs.find((l) => l.location.toLowerCase() === locName.toLowerCase());
+    openDrilldown(
+      `${locName} Delivery Hub`,
+      `${locData?.count || items.length} team members stationed in ${locName} (${locData?.percentage || 0}% of workforce)`,
+      `${locData?.count || items.length} Staff`,
+      items,
+      'location',
+      [locName]
+    );
   };
 
   return (
@@ -973,97 +1002,127 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
 
-        {/* Module 5: Regional Delivery Footprint Hubs (Big Donut on Left, Slim Legend on Right) */}
+        {/* Module 5: Regional Delivery Footprint Hubs (Interactive India Geo Map & Donut Switcher) */}
         <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Compass className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Delivery Footprint</span>
             </div>
-            <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 font-semibold font-mono">
-              4 Regional Hubs
-            </span>
+
+            {/* View Switcher & Badge */}
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setFootprintView('map')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    footprintView === 'map'
+                      ? 'bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Geographic Hub Map View"
+                >
+                  <MapPin className="w-2.5 h-2.5" />
+                  Map
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFootprintView('donut')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    footprintView === 'donut'
+                      ? 'bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Donut Chart View"
+                >
+                  <PieChartIcon className="w-2.5 h-2.5" />
+                  Donut
+                </button>
+              </div>
+              <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 font-semibold font-mono">
+                4 Hubs
+              </span>
+            </div>
           </div>
 
           <div className="flex-1 grid grid-cols-12 gap-2 items-center min-h-0 py-1">
-            {/* Left: Big Hero Donut (7 cols) */}
+            {/* Left: Interactive India Map or Big Hero Donut (7 cols) */}
             <div className="col-span-7 h-full relative flex items-center justify-center min-h-[140px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={rankedLocs}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="50%"
-                    outerRadius="80%"
-                    paddingAngle={3}
-                    dataKey="count"
-                    onMouseEnter={(_, i) => setHoveredLocIndex(i)}
-                    onMouseLeave={() => setHoveredLocIndex(null)}
-                    onClick={(e: any) => {
-                      const locName = e?.location || e?.payload?.location;
-                      if (locName) {
-                        const items = allDrilldownItems.filter(
-                          (item) => item.location.toLowerCase() === locName.toLowerCase()
-                        );
-                        const locData = rankedLocs.find((l) => l.location.toLowerCase() === locName.toLowerCase());
-                        openDrilldown(
-                          `${locName} Delivery Hub`,
-                          `${locData?.count || items.length} team members stationed in ${locName} (${locData?.percentage || 0}% of workforce)`,
-                          `${locData?.count || items.length} Staff`,
-                          items,
-                          'location',
-                          [locName]
-                        );
-                      }
-                    }}
-                  >
-                    {rankedLocs.map((e, i) => (
-                      <Cell
-                        key={i}
-                        fill={e.color}
-                        stroke={hoveredLocIndex === i ? 'var(--text)' : 'var(--surface)'}
-                        strokeWidth={hoveredLocIndex === i ? 2.5 : 1.5}
-                        className="cursor-pointer"
+              {footprintView === 'map' ? (
+                <IndiaDeliveryMap
+                  locations={rankedLocs}
+                  hoveredLocation={hoveredLocName}
+                  onHoverLocation={setHoveredLocByName}
+                  onSelectLocation={handleSelectLocation}
+                />
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={rankedLocs}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="50%"
+                        outerRadius="80%"
+                        paddingAngle={3}
+                        dataKey="count"
+                        onMouseEnter={(_, i) => setHoveredLocIndex(i)}
+                        onMouseLeave={() => setHoveredLocIndex(null)}
+                        onClick={(e: any) => {
+                          const locName = e?.location || e?.payload?.location;
+                          if (locName) handleSelectLocation(locName);
+                        }}
+                      >
+                        {rankedLocs.map((e, i) => (
+                          <Cell
+                            key={i}
+                            fill={e.color}
+                            stroke={hoveredLocIndex === i ? 'var(--text)' : 'var(--surface)'}
+                            strokeWidth={hoveredLocIndex === i ? 2.5 : 1.5}
+                            className="cursor-pointer"
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--surface)',
+                          borderColor: 'var(--border)',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          boxShadow: 'var(--shadow-soft)',
+                        }}
+                        formatter={(v: any, _: any, p: any) => [`${v} Staff (${p.payload.percentage}%)`, p.payload.location]}
                       />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--surface)',
-                      borderColor: 'var(--border)',
-                      borderRadius: '8px',
-                      fontSize: '11px',
-                      boxShadow: 'var(--shadow-soft)',
-                    }}
-                    formatter={(v: any, _: any, p: any) => [`${v} Staff (${p.payload.percentage}%)`, p.payload.location]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                {activeHovered ? (
-                  <>
-                    <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHovered.color }}>
-                      {activeHovered.location}
-                    </span>
-                    <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                      {activeHovered.count}
-                    </span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
-                      {activeHovered.percentage}%
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                      {data.total_employees}
-                    </span>
-                    <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                      Total Staff
-                    </span>
-                  </>
-                )}
-              </div>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    {activeHovered ? (
+                      <>
+                        <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHovered.color }}>
+                          {activeHovered.location}
+                        </span>
+                        <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                          {activeHovered.count}
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
+                          {activeHovered.percentage}%
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                          {data.total_employees}
+                        </span>
+                        <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                          Total Staff
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Right: Slim, High-Density Legend (5 cols) */}
@@ -1075,20 +1134,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     key={loc.location}
                     onMouseEnter={() => setHoveredLocIndex(i)}
                     onMouseLeave={() => setHoveredLocIndex(null)}
-                    onClick={() => {
-                      const items = allDrilldownItems.filter(
-                        (item) => item.location.toLowerCase() === loc.location.toLowerCase()
-                      );
-                      const locData = rankedLocs.find((l) => l.location.toLowerCase() === loc.location.toLowerCase());
-                      openDrilldown(
-                        `${loc.location} Delivery Hub`,
-                        `${locData?.count || items.length} team members stationed in ${loc.location} (${locData?.percentage || 0}% of workforce)`,
-                        `${locData?.count || items.length} Staff`,
-                        items,
-                        'location',
-                        [loc.location]
-                      );
-                    }}
+                    onClick={() => handleSelectLocation(loc.location)}
                     className={`px-1.5 py-1 rounded-md transition-all cursor-pointer flex flex-col gap-0.5 ${
                       hov
                         ? 'bg-slate-100 dark:bg-slate-800 shadow-2xs'
