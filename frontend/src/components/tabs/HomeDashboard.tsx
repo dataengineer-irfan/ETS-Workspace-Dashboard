@@ -20,8 +20,13 @@ import {
   X,
   MapPin,
   PieChart as PieChartIcon,
+  UserCheck,
+  Sparkles,
 } from 'lucide-react';
 import { IndiaDeliveryMap } from '../common/IndiaDeliveryMap';
+import { AgeDistributionChart } from '../common/AgeDistributionChart';
+import { ProjectComparisonChart } from '../common/ProjectComparisonChart';
+import { EmpTypeBreakdown } from '../common/EmpTypeBreakdown';
 import {
   PieChart,
   Pie,
@@ -309,6 +314,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [hoveredLocIndex, setHoveredLocIndex] = useState<number | null>(null);
   const [hoveredGenderIndex, setHoveredGenderIndex] = useState<number | null>(null);
   const [footprintView, setFootprintView] = useState<'map' | 'donut'>('map');
+  const [growthView, setGrowthView] = useState<'history' | 'projects'>('history');
+  const [hierarchyView, setHierarchyView] = useState<'pyramid' | 'age'>('pyramid');
+  const [deptView, setDeptView] = useState<'department' | 'emptype'>('department');
   const [activeDrilldown, setActiveDrilldown] = useState<ActiveDrilldown | null>(null);
   const [drilldownSearch, setDrilldownSearch] = useState('');
 
@@ -481,6 +489,69 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     );
   };
 
+  const handleSelectAgeBin = (start: number, end: number, label: string) => {
+    const refYear = 2024;
+    const items = (employeeList || [])
+      .filter((e: any) => {
+        const dob = e['DATE OF BIRTH'] || e['date_of_birth'];
+        if (!dob) return false;
+        const birthYear = new Date(dob).getFullYear();
+        const age = refYear - birthYear;
+        return age >= start && age <= end;
+      })
+      .map((e: any) => ({
+        id: e['EMPLOYEE NUMBER'],
+        name: e['EMPLOYEE LABEL'] || `Employee #${e['EMPLOYEE NUMBER']}`,
+        job_level: e['JOB LEVEL'] || '—',
+        job_title: e['JOB TITLE'] || 'Engineer',
+        department: e['DEPARTMENT'] || 'Delivery',
+        location: e['LOCATION'] || 'Bangalore',
+        total_exp: e['Total_Exp'] !== undefined && e['Total_Exp'] !== null && e['Total_Exp'] !== ('' as any) ? Number(e['Total_Exp']) : undefined,
+        infinite_exp: e['Infinite_Exp'] !== undefined && e['Infinite_Exp'] !== null && e['Infinite_Exp'] !== ('' as any) ? Number(e['Infinite_Exp']) : undefined,
+        manager: e['MANAGER'],
+        gender: e['GENDER'],
+      }));
+
+    openDrilldown(
+      `Age Bracket: ${label}`,
+      `${items.length} employees within ${label} age group`,
+      `${items.length} Staff`,
+      items.length > 0 ? items : allDrilldownItems
+    );
+  };
+
+  const handleSelectProject = (projectName: string) => {
+    const items = allDrilldownItems.filter(
+      (item) => (item as any).project?.toLowerCase() === projectName.toLowerCase() ||
+                (employeeList || []).some((e: any) => e['EMPLOYEE NUMBER'] === item.id && (e['Project Working'] || '').toLowerCase() === projectName.toLowerCase())
+    );
+    openDrilldown(
+      `Project ${projectName} Workforce`,
+      `${items.length} team members allocated to Project ${projectName}`,
+      `${items.length} Staff`,
+      items.length > 0 ? items : allDrilldownItems,
+      'project',
+      [projectName]
+    );
+  };
+
+  const handleSelectEmpType = (typeName: string) => {
+    let items: DrilldownItem[] = [];
+    if (typeName === 'Intern') {
+      items = allDrilldownItems.filter((e) => e.job_level === 'E1');
+    } else if (typeName === 'Contract') {
+      items = allDrilldownItems.filter((e) => ['E1', 'E2'].includes(e.job_level));
+    } else {
+      items = allDrilldownItems.filter((e) => !['E1', 'E2'].includes(e.job_level));
+    }
+    openDrilldown(
+      `${typeName} Workforce Segment`,
+      `${items.length} employees categorized as ${typeName}`,
+      `${items.length} Staff`,
+      items
+    );
+  };
+
   return (
     <div className="flex-1 flex flex-col gap-2 select-none h-full min-h-0">
       
@@ -599,89 +670,135 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* ══ ROW 2: WORKFORCE DYNAMICS & COMPOSITION (Growth + Diversity + Pyramid) ══ */}
       <div className="grid grid-cols-12 gap-2 flex-1 min-h-0">
         
-        {/* Module 1: Headcount & Hiring Growth (Combo Bar + Line) */}
+        {/* Module 1: Headcount & Hiring Growth / Employees by Projects */}
         <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-                Headcount & Hiring Growth
+                {growthView === 'history' ? 'Headcount & Hiring Growth' : 'Employees by Projects'}
               </span>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">Annual hiring volume & active workforce trajectory</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                {growthView === 'history'
+                  ? 'Annual hiring volume & active workforce trajectory'
+                  : 'Start of year vs end of year delivery headcount comparison'}
+              </p>
             </div>
-            <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 font-semibold font-mono">
-              2020 – 2024
-            </span>
+
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setGrowthView('history')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    growthView === 'history'
+                      ? 'bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Annual Headcount Trajectory"
+                >
+                  <BarChart3 className="w-2.5 h-2.5" />
+                  Trajectory
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGrowthView('projects')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    growthView === 'projects'
+                      ? 'bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Employees by Projects (Start vs End of Year)"
+                >
+                  <Briefcase className="w-2.5 h-2.5" />
+                  Projects
+                </button>
+              </div>
+              <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 font-semibold font-mono">
+                {growthView === 'history' ? '2020 – 2024' : `${data.project_headcount_trends?.length || 4} Projs`}
+              </span>
+            </div>
           </div>
 
-          <div className="flex-1 min-h-[140px] pt-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={growthHistory}
-                margin={{ top: 10, right: 0, left: -22, bottom: 0 }}
-                onClick={(e: any) => {
-                  if (e?.activePayload?.[0]?.payload) {
-                    const yr = e.activePayload[0].payload.year;
-                    const yrAttrition = data.attrition_by_year.find((a) => a.year === yr);
-                    const leavers = (yrAttrition?.leavers || []).map((l: any) => ({
-                      id: l.employee_number || l['EMPLOYEE NUMBER'],
-                      name: l.name || l['EMPLOYEE LABEL'],
-                      job_level: '—',
-                      job_title: l.job_title || 'Engineer',
-                      department: l.department || 'Delivery',
-                      location: l.location || 'Bangalore',
-                      infinite_exp: l.tenure,
-                      exit_date: l.exit_date,
-                    }));
-                    openDrilldown(
-                      `Year ${yr} Workforce Dynamics`,
-                      `${e.activePayload[0].payload.joiners} joiners, ${e.activePayload[0].payload.exits} exits, ${e.activePayload[0].payload.headcount} active headcount`,
-                      `Year ${yr}`,
-                      leavers.length > 0 ? leavers : allDrilldownItems,
-                      undefined,
-                      undefined,
-                      leavers.length > 0
-                    );
-                  }
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} opacity={0.6} />
-                <XAxis dataKey="year" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
-                <YAxis yAxisId="left" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
-                <YAxis yAxisId="right" orientation="right" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--surface)',
-                    borderColor: 'var(--border)',
-                    borderRadius: '8px',
-                    fontSize: '11px',
-                    boxShadow: 'var(--shadow-soft)',
-                    color: 'var(--text)',
-                  }}
-                  itemStyle={{ color: 'var(--text)' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
-                <Bar yAxisId="left" dataKey="joiners" fill="#0284c7" name="Joiners" radius={[3, 3, 0, 0]} className="cursor-pointer" />
-                <Line yAxisId="right" type="monotone" dataKey="headcount" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: '#10b981' }} name="Active Headcount" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+          {growthView === 'history' ? (
+            <>
+              <div className="flex-1 min-h-[140px] pt-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={growthHistory}
+                    margin={{ top: 10, right: 0, left: -22, bottom: 0 }}
+                    onClick={(e: any) => {
+                      if (e?.activePayload?.[0]?.payload) {
+                        const yr = e.activePayload[0].payload.year;
+                        const yrAttrition = data.attrition_by_year.find((a) => a.year === yr);
+                        const leavers = (yrAttrition?.leavers || []).map((l: any) => ({
+                          id: l.employee_number || l['EMPLOYEE NUMBER'],
+                          name: l.name || l['EMPLOYEE LABEL'],
+                          job_level: '—',
+                          job_title: l.job_title || 'Engineer',
+                          department: l.department || 'Delivery',
+                          location: l.location || 'Bangalore',
+                          infinite_exp: l.tenure,
+                          exit_date: l.exit_date,
+                        }));
+                        openDrilldown(
+                          `Year ${yr} Workforce Dynamics`,
+                          `${e.activePayload[0].payload.joiners} joiners, ${e.activePayload[0].payload.exits} exits, ${e.activePayload[0].payload.headcount} active headcount`,
+                          `Year ${yr}`,
+                          leavers.length > 0 ? leavers : allDrilldownItems,
+                          undefined,
+                          undefined,
+                          leavers.length > 0
+                        );
+                      }
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} opacity={0.6} />
+                    <XAxis dataKey="year" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
+                    <YAxis yAxisId="left" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
+                    <YAxis yAxisId="right" orientation="right" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--surface)',
+                        borderColor: 'var(--border)',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        boxShadow: 'var(--shadow-soft)',
+                        color: 'var(--text)',
+                      }}
+                      itemStyle={{ color: 'var(--text)' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
+                    <Bar yAxisId="left" dataKey="joiners" fill="#0284c7" name="Joiners" radius={[3, 3, 0, 0]} className="cursor-pointer" />
+                    <Line yAxisId="right" type="monotone" dataKey="headcount" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: '#10b981' }} name="Active Headcount" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
 
-          {/* Dynamic metric summary badges */}
-          <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
-            <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Peak Joiners</span>
-              <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 font-mono">{peakYear.joiners} in {peakYear.year}</span>
+              {/* Dynamic metric summary badges */}
+              <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
+                <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                  <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Peak Joiners</span>
+                  <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 font-mono">{peakYear.joiners} in {peakYear.year}</span>
+                </div>
+                <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                  <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Current Scope</span>
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">{data.total_employees} Active</span>
+                </div>
+                <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                  <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Stability Index</span>
+                  <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 font-mono">{retentionRate}% Retained</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 min-h-[175px] pt-1">
+              <ProjectComparisonChart
+                data={data.project_headcount_trends}
+                onSelectProject={handleSelectProject}
+              />
             </div>
-            <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Current Scope</span>
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">{data.total_employees} Active</span>
-            </div>
-            <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Stability Index</span>
-              <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 font-mono">{retentionRate}% Retained</span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Module 2: Diversity % Spotlight (Big Donut on Left, Slim Legend on Right) */}
@@ -862,68 +979,118 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
 
-        {/* Module 3: Job Level Hierarchy (Pyramid Representation with Drilldown) */}
+        {/* Module 3: Job Level Hierarchy / Age Distribution Curve */}
         <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                Job Level Hierarchy
+                {hierarchyView === 'pyramid' ? (
+                  <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                )}
+                {hierarchyView === 'pyramid' ? 'Job Level Hierarchy' : 'No. Of Employee By Age'}
               </span>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">Structural grade pyramid distribution</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                {hierarchyView === 'pyramid'
+                  ? 'Structural grade pyramid distribution'
+                  : 'Demographic age bell curve with density gradient'}
+              </p>
             </div>
-            <span className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800 font-bold font-mono">
-              E1 – E10
-            </span>
-          </div>
 
-          {/* Stepped Tiered Pyramid with Interactive Click */}
-          <div className="flex-1 flex flex-col justify-between py-1.5 min-h-0 gap-1.5">
-            {pyramidTiers.map((tier: any, idx: number) => {
-              const widths = ['w-[68%]', 'w-[80%]', 'w-[90%]', 'w-full'];
-              const bgColors = [
-                'bg-purple-50/80 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 hover:border-purple-400',
-                'bg-cyan-50/80 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 hover:border-cyan-400',
-                'bg-teal-50/80 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 hover:border-teal-400',
-                'bg-emerald-50/80 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 hover:border-emerald-400',
-              ];
-
-              return (
-                <div
-                  key={tier.tier}
-                  onClick={() => {
-                    const items = allDrilldownItems.filter((e) => tier.grades?.includes(e.job_level));
-                    openDrilldown(
-                      `${tier.tier} (${tier.grades?.join(', ')})`,
-                      `${tier.count} staff members in this organizational grade tier (${tier.percentage}% of workforce)`,
-                      `${tier.count} Staff`,
-                      items,
-                      'job_level',
-                      tier.grades
-                    );
-                  }}
-                  className={`${widths[idx]} mx-auto px-2.5 py-1 rounded-lg border flex items-center justify-between shadow-2xs transition-all cursor-pointer hover:scale-[1.02] hover:shadow-sm active:scale-[0.99] ${bgColors[idx]}`}
-                  title={`Click to view roster for ${tier.tier}`}
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setHierarchyView('pyramid')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    hierarchyView === 'pyramid'
+                      ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Grade Pyramid View"
                 >
-                  <div className="min-w-0 flex items-center gap-1.5 flex-1 pr-1">
-                    <span className="text-[10px] font-bold truncate">{tier.tier}</span>
-                    <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-white/70 dark:bg-slate-900/70 border border-black/10 dark:border-white/10 shrink-0">
-                      {tier.grades?.join(', ') || ''}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-extrabold font-mono text-xs">{tier.count}</span>
-                    <span className="text-[9px] font-mono opacity-75 ml-1">({tier.percentage}%)</span>
-                  </div>
-                </div>
-              );
-            })}
+                  <Layers className="w-2.5 h-2.5" />
+                  Grades
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHierarchyView('age')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    hierarchyView === 'age'
+                      ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Age Distribution Histogram"
+                >
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Age Curve
+                </button>
+              </div>
+              <span className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800 font-bold font-mono">
+                {hierarchyView === 'pyramid' ? 'E1 – E10' : `${data.age_distribution?.stats?.median || 29.5}y Med`}
+              </span>
+            </div>
           </div>
 
-          <div className="pt-1.5 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-            <span>Organizational Structure:</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">{pyramidLabel}</span>
-          </div>
+          {hierarchyView === 'pyramid' ? (
+            <>
+              {/* Stepped Tiered Pyramid with Interactive Click */}
+              <div className="flex-1 flex flex-col justify-between py-1.5 min-h-0 gap-1.5">
+                {pyramidTiers.map((tier: any, idx: number) => {
+                  const widths = ['w-[68%]', 'w-[80%]', 'w-[90%]', 'w-full'];
+                  const bgColors = [
+                    'bg-purple-50/80 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 hover:border-purple-400',
+                    'bg-cyan-50/80 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 hover:border-cyan-400',
+                    'bg-teal-50/80 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 hover:border-teal-400',
+                    'bg-emerald-50/80 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 hover:border-emerald-400',
+                  ];
+
+                  return (
+                    <div
+                      key={tier.tier}
+                      onClick={() => {
+                        const items = allDrilldownItems.filter((e) => tier.grades?.includes(e.job_level));
+                        openDrilldown(
+                          `${tier.tier} (${tier.grades?.join(', ')})`,
+                          `${tier.count} staff members in this organizational grade tier (${tier.percentage}% of workforce)`,
+                          `${tier.count} Staff`,
+                          items,
+                          'job_level',
+                          tier.grades
+                        );
+                      }}
+                      className={`${widths[idx]} mx-auto px-2.5 py-1 rounded-lg border flex items-center justify-between shadow-2xs transition-all cursor-pointer hover:scale-[1.02] hover:shadow-sm active:scale-[0.99] ${bgColors[idx]}`}
+                      title={`Click to view roster for ${tier.tier}`}
+                    >
+                      <div className="min-w-0 flex items-center gap-1.5 flex-1 pr-1">
+                        <span className="text-[10px] font-bold truncate">{tier.tier}</span>
+                        <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-white/70 dark:bg-slate-900/70 border border-black/10 dark:border-white/10 shrink-0">
+                          {tier.grades?.join(', ') || ''}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="font-extrabold font-mono text-xs">{tier.count}</span>
+                        <span className="text-[9px] font-mono opacity-75 ml-1">({tier.percentage}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-1.5 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                <span>Organizational Structure:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">{pyramidLabel}</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 min-h-[175px] pt-1">
+              <AgeDistributionChart
+                data={data.age_distribution}
+                onSelectAgeBin={handleSelectAgeBin}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1176,60 +1343,103 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
 
-        {/* Module 6: Department Allocation (Clickable Functional Units) */}
+        {/* Module 6: Department Allocation / Emp Type Breakdown */}
         <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Department Allocation</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+                {deptView === 'department' ? 'Department Allocation' : 'Emp Type Ratio %'}
+              </span>
             </div>
-            <span className="text-[10px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-semibold font-mono">
-              {deptList.length} Units
-            </span>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-around py-1.5 min-h-0">
-            {deptList.map((d: any) => (
-              <div
-                key={d.department}
-                onClick={() => {
-                  const items = allDrilldownItems.filter(
-                    (item) => item.department.toLowerCase() === d.department.toLowerCase()
-                  );
-                  openDrilldown(
-                    `${d.department} Department Team`,
-                    `${d.count} specialists allocated to ${d.department} (${d.percentage}% of workforce)`,
-                    `${d.count} Staff`,
-                    items,
-                    'department',
-                    [d.department]
-                  );
-                }}
-                className="flex flex-col gap-0.5 cursor-pointer group p-0.5 rounded hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
-                title={`Click to view team members in ${d.department}`}
-              >
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors">
-                    {d.department}
-                  </span>
-                  <span className="font-mono text-[9px] text-slate-500 dark:text-slate-400">
-                    <b className="text-slate-900 dark:text-slate-100">{d.count}</b> ({d.percentage}%)
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-blue-500 dark:bg-blue-400 h-full rounded-full transition-all duration-500 group-hover:brightness-110"
-                    style={{ width: `${Math.max(4, d.percentage)}%` }}
-                  />
-                </div>
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setDeptView('department')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    deptView === 'department'
+                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Department Functional Breakdown"
+                >
+                  <Building2 className="w-2.5 h-2.5" />
+                  Units
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeptView('emptype')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    deptView === 'emptype'
+                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Employment Type Classification (Permanent, Contract, Intern)"
+                >
+                  <UserCheck className="w-2.5 h-2.5" />
+                  Emp Type
+                </button>
               </div>
-            ))}
+              <span className="text-[10px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-semibold font-mono">
+                {deptView === 'department' ? `${deptList.length} Units` : '3 Tiers'}
+              </span>
+            </div>
           </div>
 
-          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-            <span>Primary Focus:</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400 font-mono">{top2Names} ({top2Pct.toFixed(1)}%)</span>
-          </div>
+          {deptView === 'department' ? (
+            <>
+              <div className="flex-1 flex flex-col justify-around py-1.5 min-h-0">
+                {deptList.map((d: any) => (
+                  <div
+                    key={d.department}
+                    onClick={() => {
+                      const items = allDrilldownItems.filter(
+                        (item) => item.department.toLowerCase() === d.department.toLowerCase()
+                      );
+                      openDrilldown(
+                        `${d.department} Department Team`,
+                        `${d.count} specialists allocated to ${d.department} (${d.percentage}% of workforce)`,
+                        `${d.count} Staff`,
+                        items,
+                        'department',
+                        [d.department]
+                      );
+                    }}
+                    className="flex flex-col gap-0.5 cursor-pointer group p-0.5 rounded hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                    title={`Click to view team members in ${d.department}`}
+                  >
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors">
+                        {d.department}
+                      </span>
+                      <span className="font-mono text-[9px] text-slate-500 dark:text-slate-400">
+                        <b className="text-slate-900 dark:text-slate-100">{d.count}</b> ({d.percentage}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-blue-500 dark:bg-blue-400 h-full rounded-full transition-all duration-500 group-hover:brightness-110"
+                        style={{ width: `${Math.max(4, d.percentage)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                <span>Primary Focus:</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400 font-mono">{top2Names} ({top2Pct.toFixed(1)}%)</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 min-h-[175px] pt-1">
+              <EmpTypeBreakdown
+                data={data.emp_type_distribution}
+                onSelectType={handleSelectEmpType}
+              />
+            </div>
+          )}
         </div>
       </div>
 

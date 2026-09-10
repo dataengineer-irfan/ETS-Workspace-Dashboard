@@ -67,6 +67,31 @@ export interface HomeKPIs {
     count: number;
     percentage: number;
   }[];
+  age_distribution?: {
+    stats: { median: number; mean: number; min: number; max: number; total: number };
+    bins_3: { bin: string; label: string; start: number; end: number; count: number; percentage: number }[];
+    bins_2: { bin: string; label: string; start: number; end: number; count: number; percentage: number }[];
+    bins_5: { bin: string; label: string; start: number; end: number; count: number; percentage: number }[];
+  };
+  project_headcount_trends?: {
+    project: string;
+    beginning: number;
+    end: number;
+    net_change: number;
+    growth_pct: number;
+    current_active: number;
+  }[];
+  emp_type_distribution?: {
+    total: number;
+    types: {
+      type: string;
+      label: string;
+      count: number;
+      percentage: number;
+      color: string;
+      description?: string;
+    }[];
+  };
 }
 
 export interface StatewiseKPIs {

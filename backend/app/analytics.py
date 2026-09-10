@@ -174,7 +174,10 @@ class AnalyticsEngine:
                 'grade_hierarchy': [],
                 'tenure_stability_bands': [],
                 'headcount_growth_history': [],
-                'department_distribution': []
+                'department_distribution': [],
+                'age_distribution': {'stats': {'median': 0, 'mean': 0, 'min': 0, 'max': 0, 'total': 0}, 'bins_3': [], 'bins_2': [], 'bins_5': []},
+                'project_headcount_trends': [],
+                'emp_type_distribution': {'total': 0, 'types': []}
             }
         
         male_count = int((df['GENDER'] == 'Male').sum())
@@ -295,6 +298,117 @@ class AnalyticsEngine:
                 'percentage': pct
             })
 
+        # 1. Age Distribution (Dynamic histogram with 2y, 3y, 5y bins)
+        ref_dt = pd.to_datetime('2024-10-10')
+        dob_valid = pd.to_datetime(df['DATE OF BIRTH'], errors='coerce')
+        valid_ages = ((ref_dt - dob_valid).dt.days / 365.25).dropna()
+        valid_ages = valid_ages[(valid_ages >= 18) & (valid_ages <= 70)]
+
+        age_stats = {
+            'median': round(float(valid_ages.median()), 1) if len(valid_ages) > 0 else 0.0,
+            'mean': round(float(valid_ages.mean()), 1) if len(valid_ages) > 0 else 0.0,
+            'min': round(float(valid_ages.min()), 1) if len(valid_ages) > 0 else 0.0,
+            'max': round(float(valid_ages.max()), 1) if len(valid_ages) > 0 else 0.0,
+            'total': len(valid_ages)
+        }
+
+        def build_age_bins(step):
+            b_list = []
+            if len(valid_ages) == 0:
+                return b_list
+            min_bound = 18 if step == 3 else 20
+            max_bound = 63 if step == 3 else (64 if step == 2 else 65)
+            edges = list(range(min_bound, max_bound + step, step))
+            for i in range(len(edges) - 1):
+                low = edges[i]
+                high = edges[i + 1]
+                count = int(((valid_ages >= low) & (valid_ages < high)).sum())
+                pct = round((count / len(valid_ages)) * 100, 1) if len(valid_ages) > 0 else 0.0
+                b_list.append({
+                    'bin': f"{low}-{high - 1}" if high - 1 > low else str(low),
+                    'label': f"{low} - {high - 1} Yrs",
+                    'start': low,
+                    'end': high - 1,
+                    'count': count,
+                    'percentage': pct
+                })
+            return b_list
+
+        age_distribution = {
+            'stats': age_stats,
+            'bins_3': build_age_bins(3),
+            'bins_2': build_age_bins(2),
+            'bins_5': build_age_bins(5),
+        }
+
+        # 2. Project Headcount Trends (Beginning of Year vs End of Year)
+        target_year = 2024
+        if filters and filters.get('year'):
+            try:
+                target_year = int(filters['year'])
+            except:
+                pass
+
+        all_projects = sorted(list(df['Project Working'].dropna().unique()))
+        project_headcount_trends = []
+        for p in all_projects:
+            p_df = df[df['Project Working'] == p]
+            start_cutoff = pd.to_datetime(f"{target_year}-01-01")
+            end_cutoff = pd.to_datetime(f"{target_year}-12-31")
+            start_c = int(((p_df['START DATE'] < start_cutoff) & (p_df['EXIT DATE'].isna() | (p_df['EXIT DATE'] >= start_cutoff))).sum())
+            end_c = int(((p_df['START DATE'] <= end_cutoff) & (p_df['EXIT DATE'].isna() | (p_df['EXIT DATE'] > end_cutoff))).sum())
+            net_delta = end_c - start_c
+            pct_delta = round(((end_c - start_c) / start_c) * 100, 1) if start_c > 0 else 0.0
+
+            project_headcount_trends.append({
+                'project': str(p),
+                'beginning': start_c,
+                'end': end_c,
+                'net_change': net_delta,
+                'growth_pct': pct_delta,
+                'current_active': len(p_df)
+            })
+        project_headcount_trends.sort(key=lambda x: x['end'], reverse=True)
+
+        # 3. Employment Type Classification (Permanent, Contract, Intern)
+        intern_mask = (df['JOB LEVEL'] == 'E1') & (df['Prior_Exp'] == 0)
+        contract_mask = ((df['JOB LEVEL'].isin(['E1', 'E2'])) & (df['Prior_Exp'] > 0)) | ((df['Infinite_Exp'] < 1.0) & (~intern_mask))
+        permanent_mask = ~(intern_mask | contract_mask)
+
+        intern_cnt = int(intern_mask.sum())
+        contract_cnt = int(contract_mask.sum())
+        perm_cnt = int(permanent_mask.sum())
+
+        emp_type_distribution = {
+            'total': total,
+            'types': [
+                {
+                    'type': 'Permanent',
+                    'label': 'Permanent Staff',
+                    'count': perm_cnt,
+                    'percentage': round((perm_cnt / total) * 100, 1) if total > 0 else 0.0,
+                    'color': '#d97706',
+                    'description': 'Core full-time engineers & leadership'
+                },
+                {
+                    'type': 'Contract',
+                    'label': 'Contract Specialists',
+                    'count': contract_cnt,
+                    'percentage': round((contract_cnt / total) * 100, 1) if total > 0 else 0.0,
+                    'color': '#f59e0b',
+                    'description': 'Technical contractors & specialists'
+                },
+                {
+                    'type': 'Intern',
+                    'label': 'Graduate Interns',
+                    'count': intern_cnt,
+                    'percentage': round((intern_cnt / total) * 100, 1) if total > 0 else 0.0,
+                    'color': '#fde68a',
+                    'description': 'Early career talent & trainees'
+                },
+            ]
+        }
+
         return {
             'total_employees': total,
             'male_count': male_count,
@@ -316,7 +430,10 @@ class AnalyticsEngine:
             'grade_hierarchy': grade_hierarchy,
             'tenure_stability_bands': tenure_stability_bands,
             'headcount_growth_history': headcount_growth_history,
-            'department_distribution': department_distribution
+            'department_distribution': department_distribution,
+            'age_distribution': age_distribution,
+            'project_headcount_trends': project_headcount_trends,
+            'emp_type_distribution': emp_type_distribution
         }
 
     @staticmethod

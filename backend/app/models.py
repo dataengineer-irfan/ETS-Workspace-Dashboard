@@ -31,6 +31,9 @@ class HomeKPIs(BaseModel):
     tenure_stability_bands: Optional[List[Dict[str, Any]]] = None
     headcount_growth_history: Optional[List[Dict[str, Any]]] = None
     department_distribution: Optional[List[Dict[str, Any]]] = None
+    age_distribution: Optional[Dict[str, Any]] = None
+    project_headcount_trends: Optional[List[Dict[str, Any]]] = None
+    emp_type_distribution: Optional[Dict[str, Any]] = None
 
 class StatewiseKPIs(BaseModel):
     selected_sdm: str
