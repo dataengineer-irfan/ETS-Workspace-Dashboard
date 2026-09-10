@@ -36,24 +36,14 @@ export const ProjectComparisonChart: React.FC<ProjectComparisonChartProps> = ({
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-between select-none">
-      {/* Sub-header Context */}
-      <div className="flex items-center justify-between px-1 pb-1 shrink-0 text-[10px]">
-        <span className="text-slate-500 dark:text-slate-400">
-          Delivery Project Workforce Dynamics
-        </span>
-        <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold bg-cyan-50 dark:bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 text-[9px]">
-          Start vs End of Year
-        </span>
-      </div>
-
+    <div className="w-full h-full flex flex-col justify-between select-none min-h-0">
       {/* Main Grouped Bar Chart */}
-      <div className="flex-1 min-h-[130px] pt-1">
+      <div className="flex-1 min-h-0 pt-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
             margin={{ top: 16, right: 8, left: -22, bottom: 0 }}
-            barCategoryGap="20%"
+            barCategoryGap="24%"
             barGap={3}
           >
             <XAxis
@@ -75,18 +65,18 @@ export const ProjectComparisonChart: React.FC<ProjectComparisonChartProps> = ({
                 fontSize: '11px',
                 boxShadow: 'var(--shadow-soft, 0 4px 6px -1px rgba(0,0,0,0.1))',
               }}
-              formatter={(value: any, name: any, item: any) => [
+              formatter={(value: any, name: any) => [
                 `${value} Staff`,
                 name === 'beginning' ? 'Beginning of the Year' : 'End of the Year',
               ]}
               labelFormatter={(label) => `Project: ${label}`}
             />
 
-            {/* Beginning of Year Bar (Dark Blue / Indigo) */}
+            {/* Beginning of Year Bar (Indigo - vibrant in light & dark mode) */}
             <Bar
               dataKey="beginning"
               name="beginning"
-              fill="#1e40af"
+              fill="#6366f1"
               radius={[3, 3, 0, 0]}
               onClick={(entry: any) => onSelectProject && onSelectProject(entry.project)}
               className="cursor-pointer transition-opacity hover:opacity-90"
@@ -94,15 +84,15 @@ export const ProjectComparisonChart: React.FC<ProjectComparisonChartProps> = ({
               <LabelList
                 dataKey="beginning"
                 position="top"
-                style={{ fontSize: '8.5px', fontWeight: 'bold', fill: '#3b82f6' }}
+                style={{ fontSize: '9px', fontWeight: 'bold', fill: '#6366f1' }}
               />
             </Bar>
 
-            {/* End of Year Bar (Vibrant Sky Blue) */}
+            {/* End of Year Bar (Cyan - bright and high-contrast) */}
             <Bar
               dataKey="end"
               name="end"
-              fill="#38bdf8"
+              fill="#06b6d4"
               radius={[3, 3, 0, 0]}
               onClick={(entry: any) => onSelectProject && onSelectProject(entry.project)}
               className="cursor-pointer transition-opacity hover:opacity-90"
@@ -110,27 +100,27 @@ export const ProjectComparisonChart: React.FC<ProjectComparisonChartProps> = ({
               <LabelList
                 dataKey="end"
                 position="top"
-                style={{ fontSize: '8.5px', fontWeight: 'bold', fill: '#0284c7' }}
+                style={{ fontSize: '9px', fontWeight: 'bold', fill: '#06b6d4' }}
               />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Footer Legend matching reference */}
-      <div className="pt-1 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9.5px] text-slate-500 dark:text-slate-400 shrink-0">
+      {/* Footer Legend matching standard ETS subfooter */}
+      <div className="pt-1 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#1e40af]" />
-            <span>Beginning of the year</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-xs bg-[#6366f1]" />
+            <span className="text-slate-700 dark:text-slate-300 font-medium text-[9.5px]">Start of Year</span>
           </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#38bdf8]" />
-            <span>End of the year</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-xs bg-[#06b6d4]" />
+            <span className="text-slate-700 dark:text-slate-300 font-medium text-[9.5px]">End of Year</span>
           </div>
         </div>
 
-        <div className="font-mono text-[9px] text-slate-400">
+        <div className="font-mono text-[9.5px] text-cyan-600 dark:text-cyan-400 font-bold">
           {data.length} Projects Tracked
         </div>
       </div>

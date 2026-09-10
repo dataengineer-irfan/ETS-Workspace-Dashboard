@@ -66,7 +66,7 @@ export const AgeDistributionChart: React.FC<AgeDistributionProps> = ({
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-between select-none">
+    <div className="w-full h-full flex flex-col justify-between select-none min-h-0">
       {/* Sub-header Controls: Bin Selector & Stats */}
       <div className="flex items-center justify-between px-1 pb-1 shrink-0 text-[10px]">
         <div className="flex items-center gap-1.5">
@@ -101,7 +101,7 @@ export const AgeDistributionChart: React.FC<AgeDistributionProps> = ({
       </div>
 
       {/* Main Histogram Chart */}
-      <div className="flex-1 min-h-[130px] pt-1">
+      <div className="flex-1 min-h-0 pt-0.5">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={activeBins}

@@ -387,7 +387,7 @@ class AnalyticsEngine:
                     'label': 'Permanent Staff',
                     'count': perm_cnt,
                     'percentage': round((perm_cnt / total) * 100, 1) if total > 0 else 0.0,
-                    'color': '#d97706',
+                    'color': '#2563eb',
                     'description': 'Core full-time engineers & leadership'
                 },
                 {
@@ -395,7 +395,7 @@ class AnalyticsEngine:
                     'label': 'Contract Specialists',
                     'count': contract_cnt,
                     'percentage': round((contract_cnt / total) * 100, 1) if total > 0 else 0.0,
-                    'color': '#f59e0b',
+                    'color': '#0284c7',
                     'description': 'Technical contractors & specialists'
                 },
                 {
@@ -403,7 +403,7 @@ class AnalyticsEngine:
                     'label': 'Graduate Interns',
                     'count': intern_cnt,
                     'percentage': round((intern_cnt / total) * 100, 1) if total > 0 else 0.0,
-                    'color': '#fde68a',
+                    'color': '#6366f1',
                     'description': 'Early career talent & trainees'
                 },
             ]

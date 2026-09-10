@@ -792,7 +792,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </div>
             </>
           ) : (
-            <div className="flex-1 min-h-[175px] pt-1">
+            <div className="flex-1 min-h-0 flex flex-col pt-0.5">
               <ProjectComparisonChart
                 data={data.project_headcount_trends}
                 onSelectProject={handleSelectProject}
@@ -1084,7 +1084,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </div>
             </>
           ) : (
-            <div className="flex-1 min-h-[175px] pt-1">
+            <div className="flex-1 min-h-0 flex flex-col pt-0.5">
               <AgeDistributionChart
                 data={data.age_distribution}
                 onSelectAgeBin={handleSelectAgeBin}
@@ -1433,7 +1433,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </div>
             </>
           ) : (
-            <div className="flex-1 min-h-[175px] pt-1">
+            <div className="flex-1 min-h-0 flex flex-col pt-0.5">
               <EmpTypeBreakdown
                 data={data.emp_type_distribution}
                 onSelectType={handleSelectEmpType}
