@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.routers import (
     home,
@@ -8,8 +8,11 @@ from backend.app.routers import (
     salarywise,
     salarywise2,
     calendar_leave,
-    copilot
+    copilot,
+    auth,
+    dataset
 )
+from backend.app.security import require_roles
 
 tags_metadata = [
     {
@@ -69,16 +72,26 @@ This REST API provides multi-dimensional analytical endpoints powering the **ETS
     openapi_url="/openapi.json"
 )
 
-# CORS middleware for React frontend on port 3036
+# Explicit trusted origins for CORS
+ALLOWED_ORIGINS = [
+    "http://localhost:42005",
+    "http://127.0.0.1:42005",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register all tab routers
+# Register all tab and auth routers
+app.include_router(auth.router)
 app.include_router(home.router)
 app.include_router(statewise.router)
 app.include_router(employee_details.router)
@@ -87,6 +100,7 @@ app.include_router(salarywise.router)
 app.include_router(salarywise2.router)
 app.include_router(calendar_leave.router)
 app.include_router(copilot.router)
+app.include_router(dataset.router)
 
 @app.get("/api/health", tags=["System Health"], summary="Check API operational health")
 def health_check():
@@ -95,6 +109,21 @@ def health_check():
         "service": "ETS Employee Dashboard Backend",
         "version": "2.0.0",
         "docs_url": "/docs"
+    }
+
+@app.post(
+    "/api/reload",
+    tags=["System Health"],
+    summary="Reload dataset from Excel workbook",
+    dependencies=[Depends(require_roles(["ADMIN", "HR_ANALYTICS"]))]
+)
+def reload_dataset():
+    from backend.app.data_loader import data_loader
+    data_loader.load_data()
+    return {
+        "status": "reloaded",
+        "total_employees": len(data_loader.df_employees),
+        "total_skills": len(data_loader.df_skills)
     }
 
 if __name__ == "__main__":

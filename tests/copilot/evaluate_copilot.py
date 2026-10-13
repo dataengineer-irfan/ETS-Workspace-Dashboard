@@ -7,7 +7,14 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from backend.app.ai_agent import ai_agent
+from backend.app.ai.orchestrator import llm_orchestrator
+
+class AIAgentProxy:
+    @staticmethod
+    def process_query(*args, **kwargs):
+        return llm_orchestrator.process(*args, **kwargs)
+
+ai_agent = AIAgentProxy()
 
 def run_evaluation():
     json_path = os.path.join(os.path.dirname(__file__), 'copilot_test_cases.json')

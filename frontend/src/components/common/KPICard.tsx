@@ -10,6 +10,7 @@ interface KPICardProps {
   badgeColor?: 'cyan' | 'emerald' | 'amber' | 'purple' | 'rose' | 'blue';
   trend?: string;
   dominant?: boolean;
+  compact?: boolean;
   onClick?: () => void;
 }
 
@@ -40,12 +41,15 @@ export const KPICard: React.FC<KPICardProps> = ({
   badgeColor = 'cyan',
   trend,
   dominant = false,
+  compact = false,
   onClick,
 }) => {
   return (
     <div
       onClick={onClick}
-      className={`glass-panel rounded-xl p-2.5 flex flex-col justify-between transition-all relative overflow-hidden ${
+      className={`glass-panel rounded-xl flex flex-col justify-between transition-all relative overflow-hidden ${
+        compact ? 'py-1.5 px-3' : 'p-2.5'
+      } ${
         dominant ? 'border-l-4 border-l-cyan-600 shadow-sm' : ''
       } ${onClick ? 'cursor-pointer hover:border-cyan-400 hover:shadow-sm' : ''}`}
       style={{
@@ -56,19 +60,25 @@ export const KPICard: React.FC<KPICardProps> = ({
     >
       <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: 'linear-gradient(90deg, rgba(14,165,233,0.9), rgba(59,130,246,0.3), transparent)' }} />
       <div className="flex items-center justify-between gap-1">
-        <span className={`text-[10px] font-bold tracking-[0.08em] uppercase ${dominant ? 'text-cyan-900 dark:text-cyan-300' : ''}`} style={{ color: dominant ? undefined : 'var(--muted)' }}>
+        <span className={`${compact ? 'text-[9.5px]' : 'text-[10px]'} font-bold tracking-[0.08em] uppercase ${dominant ? 'text-cyan-900 dark:text-cyan-300' : ''}`} style={{ color: dominant ? undefined : 'var(--muted)' }}>
           {title}
         </span>
-        <div className={`rounded-md flex items-center justify-center shrink-0 ${dominant ? 'w-7 h-7' : 'w-6 h-6'} ${ICON_BG_STYLES[badgeColor]}`}>
-          <Icon className={dominant ? 'w-4 h-4' : 'w-3 h-3'} />
+        <div className={`rounded-md flex items-center justify-center shrink-0 ${compact ? 'w-5 h-5' : dominant ? 'w-7 h-7' : 'w-6 h-6'} ${ICON_BG_STYLES[badgeColor]}`}>
+          <Icon className={compact ? 'w-3 h-3' : dominant ? 'w-4 h-4' : 'w-3 h-3'} />
         </div>
       </div>
 
-      <div className="my-1 flex items-baseline justify-between gap-1 min-w-0">
+      <div className={`${compact ? 'my-0.5' : 'my-1'} flex items-baseline justify-between gap-1 min-w-0`}>
         <span 
           title={typeof value === 'string' ? value : undefined}
           className={`font-black tracking-tight truncate ${
-            dominant 
+            compact
+              ? dominant
+                ? 'text-xl text-cyan-950 dark:text-cyan-200 font-mono'
+                : typeof value === 'string' && value.length > 16
+                ? 'text-xs font-sans font-bold'
+                : 'text-base font-mono'
+              : dominant 
               ? 'text-2xl lg:text-3xl text-cyan-950 dark:text-cyan-200 font-mono' 
               : typeof value === 'string' && value.length > 16
               ? 'text-xs font-sans font-bold'
@@ -79,14 +89,14 @@ export const KPICard: React.FC<KPICardProps> = ({
           {value}
         </span>
         {badge && (
-          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border font-mono ${BADGE_STYLES[badgeColor]}`}>
+          <span className={`${compact ? 'text-[8.5px] px-1.5 py-0.2' : 'text-[9px] px-1.5 py-0.5'} font-semibold rounded-full border font-mono ${BADGE_STYLES[badgeColor]}`}>
             {badge}
           </span>
         )}
       </div>
 
       {(subtitle || trend) && (
-        <div className="flex items-center justify-between text-[10px] font-medium pt-1 border-t" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
+        <div className={`flex items-center justify-between font-medium border-t ${compact ? 'pt-0.5 text-[9px]' : 'pt-1 text-[10px]'}`} style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
           <span className="truncate">{subtitle}</span>
           {trend && <span className="text-emerald-600 dark:text-emerald-400 font-bold font-mono shrink-0">{trend}</span>}
         </div>

@@ -10,5 +10,7 @@ def get_home_kpis(request: Request):
     return analytics_engine.get_home_kpis(filters)
 
 @router.get("/filters")
-def get_filter_options():
-    return analytics_engine.get_filter_options()
+def get_filter_options(request: Request):
+    filters = extract_request_filters(request)
+    return analytics_engine.get_filter_options(filters)
+

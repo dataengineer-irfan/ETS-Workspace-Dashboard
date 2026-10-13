@@ -5,6 +5,7 @@ export interface FilterParams {
   department?: string | string[];
   project?: string | string[];
   manager?: string | string[];
+  module?: string | string[];
   year?: number | number[];
   month?: string | string[];
   date?: string;
@@ -12,7 +13,11 @@ export interface FilterParams {
   end_date?: string;
   skill_name?: string | string[];
   salary_bin?: string | string[];
+  tenure_band?: string | string[];
+  emp_type?: string | string[];
   search?: string;
+  leave_type?: string | string[];
+  employee_number?: string | number;
 }
 
 export interface FilterOptions {
@@ -22,6 +27,14 @@ export interface FilterOptions {
   departments: string[];
   projects: string[];
   managers: string[];
+  manager_options?: {
+    value: string;
+    label: string;
+    name: string;
+    count: number;
+    projects: string[];
+  }[];
+  modules?: string[];
   years: number[];
   calendar_years?: number[];
   months?: string[];
@@ -43,6 +56,18 @@ export interface HomeKPIs {
   location_distribution: { location: string; count: number; percentage: number }[];
   attrition_rate_current?: number;
   attrition_trend_dir?: string;
+  project_manager_hierarchy?: {
+    project: string;
+    headcount: number;
+    percentage: number;
+    manager_count: number;
+    managers: {
+      manager: string;
+      name: string;
+      count: number;
+      percentage: number;
+    }[];
+  }[];
   grade_hierarchy?: {
     tier: string;
     grades: string[];
@@ -92,6 +117,12 @@ export interface HomeKPIs {
       description?: string;
     }[];
   };
+  module_distribution?: {
+    module_name: string;
+    employee_count: number;
+    percentage: number;
+    java_count?: number;
+  }[];
 }
 
 export interface StatewiseKPIs {
@@ -129,6 +160,7 @@ export interface StatewiseKPIs {
     'State': string;
     'Project Working': string;
     'MANAGER': string;
+    'Module'?: string;
     'Prior_Exp': number;
     'Infinite_Exp': number;
     'Total_Exp': number;
@@ -147,6 +179,7 @@ export interface EmployeeListItem {
   'State'?: string;
   'Project Working'?: string;
   'MANAGER'?: string;
+  'Module'?: string;
   'EMP_CTC1'?: number;
   'M_Salary'?: number;
   'Total_Exp'?: number;
@@ -169,6 +202,7 @@ export interface EmployeeDetails {
   job_level: string;
   manager: string;
   project: string;
+  module?: string;
   start_date?: string;
   exit_date?: string;
   prior_exp: number;
@@ -207,6 +241,25 @@ export interface EmployeeDetails {
     end_date?: string;
     manager?: string;
   }[];
+  date_of_birth?: string;
+  age?: number;
+  join_date?: string;
+  is_lateral_rehire?: boolean;
+  rehire_details?: {
+    is_rehire: boolean;
+    previous_exit_date?: string;
+    rejoin_date?: string;
+    previous_tenure_years?: number;
+    notes?: string;
+  };
+  contact_number?: string;
+  blood_group?: string;
+  personal_email?: string;
+  emergency_contact?: string;
+  emergency_contact_name?: string;
+  emergency_contact_relation?: string;
+  mediclaim_insurance_no?: string;
+  last_promotion_date?: string;
 }
 
 export interface TechwiseKPIs {
@@ -233,6 +286,30 @@ export interface TechwiseKPIs {
     count: number;
     percentage: number;
   }[];
+  module_distribution?: {
+    module_name: string;
+    employee_count: number;
+    percentage: number;
+    java_count: number;
+    qa_count: number;
+    frontend_count: number;
+    cloud_count: number;
+    db_count: number;
+    fullstack_count: number;
+    python_count: number;
+    avg_exp: number;
+    senior_count: number;
+    lead_manager: string;
+  }[];
+  java_module_breakdown?: {
+    module_name: string;
+    java_devs: number;
+    total_module_hc: number;
+    java_share_pct: number;
+    avg_java_exp: number;
+    senior_java_devs: number;
+    lead_manager: string;
+  }[];
   manager_grade_matrix: {
     managers: string[];
     grades: string[];
@@ -253,6 +330,7 @@ export interface TechwiseKPIs {
     location: string;
     department?: string;
     project?: string;
+    module?: string;
     primary_skill?: string;
     primary_skill_exp?: number;
     primary_skill_level?: string;
@@ -269,6 +347,8 @@ export interface TechwiseKPIs {
 
 export interface SalarywiseKPIs {
   total_salary: number;
+  monthly_payroll?: number;
+  avg_monthly_salary?: number;
   avg_salary: number;
   max_salary: number;
   min_salary: number;
@@ -288,13 +368,24 @@ export interface SalarywiseKPIs {
     employee_number: number;
     name: string;
     job_level: string;
+    job_title?: string;
+    department?: string;
+    location?: string;
     manager: string;
     m_salary: number;
     total_ctc: number;
     base_salary: number;
     bonus: number;
+    salary_bin?: string;
   }[];
-  salary_histogram?: { band: string; count: number; percentage: number; color?: string }[];
+  salary_histogram?: { 
+    band: string; 
+    count: number; 
+    percentage: number; 
+    color?: string;
+    total_outlay?: number;
+    avg_ctc?: number;
+  }[];
   total_managers?: number;
   matched_records?: number;
 }
@@ -338,6 +429,7 @@ export interface Salarywise2KPIs {
     'M_Salary': number;
     'Total_CTC': number;
     'MANAGER': string;
+    'Hike'?: number;
   }[];
   filtered_count: number;
 }
@@ -353,6 +445,18 @@ export interface CalendarEvent {
   end: string;
   department: string;
   location: string;
+}
+
+export interface CalendarCohortEmployee {
+  employee_number: number;
+  name: string;
+  department: string;
+  location: string;
+  leave_type: string;
+  days: number;
+  records_count: number;
+  start: string;
+  end: string;
 }
 
 export interface CalendarData {
@@ -380,12 +484,46 @@ export interface CalendarData {
     matrix: { [location: string]: { [grade: string]: number } };
   };
   events: CalendarEvent[];
+  available_employees?: {
+    employee_number: number;
+    name: string;
+    leave_count: number;
+  }[];
+  available_years?: number[];
+  selected_year?: number;
+  cohort_employees?: CalendarCohortEmployee[];
+}
+
+export interface ResultItem {
+  requirement_id: string;
+  title: string;
+  status: string;
+  presentation_mode: 'METRIC_CARD' | 'CHART' | 'TABLE' | 'TEXT_NOTICE';
+  chart_spec?: {
+    type?: 'bar' | 'pie' | 'line';
+    title?: string;
+    xAxis?: string;
+    yAxis?: string;
+    data?: { name: string; value: number }[];
+  };
+  table_spec?: {
+    columns: string[];
+    rows: Record<string, any>[];
+  };
+  metric_card_spec?: {
+    label: string;
+    value: string | number;
+    subtext?: string;
+  };
+  error_details?: string;
 }
 
 export interface CopilotResponse {
   answer: string;
   insights: string[];
   intent?: string;
+  status?: string;
+  overall_status?: string;
   source?: string;
   confidence?: number;
   data?: Record<string, any>;
@@ -399,5 +537,13 @@ export interface CopilotResponse {
     yAxis?: string;
     data?: any[];
   };
+  result_items?: ResultItem[];
   related_metrics?: { [key: string]: any };
+  visual_target?: 'home' | 'statewise' | 'employee_details' | 'techwise' | 'salarywise';
+  visual_filters?: Record<string, any>;
+  selected_entity?: {
+    employee_number?: string | number;
+    [key: string]: any;
+  };
 }
+

@@ -236,23 +236,23 @@ export const IndiaDeliveryMap: React.FC<IndiaDeliveryMapProps> = ({
                   className="transition-all duration-150 drop-shadow-sm"
                 />
 
-                {/* Micro City Label with Contrast Halo */}
+                {/* Micro City Label with Contrast Halo and Permanent Percentage */}
                 <text
                   x={coord.labelDx * labelScale}
                   y={coord.labelDy * labelScale}
                   textAnchor={coord.anchor}
                   className={`font-extrabold tracking-tight select-none pointer-events-none transition-all stroke-white/95 dark:stroke-slate-900/95 ${
                     isHovered
-                      ? 'fill-slate-900 dark:fill-white font-black'
-                      : 'fill-slate-800 dark:fill-slate-100'
+                      ? 'fill-cyan-600 dark:fill-cyan-400 font-black'
+                      : 'fill-slate-900 dark:fill-slate-100'
                   }`}
                   style={{
-                    fontSize: isFocus ? (isHovered ? '16px' : '14px') : (isHovered ? '24px' : '20px'),
+                    fontSize: isFocus ? (isHovered ? '15px' : '13px') : (isHovered ? '22px' : '18px'),
                     strokeWidth: isFocus ? 3.5 : 5,
                     paintOrder: 'stroke fill',
                   }}
                 >
-                  {loc.location}
+                  {loc.location} {loc.percentage}%
                 </text>
               </g>
             );

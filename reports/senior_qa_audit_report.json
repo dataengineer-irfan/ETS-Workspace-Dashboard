@@ -1,0 +1,538 @@
+{
+  "audit_timestamp": "2026-10-06 13:33:38",
+  "dataset_records": {
+    "employees": 590,
+    "skills": 2177,
+    "finance": 1934,
+    "leave": 799
+  },
+  "modules_audited": {
+    "Auth & Security": {
+      "passed": 9,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Login admin",
+          "status": "PASS",
+          "expected": "ADMIN",
+          "actual": "ADMIN",
+          "details": null
+        },
+        {
+          "check": "Login executive",
+          "status": "PASS",
+          "expected": "EXECUTIVE",
+          "actual": "EXECUTIVE",
+          "details": null
+        },
+        {
+          "check": "Login hr_analytics",
+          "status": "PASS",
+          "expected": "HR_ANALYTICS",
+          "actual": "HR_ANALYTICS",
+          "details": null
+        },
+        {
+          "check": "Login manager",
+          "status": "PASS",
+          "expected": "MANAGER",
+          "actual": "MANAGER",
+          "details": null
+        },
+        {
+          "check": "Login employee",
+          "status": "PASS",
+          "expected": "EMPLOYEE",
+          "actual": "EMPLOYEE",
+          "details": null
+        },
+        {
+          "check": "Reject Invalid Password",
+          "status": "PASS",
+          "expected": 401,
+          "actual": 401,
+          "details": null
+        },
+        {
+          "check": "Reject Unauthenticated Salary Request",
+          "status": "PASS",
+          "expected": "401 or 403",
+          "actual": 401,
+          "details": null
+        },
+        {
+          "check": "Admin Reload Dataset Allowed (200 OK)",
+          "status": "PASS",
+          "expected": 200,
+          "actual": 200,
+          "details": null
+        },
+        {
+          "check": "Employee Reload Dataset Forbidden (403)",
+          "status": "PASS",
+          "expected": 403,
+          "actual": 403,
+          "details": null
+        }
+      ]
+    },
+    "Workforce Overview": {
+      "passed": 16,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Total Headcount Reconciled",
+          "status": "PASS",
+          "expected": 590,
+          "actual": 590,
+          "details": null
+        },
+        {
+          "check": "Female Count Reconciled",
+          "status": "PASS",
+          "expected": 182,
+          "actual": 182,
+          "details": null
+        },
+        {
+          "check": "Male Count Reconciled",
+          "status": "PASS",
+          "expected": 408,
+          "actual": 408,
+          "details": null
+        },
+        {
+          "check": "Female Diversity % Reconciled",
+          "status": "PASS",
+          "expected": 30.85,
+          "actual": 30.85,
+          "details": null
+        },
+        {
+          "check": "Avg Total Experience Reconciled",
+          "status": "PASS",
+          "expected": 6.1,
+          "actual": 6.1,
+          "details": null
+        },
+        {
+          "check": "Avg ETS Tenure Reconciled",
+          "status": "PASS",
+          "expected": 2.89,
+          "actual": 2.89,
+          "details": null
+        },
+        {
+          "check": "Permanent Staff Count Reconciled",
+          "status": "PASS",
+          "expected": 282,
+          "actual": 282,
+          "details": null
+        },
+        {
+          "check": "Contractor Count Reconciled",
+          "status": "PASS",
+          "expected": 137,
+          "actual": 137,
+          "details": null
+        },
+        {
+          "check": "Intern Count Reconciled",
+          "status": "PASS",
+          "expected": 171,
+          "actual": 171,
+          "details": null
+        },
+        {
+          "check": "Composition Sum Equals 590",
+          "status": "PASS",
+          "expected": 590,
+          "actual": 590,
+          "details": null
+        },
+        {
+          "check": "Bangalore Headcount Reconciled",
+          "status": "PASS",
+          "expected": 396,
+          "actual": 396,
+          "details": null
+        },
+        {
+          "check": "Hyderabad Headcount Reconciled",
+          "status": "PASS",
+          "expected": 171,
+          "actual": 171,
+          "details": null
+        },
+        {
+          "check": "Chennai Headcount Reconciled",
+          "status": "PASS",
+          "expected": 13,
+          "actual": 13,
+          "details": null
+        },
+        {
+          "check": "Pune Headcount Reconciled",
+          "status": "PASS",
+          "expected": 10,
+          "actual": 10,
+          "details": null
+        },
+        {
+          "check": "Location Distribution Sum Equals 590",
+          "status": "PASS",
+          "expected": 590,
+          "actual": 590,
+          "details": null
+        },
+        {
+          "check": "Filtered KPI: Project NH Headcount",
+          "status": "PASS",
+          "expected": 364,
+          "actual": 364,
+          "details": null
+        }
+      ]
+    },
+    "Client Delivery": {
+      "passed": 6,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Statewise Total Headcount Reconciled",
+          "status": "PASS",
+          "expected": 590,
+          "actual": 590,
+          "details": null
+        },
+        {
+          "check": "Project NH Slicer Reconciled",
+          "status": "PASS",
+          "expected": 364,
+          "actual": 364,
+          "details": null
+        },
+        {
+          "check": "Project ND Slicer Reconciled",
+          "status": "PASS",
+          "expected": 118,
+          "actual": 118,
+          "details": null
+        },
+        {
+          "check": "Project AK Slicer Reconciled",
+          "status": "PASS",
+          "expected": 108,
+          "actual": 108,
+          "details": null
+        },
+        {
+          "check": "Roster Count Equals 590",
+          "status": "PASS",
+          "expected": 590,
+          "actual": 590,
+          "details": null
+        },
+        {
+          "check": "Roster Schema Integrity",
+          "status": "PASS",
+          "expected": true,
+          "actual": true,
+          "details": null
+        }
+      ]
+    },
+    "Skills & Competency": {
+      "passed": 4,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Headcount In Scope Reconciled",
+          "status": "PASS",
+          "expected": 590,
+          "actual": 590,
+          "details": null
+        },
+        {
+          "check": "Distinct Skills Count Reconciled",
+          "status": "PASS",
+          "expected": 14,
+          "actual": 14,
+          "details": null
+        },
+        {
+          "check": "Skill Distribution List Populated",
+          "status": "PASS",
+          "expected": true,
+          "actual": true,
+          "details": null
+        },
+        {
+          "check": "Top Technical Competency Matches Excel",
+          "status": "PASS",
+          "expected": "QA Automation / SDET",
+          "actual": "QA Automation / SDET",
+          "details": null
+        }
+      ]
+    },
+    "Compensation (Salarywise)": {
+      "passed": 7,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "RBAC: Employee Denied (403 Forbidden)",
+          "status": "PASS",
+          "expected": 403,
+          "actual": 403,
+          "details": null
+        },
+        {
+          "check": "RBAC: Admin Authorized (200 OK)",
+          "status": "PASS",
+          "expected": 200,
+          "actual": 200,
+          "details": null
+        },
+        {
+          "check": "Total CTC Reconciled",
+          "status": "PASS",
+          "expected": 458300000.0,
+          "actual": 458300000.0,
+          "details": null
+        },
+        {
+          "check": "Average CTC Reconciled",
+          "status": "PASS",
+          "expected": 776779.66,
+          "actual": 776779.66,
+          "details": null
+        },
+        {
+          "check": "Min CTC Reconciled",
+          "status": "PASS",
+          "expected": 150000.0,
+          "actual": 150000.0,
+          "details": null
+        },
+        {
+          "check": "Max CTC Reconciled",
+          "status": "PASS",
+          "expected": 5000000.0,
+          "actual": 5000000.0,
+          "details": null
+        },
+        {
+          "check": "Top Earner ID Reconciled",
+          "status": "PASS",
+          "expected": 1031854,
+          "actual": 1031854,
+          "details": null
+        }
+      ]
+    },
+    "Compensation Progression": {
+      "passed": 4,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "RBAC: Employee Denied (403 Forbidden)",
+          "status": "PASS",
+          "expected": 403,
+          "actual": 403,
+          "details": null
+        },
+        {
+          "check": "RBAC: Executive Authorized (200 OK)",
+          "status": "PASS",
+          "expected": 200,
+          "actual": 200,
+          "details": null
+        },
+        {
+          "check": "Multi-Year Trends Present (2020-2024)",
+          "status": "PASS",
+          "expected": true,
+          "actual": 5,
+          "details": null
+        },
+        {
+          "check": "Promotion Hike Analytics Present",
+          "status": "PASS",
+          "expected": true,
+          "actual": true,
+          "details": null
+        }
+      ]
+    },
+    "Calendar & Leaves": {
+      "passed": 3,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Default (2023) Leave Days Reconciled",
+          "status": "PASS",
+          "expected": 1105.5,
+          "actual": 1105.5,
+          "details": null
+        },
+        {
+          "check": "2024 Leave Days Reconciled",
+          "status": "PASS",
+          "expected": 25.0,
+          "actual": 25.0,
+          "details": null
+        },
+        {
+          "check": "Daily Leave Counts Populated",
+          "status": "PASS",
+          "expected": true,
+          "actual": 196,
+          "details": null
+        }
+      ]
+    },
+    "Employee 360": {
+      "passed": 7,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Unfiltered List Count Reconciled (590)",
+          "status": "PASS",
+          "expected": 590,
+          "actual": 590,
+          "details": null
+        },
+        {
+          "check": "Filtered List (Core Dept) Reconciled",
+          "status": "PASS",
+          "expected": 153,
+          "actual": 153,
+          "details": null
+        },
+        {
+          "check": "Manager Entity ID Matches",
+          "status": "PASS",
+          "expected": 1004641,
+          "actual": 1004641,
+          "details": null
+        },
+        {
+          "check": "Manager Grade Matches",
+          "status": "PASS",
+          "expected": "E7",
+          "actual": "E7",
+          "details": null
+        },
+        {
+          "check": "Manager Department Matches",
+          "status": "PASS",
+          "expected": "IT",
+          "actual": "IT",
+          "details": null
+        },
+        {
+          "check": "Manager Skills Array Present",
+          "status": "PASS",
+          "expected": true,
+          "actual": 4,
+          "details": null
+        },
+        {
+          "check": "Invalid Employee Returns 404",
+          "status": "PASS",
+          "expected": 404,
+          "actual": 404,
+          "details": null
+        }
+      ]
+    },
+    "Copilot Governance": {
+      "passed": 11,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Deterministic Query: Bangalore Headcount (396)",
+          "status": "PASS",
+          "expected": "Contains 396",
+          "actual": "There are 396 employees in ETS in Bangalore.",
+          "details": null
+        },
+        {
+          "check": "Bangalore Query SQL Validated",
+          "status": "PASS",
+          "expected": "WHERE location = 'Bangalore'",
+          "actual": "SELECT COUNT(*) AS count FROM employees WHERE location = 'Bangalore'",
+          "details": null
+        },
+        {
+          "check": "Empty Intersection Invariant: Returns 0",
+          "status": "PASS",
+          "expected": "0 employees",
+          "actual": "There are 0 employees in ETS in Project State AK in Chennai.",
+          "details": null
+        },
+        {
+          "check": "Empty Intersection SQL Retains Both Constraints",
+          "status": "PASS",
+          "expected": "state = 'AK' AND location = 'Chennai'",
+          "actual": "SELECT COUNT(*) AS count FROM employees WHERE state = 'AK' AND location = 'Chennai'",
+          "details": null
+        },
+        {
+          "check": "Same-Dimension Override Invariant: Returns 118 (ND)",
+          "status": "PASS",
+          "expected": "Contains 118",
+          "actual": "There are 118 employees in ETS in Project State ND.",
+          "details": null
+        },
+        {
+          "check": "Same-Dimension SQL Overrides Project Filter",
+          "status": "PASS",
+          "expected": "state = 'ND'",
+          "actual": "SELECT COUNT(*) AS count FROM employees WHERE state = 'ND'",
+          "details": null
+        },
+        {
+          "check": "Global Scope Escape: Returns 590",
+          "status": "PASS",
+          "expected": "590 employees",
+          "actual": "There are 590 employees in ETS.",
+          "details": null
+        },
+        {
+          "check": "Global Scope SQL Discards Ambient Location Filter",
+          "status": "PASS",
+          "expected": "No Chennai constraint",
+          "actual": "SELECT COUNT(*) AS count FROM employees",
+          "details": null
+        },
+        {
+          "check": "RLS Manager Department Scope: Returns 125 (Core in BLR)",
+          "status": "PASS",
+          "expected": "Contains 125",
+          "actual": "There are 125 employees in ETS in Bangalore in Core department.",
+          "details": null
+        },
+        {
+          "check": "RLS SQL Contains Department Core Constraint",
+          "status": "PASS",
+          "expected": "department='core'",
+          "actual": "SELECT COUNT(*) AS count FROM employees WHERE location = 'Bangalore' AND LOWER(department) = 'core'",
+          "details": null
+        },
+        {
+          "check": "RBAC Refusal for Employee Salary Query",
+          "status": "PASS",
+          "expected": "Refusal/Restricted",
+          "actual": "Access denied: User role 'EMPLOYEE' is not authorized to execute capability 'SALARY_COST_BY_GRADE'.",
+          "details": null
+        }
+      ]
+    }
+  },
+  "total_checks": 67,
+  "passed_checks": 67,
+  "failed_checks": 0,
+  "failures": []
+}

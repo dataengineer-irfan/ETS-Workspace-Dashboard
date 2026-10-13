@@ -1,5 +1,6 @@
+from enum import Enum
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 class FilterParams(BaseModel):
     state: Optional[str] = None
@@ -8,6 +9,7 @@ class FilterParams(BaseModel):
     department: Optional[str] = None
     project: Optional[str] = None
     manager: Optional[str] = None
+    module: Optional[str] = None
     year: Optional[int] = None
     skill_name: Optional[str] = None
     salary_bin: Optional[str] = None
@@ -34,6 +36,8 @@ class HomeKPIs(BaseModel):
     age_distribution: Optional[Dict[str, Any]] = None
     project_headcount_trends: Optional[List[Dict[str, Any]]] = None
     emp_type_distribution: Optional[Dict[str, Any]] = None
+    module_distribution: Optional[List[Dict[str, Any]]] = None
+    project_manager_hierarchy: Optional[List[Dict[str, Any]]] = None
 
 class StatewiseKPIs(BaseModel):
     selected_sdm: str
@@ -61,6 +65,7 @@ class EmployeeDetails(BaseModel):
     job_level: str
     manager: str
     project: str
+    module: Optional[str] = None
     start_date: Optional[str]
     exit_date: Optional[str]
     prior_exp: float
@@ -78,9 +83,22 @@ class EmployeeDetails(BaseModel):
     last_bonus: Optional[float] = None
     hike_percentage: Optional[float] = None
     leave_records: Optional[List[Dict[str, Any]]] = None
+    date_of_birth: Optional[str] = None
+    age: Optional[int] = None
+    join_date: Optional[str] = None
+    is_lateral_rehire: bool = False
+    rehire_details: Optional[Dict[str, Any]] = None
+    contact_number: Optional[str] = None
+    blood_group: Optional[str] = None
+    personal_email: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_relation: Optional[str] = None
+    mediclaim_insurance_no: Optional[str] = None
+    last_promotion_date: Optional[str] = None
 
 class TechwiseKPIs(BaseModel):
-    total_headcount: Optional[int] = 590
+    total_headcount: Optional[int] = None
     total_unique_skills: int
     most_common_skill: str
     avg_skill_experience: Optional[float] = 0.0
@@ -89,6 +107,8 @@ class TechwiseKPIs(BaseModel):
     missing_skills_count: int
     skill_distribution: List[Dict[str, Any]]
     skill_depth_distribution: Optional[List[Dict[str, Any]]] = None
+    module_distribution: Optional[List[Dict[str, Any]]] = None
+    java_module_breakdown: Optional[List[Dict[str, Any]]] = None
     manager_grade_matrix: Dict[str, Any]
     manager_skill_matrix: Optional[Dict[str, Any]] = None
     skill_roster: List[Dict[str, Any]]
@@ -111,8 +131,8 @@ class SalarywiseKPIs(BaseModel):
     manager_grade_ctc_matrix: Dict[str, Any]
     top_n_earners: List[Dict[str, Any]]
     salary_histogram: Optional[List[Dict[str, Any]]] = None
-    total_managers: Optional[int] = 54
-    matched_records: Optional[int] = 590
+    total_managers: Optional[int] = None
+    matched_records: Optional[int] = None
 
 class Salarywise2KPIs(BaseModel):
     team_avg_salary: List[Dict[str, Any]]
@@ -132,24 +152,59 @@ class CalendarData(BaseModel):
     manager_grade_matrix: Dict[str, Any]
     geography_grade_matrix: Dict[str, Any]
     daily_leave_counts: Optional[Dict[str, int]] = None
-    events: Optional[List[Dict[str, Any]]] = None
     events: List[Dict[str, Any]]
+    available_employees: Optional[List[Dict[str, Any]]] = None
+    available_years: Optional[List[int]] = None
+    selected_year: Optional[int] = None
+    cohort_employees: Optional[List[Dict[str, Any]]] = None
 
 class CopilotQueryRequest(BaseModel):
     question: str
     context_tab: Optional[str] = None
     history: Optional[List[Dict[str, Any]]] = None
+    user_role: Optional[str] = None
+    filters: Optional[Dict[str, Any]] = None
+    department: Optional[str] = None
+
+class PresentationModeEnum(str, Enum):
+    METRIC_CARD = "METRIC_CARD"
+    CHART = "CHART"
+    TABLE = "TABLE"
+    TEXT_NOTICE = "TEXT_NOTICE"
+
+class ResultItem(BaseModel):
+    requirement_id: str
+    title: str
+    status: str
+    presentation_mode: str = "METRIC_CARD"
+    chart_spec: Optional[Dict[str, Any]] = None
+    table_spec: Optional[Dict[str, Any]] = None
+    metric_card_spec: Optional[Dict[str, Any]] = None
+    error_details: Optional[str] = None
 
 class CopilotQueryResponse(BaseModel):
     answer: str
     insights: List[str]
-    intent: str = "GENERAL_DASHBOARD_QUESTION"
+    intent: str
+    status: Optional[str] = None
+    overall_status: Optional[str] = None
     data: Optional[Dict[str, Any]] = None
     filters: Optional[Dict[str, Any]] = None
-    source: str = "/api/home/kpis"
-    confidence: float = 1.0
+    source: Optional[str] = None
+    confidence: Optional[float] = None
     chart_data: Optional[List[Dict[str, Any]]] = None
     chart_type: Optional[str] = None
     related_metrics: Optional[Dict[str, Any]] = None
     chart: Optional[Dict[str, Any]] = None
+    result_items: Optional[List[ResultItem]] = None
+    suggested_questions: Optional[List[str]] = None
+    evidence: Optional[Union[List[Any], Dict[str, Any]]] = None
+    execution_trace: Optional[Dict[str, Any]] = None
+    llm_calls: Optional[int] = 0
+    model_calls: Optional[int] = 0
+    rag_calls: Optional[int] = 0
+    visual_target: Optional[str] = "home"
+    visual_filters: Optional[Dict[str, Any]] = None
+    selected_entity: Optional[Dict[str, Any]] = None
+
 

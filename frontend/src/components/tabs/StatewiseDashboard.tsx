@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import type { StatewiseKPIs } from '../../types/dashboard';
 import { KPICard } from '../common/KPICard';
 import { ExportButton } from '../common/ExportButton';
+import { DashboardSkeleton } from '../common/DashboardSkeleton';
+import { EmptyState } from '../common/EmptyState';
 import { 
   UserCheck, 
   Clock, 
@@ -9,7 +11,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   ShieldCheck,
-  Search,
   X,
   ArrowUpDown,
   ArrowUp,
@@ -31,6 +32,8 @@ interface StatewiseDashboardProps {
   loading: boolean;
   onSelectEmployee: (empNumber: number) => void;
   onOpenEmployeeProfile?: (empNumber: number) => void;
+  filters?: Record<string, any>;
+  setFilters?: React.Dispatch<React.SetStateAction<Record<string, any>>>;
 }
 
 export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
@@ -38,22 +41,28 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
   loading,
   onSelectEmployee,
   onOpenEmployeeProfile,
+  filters,
+  setFilters,
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<string>('EMPLOYEE NUMBER');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string | null>(null);
-  const [selectedSDM, setSelectedSDM] = useState<string>('all');
-  const rowsPerPage = 7;
+  const rowsPerPage = 8;
 
   if (loading || !data) {
+    return <DashboardSkeleton variant="client" title="Loading Client Delivery Analytics..." />;
+  }
+
+  if (data.filtered_employees === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-slate-500 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin"></div>
-          <span>Loading Statewise Analytics...</span>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center p-6 min-h-[400px]">
+        <EmptyState
+          title="No Client Delivery Records Match Active Filters"
+          description="None of the client accounts or employees match the active filters. Reset filters to restore view."
+          onResetFilters={() => setFilters?.({})}
+          resetLabel="Clear All Filters"
+        />
       </div>
     );
   }
@@ -68,6 +77,25 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
     setCurrentPage(1);
   };
 
+  const handleGradeClick = (grade: string) => {
+    setSelectedGradeFilter((prev) => {
+      const next = prev === grade ? null : grade;
+      if (setFilters) {
+        setFilters((fPrev) => {
+          const updated = { ...fPrev };
+          if (next) {
+            updated.job_level = [next];
+          } else {
+            delete updated.job_level;
+          }
+          return updated;
+        });
+      }
+      return next;
+    });
+    setCurrentPage(1);
+  };
+
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <ArrowUpDown className="w-2.5 h-2.5 text-slate-400 inline ml-1 opacity-70" />;
     return sortDir === 'asc' ? (
@@ -77,16 +105,10 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
     );
   };
 
-  // Filter roster by search term and clicked grade filter
+  // Filter roster by clicked grade filter
   const filteredRoster = (data.employee_roster || []).filter((emp) => {
     if (selectedGradeFilter && emp['JOB LEVEL'] !== selectedGradeFilter) return false;
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase().trim();
-    const id = String(emp['EMPLOYEE NUMBER'] || '').toLowerCase();
-    const name = String(emp['EMPLOYEE LABEL'] || '').toLowerCase();
-    const loc = String(emp['LOCATION'] || '').toLowerCase();
-    const proj = String(emp['Project Working'] || '').toLowerCase();
-    return id.includes(term) || name.includes(term) || loc.includes(term) || proj.includes(term);
+    return true;
   });
 
   const sortedRoster = [...filteredRoster].sort((a, b) => {
@@ -128,83 +150,21 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
   const GEO_PALETTE = ['#0284c7', '#0d9488', '#f97316', '#7c3aed', '#64748b'];
 
   return (
-    <div className="flex-1 flex flex-col gap-1.5 overflow-hidden select-none">
-      {/* Executive Leadership Brief */}
-      <div 
-        className="rounded-xl border p-2.5 shrink-0" 
-        style={{ 
-          background: 'linear-gradient(135deg, rgba(14,116,144,0.08), rgba(14,165,233,0.04), var(--panel), var(--surface))', 
-          borderColor: 'var(--border)', 
-          boxShadow: 'var(--shadow-soft)' 
-        }}
-      >
-        <div className="grid grid-cols-[1.8fr_0.8fr] gap-3 items-center">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 dark:text-slate-400">Regional Brief</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800">
-                ● OPTIMAL OPERATING SPREAD
-              </span>
-              {selectedGradeFilter && (
-                <button
-                  onClick={() => setSelectedGradeFilter(null)}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1 hover:bg-rose-200 dark:hover:bg-rose-900"
-                >
-                  Grade Filter: {selectedGradeFilter} <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-
-            {/* 3 Concise Bullet Insights */}
-            <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
-              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-                <span className="font-bold text-cyan-900 dark:text-cyan-300 block truncate">Delivery Concentration</span>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Bangalore & NH drive 64% total load</p>
-              </div>
-              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-                <span className="font-bold text-emerald-900 dark:text-emerald-300 block truncate">Tenure Seniority</span>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Grades E3-M2 hold highest internal tenure</p>
-              </div>
-              <div className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-                <span className="font-bold text-purple-900 dark:text-purple-300 block truncate">Roster Coverage</span>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">Active staffing balanced across 4 key hubs</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500 dark:text-slate-400">Regional Leadership SDM</span>
-            <select
-              value={selectedSDM}
-              onChange={(e) => setSelectedSDM(e.target.value)}
-              className="text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-cyan-500 shadow-2xs"
-            >
-              <option value="all">All Delivery Leads (590 Staff)</option>
-              {data.available_sdms?.map((sdm) => (
-                <option key={sdm.name} value={sdm.name}>
-                  {sdm.name} ({sdm.headcount} staff)
-                </option>
-              ))}
-            </select>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-              Lead: {data.selected_sdm.split('(')[0].trim()}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Top 4 KPI Cards (Dominant In-Scope Workforce) */}
-      <div className="grid grid-cols-4 gap-1.5 shrink-0">
+    <div className="flex-1 flex flex-col gap-2.5 min-h-full select-none">
+      {/* Top 4 KPI Cards (Compact & Dominant In-Scope Workforce) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
         <KPICard
           dominant={true}
+          compact={true}
           title="In-Scope Workforce"
-          value={data.filtered_employees}
-          subtitle={`Active Staff · ${selectedGradeFilter ? `Filtered by ${selectedGradeFilter}` : 'All Grades'}`}
+          value={selectedGradeFilter ? filteredRoster.length : data.filtered_employees}
+          subtitle={`Active Staff · ${selectedGradeFilter ? `Grade: ${selectedGradeFilter}` : 'All Grades'}`}
           icon={UserCheck}
-          badge="100% Roster"
+          badge={selectedGradeFilter ? `${filteredRoster.length} FTE` : "100% Roster"}
           badgeColor="emerald"
         />
         <KPICard
+          compact={true}
           title="Prior Experience"
           value={`${data.avg_prior_exp} Yrs`}
           subtitle="External specialist depth"
@@ -213,6 +173,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
           badgeColor="amber"
         />
         <KPICard
+          compact={true}
           title="ETS Tenure"
           value={`${data.avg_infinite_exp} Yrs`}
           subtitle="Internal operating continuity"
@@ -221,23 +182,24 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
           badgeColor="purple"
         />
         <KPICard
-          title="Regional Lead"
-          value={data.selected_sdm.split('(')[0].trim()}
-          subtitle="Executive Delivery Lead"
+          compact={true}
+          title="Delivery Lead"
+          value={(data.selected_sdm || '').replace(/\s*\(\d+\)\s*$/, '').trim() || data.selected_sdm}
+          subtitle="Executive Program Lead"
           icon={ShieldCheck}
-          badge="SDM"
+          badge="Lead"
           badgeColor="cyan"
         />
       </div>
 
       {/* Middle Visuals: 3 Grouped Charts with Zero Axis Repetitions */}
-      <div className="grid grid-cols-3 gap-1.5 flex-1 min-h-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 flex-1 min-h-[260px]">
         {/* Chart 1: Experience Analysis by Job Level */}
-        <div className="glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
+        <div className="col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-[240px]">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Experience by Job Level</span>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Click to filter grade</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Experience Depth by Grade</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Click to filter</span>
             </div>
             <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950 px-1.5 py-0.2 rounded border border-cyan-200 dark:border-cyan-800 font-semibold">Prior vs ETS</span>
           </div>
@@ -261,7 +223,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                   className="cursor-pointer"
                   onClick={(entry: any) => {
                     const gl = entry?.job_level ?? entry?.payload?.job_level;
-                    if (gl) setSelectedGradeFilter(gl);
+                    if (gl) handleGradeClick(gl);
                   }}
                 />
                 <Bar 
@@ -272,7 +234,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                   className="cursor-pointer"
                   onClick={(entry: any) => {
                     const gl = entry?.job_level ?? entry?.payload?.job_level;
-                    if (gl) setSelectedGradeFilter(gl);
+                    if (gl) handleGradeClick(gl);
                   }}
                 />
               </BarChart>
@@ -280,12 +242,12 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
           </div>
         </div>
 
-        {/* Chart 2: Grouped Distribution by Job Level & Project (Zero Repeated Labels) */}
-        <div className="glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
+        {/* Chart 2: Grouped Distribution by Job Level & Client Account */}
+        <div className="col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-[240px]">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Grade by Project</span>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Clean Single-Axis</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Grade by Client Account</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">NH · ND · AK</span>
             </div>
             <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800 font-semibold">Grouped</span>
           </div>
@@ -311,7 +273,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                     className="cursor-pointer"
                     onClick={(entry: any) => {
                       const gl = entry?.job_level ?? entry?.payload?.job_level;
-                      if (gl) setSelectedGradeFilter(gl);
+                      if (gl) handleGradeClick(gl);
                     }}
                   />
                 ))}
@@ -320,14 +282,14 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
           </div>
         </div>
 
-        {/* Chart 3: Grouped Workforce by Geography and Job Level (Zero Repeated Labels) */}
-        <div className="glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden">
+        {/* Chart 3: Grouped Workforce by Delivery Location and Job Level */}
+        <div className="col-span-1 md:col-span-2 xl:col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-[240px]">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Grade by Location</span>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Hub Breakdown</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Grade by Delivery Location</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">India Hubs</span>
             </div>
-            <span className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950 px-1.5 py-0.2 rounded border border-purple-200 dark:border-purple-800 font-semibold">Grouped</span>
+            <span className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950 px-1.5 py-0.2 rounded border border-purple-200 dark:border-purple-800 font-semibold">Hub Spread</span>
           </div>
 
           <div className="flex-1 min-h-0 pt-1">
@@ -351,7 +313,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                     className="cursor-pointer"
                     onClick={(entry: any) => {
                       const gl = entry?.job_level ?? entry?.payload?.job_level;
-                      if (gl) setSelectedGradeFilter(gl);
+                      if (gl) handleGradeClick(gl);
                     }}
                   />
                 ))}
@@ -361,95 +323,164 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
         </div>
       </div>
 
-      {/* Bottom: Filtered Employee Listing Table */}
-      <div className="glass-panel rounded-xl p-2.5 shrink-0 h-48 flex flex-col justify-between overflow-hidden">
+      {/* Bottom: Filtered Employee Listing Table (Calibrated Dynamic Height) */}
+      <div className="glass-panel rounded-xl p-2.5 shrink-0 min-h-[190px] h-auto flex-1 flex flex-col justify-between overflow-hidden shadow-2xs">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Employee Listing</span>
             <span className="text-[10px] text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono border border-slate-200 dark:border-slate-700 font-semibold">
               {filteredRoster.length} Records
             </span>
+            {selectedGradeFilter && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800">
+                <span>Grade: {selectedGradeFilter}</span>
+                <button
+                  onClick={() => {
+                    setSelectedGradeFilter(null);
+                    if (setFilters) {
+                      setFilters((fPrev) => {
+                        const updated = { ...fPrev };
+                        delete updated.job_level;
+                        return updated;
+                      });
+                    }
+                    setCurrentPage(1);
+                  }}
+                  className="hover:text-rose-600 transition-colors ml-0.5"
+                  title="Clear grade filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="relative flex items-center">
-              <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search name or ID..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-[11px] pl-6 pr-6 py-0.5 rounded-md focus:outline-none focus:border-cyan-500 w-44 hover:border-slate-300 dark:hover:border-slate-600 transition-colors leading-none"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setCurrentPage(1);
-                  }}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2"
-                >
-                  <X className="w-3 h-3 text-slate-400 hover:text-rose-500" />
-                </button>
-              )}
-            </div>
-
-            <ExportButton data={sortedRoster} filename="statewise_employee_roster.csv" />
+            <ExportButton data={sortedRoster} filename="client_delivery_roster.csv" />
             <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
               <span>Page {currentPage} of {totalPages}</span>
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-30"
+                className="min-w-[28px] min-h-[28px] p-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-30 flex items-center justify-center cursor-pointer transition-colors"
+                title="Previous page"
               >
-                <ChevronLeft className="w-3 h-3" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
               <button
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-30"
+                className="min-w-[28px] min-h-[28px] p-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-30 flex items-center justify-center cursor-pointer transition-colors"
+                title="Next page"
               >
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar my-1">
-          <table className="w-full text-left text-[11px] text-slate-700 dark:text-slate-300">
+        <div className="flex-1 overflow-auto custom-scrollbar my-1">
+          <table className="w-full min-w-[850px] text-left text-[11px] text-slate-700 dark:text-slate-300">
             <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs">
               <tr>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('EMPLOYEE NUMBER')}>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'EMPLOYEE NUMBER' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('EMPLOYEE NUMBER'); } }}
+                  className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('EMPLOYEE NUMBER')}
+                >
                   <div className="flex items-center gap-0.5">ID <SortIcon field="EMPLOYEE NUMBER" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('EMPLOYEE LABEL')}>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'EMPLOYEE LABEL' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('EMPLOYEE LABEL'); } }}
+                  className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('EMPLOYEE LABEL')}
+                >
                   <div className="flex items-center gap-0.5">Employee Name <SortIcon field="EMPLOYEE LABEL" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('JOB LEVEL')}>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'JOB LEVEL' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('JOB LEVEL'); } }}
+                  className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('JOB LEVEL')}
+                >
                   <div className="flex items-center gap-0.5">Grade <SortIcon field="JOB LEVEL" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('JOB TITLE')}>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'JOB TITLE' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('JOB TITLE'); } }}
+                  className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('JOB TITLE')}
+                >
                   <div className="flex items-center gap-0.5">Title <SortIcon field="JOB TITLE" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('LOCATION')}>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'LOCATION' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('LOCATION'); } }}
+                  className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('LOCATION')}
+                >
                   <div className="flex items-center gap-0.5">Location <SortIcon field="LOCATION" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('State')}>
-                  <div className="flex items-center gap-0.5">State / Project <SortIcon field="State" /></div>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'State' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('State'); } }}
+                  className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('State')}
+                >
+                  <div className="flex items-center gap-0.5">Client Account <SortIcon field="State" /></div>
                 </th>
-                <th className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('MANAGER')}>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'MANAGER' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('MANAGER'); } }}
+                  className="py-1 px-2 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('MANAGER')}
+                >
                   <div className="flex items-center gap-0.5">Manager <SortIcon field="MANAGER" /></div>
                 </th>
-                <th className="py-1 px-2 text-right cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('Prior_Exp')}>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'Prior_Exp' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('Prior_Exp'); } }}
+                  className="py-1 px-2 text-right cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('Prior_Exp')}
+                >
                   <div className="flex items-center justify-end gap-0.5">Prior Exp <SortIcon field="Prior_Exp" /></div>
                 </th>
-                <th className="py-1 px-2 text-right cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('Infinite_Exp')}>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'Infinite_Exp' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('Infinite_Exp'); } }}
+                  className="py-1 px-2 text-right cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('Infinite_Exp')}
+                >
                   <div className="flex items-center justify-end gap-0.5">ETS Exp <SortIcon field="Infinite_Exp" /></div>
                 </th>
-                <th className="py-1 px-2 text-right font-bold text-slate-900 dark:text-slate-100 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none" onClick={() => toggleSort('Total_Exp')}>
+                <th
+                  tabIndex={0}
+                  role="button"
+                  aria-sort={sortField === 'Total_Exp' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('Total_Exp'); } }}
+                  className="py-1 px-2 text-right font-bold text-slate-900 dark:text-slate-100 cursor-pointer hover:text-cyan-700 dark:hover:text-cyan-400 select-none focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                  onClick={() => toggleSort('Total_Exp')}
+                >
                   <div className="flex items-center justify-end gap-0.5">Total Exp <SortIcon field="Total_Exp" /></div>
                 </th>
               </tr>
@@ -459,6 +490,18 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                 paginatedRoster.map((emp) => (
                   <tr 
                     key={emp['EMPLOYEE NUMBER']}
+                    tabIndex={0}
+                    role="button"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (onOpenEmployeeProfile) {
+                          onOpenEmployeeProfile(emp['EMPLOYEE NUMBER']);
+                        } else {
+                          onSelectEmployee(emp['EMPLOYEE NUMBER']);
+                        }
+                      }
+                    }}
                     onClick={() => {
                       if (onOpenEmployeeProfile) {
                         onOpenEmployeeProfile(emp['EMPLOYEE NUMBER']);
@@ -466,19 +509,26 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                         onSelectEmployee(emp['EMPLOYEE NUMBER']);
                       }
                     }}
-                    className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 cursor-pointer transition-colors group"
+                    className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 cursor-pointer transition-colors group focus:outline-hidden focus:bg-cyan-50/20"
                   >
                     <td className="py-1 px-2 font-mono text-cyan-700 dark:text-cyan-400 font-semibold group-hover:underline">{emp['EMPLOYEE NUMBER']}</td>
-                    <td className="py-1 px-2 font-medium text-slate-900 dark:text-slate-100">{emp['EMPLOYEE LABEL']}</td>
+                    <td className="py-1 px-2 font-medium text-slate-900 dark:text-slate-100 truncate max-w-[150px]" title={emp['EMPLOYEE LABEL']}>{emp['EMPLOYEE LABEL']}</td>
                     <td className="py-1 px-2">
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-50 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleGradeClick(emp['JOB LEVEL']);
+                        }}
+                        className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-50 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900 transition-colors"
+                        title="Click to filter this grade"
+                      >
                         {emp['JOB LEVEL']}
                       </span>
                     </td>
-                    <td className="py-1 px-2 text-slate-600 dark:text-slate-400 truncate max-w-[120px]">{emp['JOB TITLE']}</td>
-                    <td className="py-1 px-2 text-slate-700 dark:text-slate-300">{emp['LOCATION']}</td>
-                    <td className="py-1 px-2 text-slate-700 dark:text-slate-300">{emp['State']} / {emp['Project Working']}</td>
-                    <td className="py-1 px-2 text-slate-600 dark:text-slate-400 truncate max-w-[140px]">{emp['MANAGER']}</td>
+                    <td className="py-1 px-2 text-slate-600 dark:text-slate-400 truncate max-w-[120px]" title={emp['JOB TITLE']}>{emp['JOB TITLE']}</td>
+                    <td className="py-1 px-2 text-slate-700 dark:text-slate-300" title={emp['LOCATION']}>{emp['LOCATION']}</td>
+                    <td className="py-1 px-2 text-slate-700 dark:text-slate-300 truncate max-w-[130px]" title={`${emp['State']} / ${emp['Project Working']}`}>{emp['State']} / {emp['Project Working']}</td>
+                    <td className="py-1 px-2 text-slate-600 dark:text-slate-400 truncate max-w-[140px]" title={emp['MANAGER']}>{emp['MANAGER']}</td>
                     <td className="py-1 px-2 text-right font-mono text-slate-700 dark:text-slate-300">{emp['Prior_Exp']} y</td>
                     <td className="py-1 px-2 text-right font-mono text-slate-700 dark:text-slate-300">{emp['Infinite_Exp']} y</td>
                     <td className="py-1 px-2 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{emp['Total_Exp']} y</td>
@@ -486,8 +536,14 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={10} className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs">
-                    No matching employees found for "{searchTerm}"
+                  <td colSpan={10} className="py-6">
+                    <EmptyState
+                      compact
+                      title="No matching employees found"
+                      description={selectedGradeFilter ? `No records found for grade "${selectedGradeFilter}".` : 'No employee records match the current filter selection.'}
+                      onResetFilters={selectedGradeFilter ? () => setSelectedGradeFilter(null) : (setFilters ? () => setFilters({}) : undefined)}
+                      resetLabel={selectedGradeFilter ? 'Clear Grade Filter' : 'Reset Filters'}
+                    />
                   </td>
                 </tr>
               )}

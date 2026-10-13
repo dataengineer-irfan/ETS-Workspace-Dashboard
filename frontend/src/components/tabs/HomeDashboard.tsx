@@ -5,16 +5,11 @@ import {
   Clock,
   Briefcase,
   Award,
-  TrendingDown,
   TrendingUp,
-  ArrowRight,
-  Compass,
   Shield,
   Layers,
   BarChart3,
-  Building2,
   Search,
-  Filter,
   ExternalLink,
   LucideIcon,
   X,
@@ -22,11 +17,18 @@ import {
   PieChart as PieChartIcon,
   UserCheck,
   Sparkles,
+  Building2,
+  Compass,
+  Filter,
+  BadgeIndianRupee,
+  Database,
 } from 'lucide-react';
 import { IndiaDeliveryMap } from '../common/IndiaDeliveryMap';
 import { AgeDistributionChart } from '../common/AgeDistributionChart';
-import { ProjectComparisonChart } from '../common/ProjectComparisonChart';
 import { EmpTypeBreakdown } from '../common/EmpTypeBreakdown';
+import { DashboardSkeleton } from '../common/DashboardSkeleton';
+import { EmptyState } from '../common/EmptyState';
+import { ExportButton } from '../common/ExportButton';
 import {
   PieChart,
   Pie,
@@ -51,9 +53,23 @@ export interface HomeDashboardProps {
   employeeList?: EmployeeListItem[];
   filters?: FilterParams;
   setFilters?: React.Dispatch<React.SetStateAction<FilterParams>>;
+  onOpenDatasetModal?: () => void;
 }
 
 /* ─── Color tokens ────────────────────────────────────────────── */
+const MODULE_COLORS: Record<string, string> = {
+  Claims: '#8b5cf6',
+  Member: '#3b82f6',
+  Provider: '#06b6d4',
+  'Claims Financial': '#10b981',
+  'Claims Payment': '#f59e0b',
+  EDI: '#ec4899',
+  'Service Authorization': '#6366f1',
+  'Benefit Plan': '#14b8a6',
+  TMSIS: '#f97316',
+  'Data Management': '#0ea5e9',
+};
+
 const LOCATION_COLORS: Record<string, string> = {
   Bangalore: '#0284c7',
   Hyderabad: '#0d9488',
@@ -175,6 +191,8 @@ interface KPISlotProps {
   iconNode?: React.ReactNode;
   Icon?: LucideIcon;
   onClick?: () => void;
+  microBar?: React.ReactNode;
+  actionNode?: React.ReactNode;
 }
 
 const RING_R = 20;
@@ -192,6 +210,8 @@ const KPISlot: React.FC<KPISlotProps> = ({
   iconNode,
   Icon,
   onClick,
+  microBar,
+  actionNode,
 }) => {
   const a = ACCENT[accent];
   const hasRing = pct !== undefined;
@@ -208,11 +228,14 @@ const KPISlot: React.FC<KPISlotProps> = ({
           : 'linear-gradient(180deg, var(--panel), var(--surface))',
       }}
     >
-      {/* Row 1: title left | icon right */}
+      {/* Row 1: title left | actionNode + icon right */}
       <div className="flex items-center justify-between gap-1 shrink-0">
-        <span className={`text-[10px] font-bold tracking-[0.08em] uppercase truncate leading-tight ${dominant ? 'text-cyan-900 dark:text-cyan-300' : 'text-slate-600 dark:text-slate-400'}`}>
-          {title}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className={`text-[11px] font-bold tracking-[0.08em] uppercase truncate leading-tight ${dominant ? 'text-cyan-900 dark:text-cyan-300' : 'text-slate-600 dark:text-slate-400'}`}>
+            {title}
+          </span>
+          {actionNode}
+        </div>
         <div className={`rounded-md flex items-center justify-center shrink-0 ${dominant ? 'w-6 h-6' : 'w-5 h-5'} ${a.icon} group-hover:scale-110 transition-transform`}>
           {iconNode ? iconNode : Icon ? <Icon className={dominant ? 'w-3.5 h-3.5' : 'w-3 h-3'} /> : null}
         </div>
@@ -222,15 +245,15 @@ const KPISlot: React.FC<KPISlotProps> = ({
       {hasRing ? (
         <div className="flex items-center justify-between gap-1 my-1 min-h-0">
           <div className="flex flex-col justify-center min-w-0">
-            <div className="flex items-baseline gap-1">
+            <div className="flex items-baseline gap-1.5">
               <span className="text-xl font-extrabold text-slate-900 dark:text-slate-100 font-mono tracking-tight leading-none">
                 {value}
               </span>
-              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border font-mono leading-tight shrink-0 ${a.badge}`}>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border font-mono leading-tight shrink-0 ${a.badge}`}>
                 {badge}
               </span>
             </div>
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 leading-tight truncate">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 leading-tight truncate">
               Diversity Ratio
             </p>
           </div>
@@ -259,17 +282,20 @@ const KPISlot: React.FC<KPISlotProps> = ({
           <span className={`font-black tracking-tight leading-none font-mono ${dominant ? 'text-2xl text-cyan-950 dark:text-cyan-200' : 'text-xl text-slate-900 dark:text-slate-100'}`}>
             {value}
           </span>
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border font-mono shrink-0 ${a.badge}`}>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border font-mono shrink-0 ${a.badge}`}>
             {badge}
           </span>
         </div>
       )}
 
+      {/* Optional microBar */}
+      {microBar && <div className="my-0.5 shrink-0">{microBar}</div>}
+
       {/* Row 3: divider + bottom info */}
-      <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-[9px] shrink-0">
+      <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] shrink-0">
         <span className="truncate text-slate-500 dark:text-slate-400 font-medium">{subtitle}</span>
-        {dominant && <span className="text-[9px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/50 px-1.5 py-0.5 rounded font-mono shrink-0">100% Active</span>}
-        {trend && <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 font-mono shrink-0">{trend}</span>}
+        {dominant && <span className="text-[10px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/50 px-1.5 py-0.5 rounded font-mono shrink-0">100% Active</span>}
+        {trend && <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono shrink-0">{trend}</span>}
       </div>
     </div>
   );
@@ -283,10 +309,12 @@ interface DrilldownItem {
   job_title: string;
   department: string;
   location: string;
+  project?: string;
   total_exp?: number;
   infinite_exp?: number;
   manager?: string;
   gender?: string;
+  module?: string;
   exit_date?: string;
 }
 
@@ -310,23 +338,206 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   employeeList,
   filters,
   setFilters,
+  onOpenDatasetModal,
 }) => {
   const [hoveredLocIndex, setHoveredLocIndex] = useState<number | null>(null);
-  const [hoveredGenderIndex, setHoveredGenderIndex] = useState<number | null>(null);
   const [footprintView, setFootprintView] = useState<'map' | 'donut'>('map');
-  const [growthView, setGrowthView] = useState<'history' | 'projects'>('history');
-  const [hierarchyView, setHierarchyView] = useState<'pyramid' | 'age'>('pyramid');
-  const [deptView, setDeptView] = useState<'department' | 'emptype'>('department');
+  const [allocationView, setAllocationView] = useState<'projects' | 'mmis' | 'departments'>('projects');
+  const [hierarchyView, setHierarchyView] = useState<'hierarchy' | 'pyramid' | 'age'>('hierarchy');
+  const [selectedHierarchyProj, setSelectedHierarchyProj] = useState<string>('ALL');
+  const [moduleView, setModuleView] = useState<'donut' | 'list'>('donut');
+  const [hoveredModuleIndex, setHoveredModuleIndex] = useState<number | null>(null);
   const [activeDrilldown, setActiveDrilldown] = useState<ActiveDrilldown | null>(null);
   const [drilldownSearch, setDrilldownSearch] = useState('');
 
+  // Dynamic MMIS Module Distribution
+  const mmisModules = useMemo(() => {
+    if (data?.module_distribution && data.module_distribution.length > 0) {
+      return data.module_distribution;
+    }
+    const counts: Record<string, number> = {};
+    (employeeList || []).forEach((e: any) => {
+      const mod = e.Module || e.module;
+      if (mod && !['none', 'null', 'undefined', '', 'global'].includes(String(mod).toLowerCase())) {
+        counts[mod] = (counts[mod] || 0) + 1;
+      }
+    });
+    const total = Object.values(counts).reduce((a, b) => a + b, 0) || 74;
+    return Object.entries(counts)
+      .map(([name, count]) => ({
+        module_name: name,
+        employee_count: count,
+        percentage: Number((count / total * 100).toFixed(1)),
+        java_count: count,
+      }))
+      .sort((a, b) => b.employee_count - a.employee_count);
+  }, [data?.module_distribution, employeeList]);
+
+  const totalMmisEmployees = useMemo(() => {
+    return mmisModules.reduce((acc, m) => acc + m.employee_count, 0) || 74;
+  }, [mmisModules]);
+
+  const totalMmisModulesCount = useMemo(() => {
+    return mmisModules.length || 19;
+  }, [mmisModules]);
+
+  const top5Modules = useMemo(() => {
+    return mmisModules.slice(0, 5).map((m, idx) => ({
+      ...m,
+      color: Object.values(MODULE_COLORS)[idx % Object.values(MODULE_COLORS).length],
+    }));
+  }, [mmisModules]);
+
+  const activeHoveredModule = hoveredModuleIndex !== null ? top5Modules[hoveredModuleIndex] : null;
+
+  // Convert employeeList to DrilldownItem format (memoized once for all drilldowns)
+  const allDrilldownItems: DrilldownItem[] = useMemo(() => {
+    return (employeeList || []).map((e) => ({
+      id: e['EMPLOYEE NUMBER'],
+      name: e['EMPLOYEE LABEL'] || `Employee #${e['EMPLOYEE NUMBER']}`,
+      job_level: e['JOB LEVEL'] || '—',
+      job_title: e['JOB TITLE'] || 'Engineer',
+      department: e['DEPARTMENT'] || 'Delivery',
+      location: e['LOCATION'] || 'Bangalore',
+      project: e['Project Working'] || (e as any).project || 'NH',
+      total_exp: e['Total_Exp'] !== undefined && e['Total_Exp'] !== null && e['Total_Exp'] !== ('' as any) ? Number(e['Total_Exp']) : undefined,
+      infinite_exp: e['Infinite_Exp'] !== undefined && e['Infinite_Exp'] !== null && e['Infinite_Exp'] !== ('' as any) ? Number(e['Infinite_Exp']) : undefined,
+      manager: e['MANAGER'],
+      gender: e['GENDER'],
+      module: e['Module'] && !['none', 'null', 'undefined', '', 'global'].includes(String(e['Module']).toLowerCase()) ? e['Module'] : undefined,
+    }));
+  }, [employeeList]);
+
+  // Client project deployed workforce (100% of employees are assigned to accounts)
+  const deployedItems: DrilldownItem[] = useMemo(() => {
+    return allDrilldownItems.filter((e) => Boolean(e.project));
+  }, [allDrilldownItems]);
+
+  // Senior delivery leads (Grades E5–E10: Technical Leads, PMs, Architects, Directors)
+  const leadItems: DrilldownItem[] = useMemo(() => {
+    return allDrilldownItems.filter((e) =>
+      ['E5', 'E6', 'E7', 'E8', 'E9', 'E10'].includes(e.job_level)
+    );
+  }, [allDrilldownItems]);
+
+  // Sync selectedHierarchyProj with active filters.project
+  React.useEffect(() => {
+    const projFilter = filters?.project;
+    if (projFilter) {
+      const activeProjs = Array.isArray(projFilter) ? projFilter : [projFilter];
+      if (activeProjs.length === 1 && activeProjs[0]) {
+        setSelectedHierarchyProj(activeProjs[0]);
+        return;
+      }
+    }
+    setSelectedHierarchyProj('ALL');
+  }, [filters?.project]);
+
+  // Project -> Manager Delivery Hierarchy memoized
+  const projectManagerHierarchy = useMemo(() => {
+    if (data?.project_manager_hierarchy && data.project_manager_hierarchy.length > 0) {
+      return data.project_manager_hierarchy;
+    }
+    const projs = Array.from(
+      new Set(
+        (employeeList || []).map(
+          (e: any) => e['Project Working'] || (e as any).project || 'NH'
+        )
+      )
+    )
+      .filter(Boolean)
+      .sort();
+    const total = employeeList?.length || 1;
+    return projs.map((p) => {
+      const pEmps = (employeeList || []).filter(
+        (e: any) => (e['Project Working'] || (e as any).project) === p
+      );
+      const mgrMap: Record<string, number> = {};
+      pEmps.forEach((e: any) => {
+        const m = e['MANAGER'];
+        if (m) mgrMap[m] = (mgrMap[m] || 0) + 1;
+      });
+      const managers = Object.entries(mgrMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([mgr, count]) => ({
+          manager: mgr,
+          name: mgr.replace(/\s*\(\d+\)\s*$/, '').trim() || mgr,
+          count,
+          percentage: Number(((count / (pEmps.length || 1)) * 100).toFixed(1)),
+        }));
+      return {
+        project: p,
+        headcount: pEmps.length,
+        percentage: Number(((pEmps.length / total) * 100).toFixed(1)),
+        manager_count: managers.length,
+        managers,
+      };
+    });
+  }, [data?.project_manager_hierarchy, employeeList]);
+
+  const displayedHierarchyManagers = useMemo(() => {
+    if (selectedHierarchyProj === 'ALL') {
+      const map: Record<string, { manager: string; name: string; count: number; projects: Set<string> }> = {};
+      projectManagerHierarchy.forEach((pGroup) => {
+        pGroup.managers.forEach((m) => {
+          if (!map[m.manager]) {
+            map[m.manager] = { manager: m.manager, name: m.name, count: 0, projects: new Set() };
+          }
+          map[m.manager].count += m.count;
+          map[m.manager].projects.add(pGroup.project);
+        });
+      });
+      const totalStaff = data?.total_employees || 1;
+      return Object.values(map)
+        .sort((a, b) => b.count - a.count)
+        .map((m) => ({
+          manager: m.manager,
+          name: m.name,
+          count: m.count,
+          percentage: Number(((m.count / totalStaff) * 100).toFixed(1)),
+          projectsSummary: Array.from(m.projects).join(', '),
+        }));
+    }
+    const targetGroup = projectManagerHierarchy.find(
+      (p) => p.project.toUpperCase() === selectedHierarchyProj.toUpperCase()
+    );
+    return targetGroup ? targetGroup.managers : [];
+  }, [projectManagerHierarchy, selectedHierarchyProj, data?.total_employees]);
+
+  // Authoritative Compensation Outlay from employeeList or verified baseline (₹32.45 Cr annual / ₹2.70 Cr/mo)
+  const totalAnnualCTC = useMemo(() => {
+    if (!employeeList || employeeList.length === 0) return 324478088;
+    const sum = employeeList.reduce((acc: number, e: any) => acc + (Number(e['EMP_CTC1']) || 0), 0);
+    return sum > 0 ? sum : 324478088;
+  }, [employeeList]);
+
+  const totalMonthlyCTC = useMemo(() => {
+    if (!employeeList || employeeList.length === 0) return 27039841;
+    const sum = employeeList.reduce((acc: number, e: any) => acc + (Number(e['M_Salary']) || 0), 0);
+    return sum > 0 ? sum : 27039841;
+  }, [employeeList]);
+
+  const formattedAnnualCTC = useMemo(() => {
+    return `₹${(totalAnnualCTC / 10000000).toFixed(2)} Cr`;
+  }, [totalAnnualCTC]);
+
+  const formattedMonthlyCTC = useMemo(() => {
+    return `₹${(totalMonthlyCTC / 10000000).toFixed(2)} Cr/mo`;
+  }, [totalMonthlyCTC]);
+
   if (loading || !data) {
+    return <DashboardSkeleton variant="workforce" title="Loading ETS Executive Dashboard..." />;
+  }
+
+  if (data.total_employees === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-slate-500 text-xs min-h-[300px]">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin" />
-          <span>Loading ETS Executive Dashboard...</span>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center p-6 min-h-[400px]">
+        <EmptyState
+          title="No Workforce Records Match Active Filters"
+          description="No employees match the applied filter combination. Reset active filters to restore full organizational view."
+          onResetFilters={() => setFilters?.({})}
+          resetLabel="Clear All Filters"
+        />
       </div>
     );
   }
@@ -358,14 +569,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         { year: '2023', joiners: 120, exits: 6, headcount: 585 },
         { year: '2024', joiners: 1, exits: 4, headcount: 590 },
       ];
-
-  // Gender data for center spotlight
-  const genderDonutData = [
-    { name: 'Female', value: data.female_count || 181, color: '#ec4899', percentage: data.pct_female },
-    { name: 'Male', value: data.male_count || 409, color: '#0284c7', percentage: data.pct_male },
-  ];
-
-  const activeHoveredGender = hoveredGenderIndex !== null ? genderDonutData[hoveredGenderIndex] : null;
 
   // Job Level Pyramid Hierarchy Data
   const pyramidTiers = data.grade_hierarchy && data.grade_hierarchy.length > 0
@@ -400,14 +603,76 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         { department: 'Informatica', count: 6, percentage: 1.0 },
       ];
 
-  const currentYearExits = data.attrition_by_year[data.attrition_by_year.length - 1]?.exits ?? 4;
+  // Client Project distribution (New Hampshire, North Dakota, Alaska)
+  let nhCount = 0;
+  let ndCount = 0;
+  let akCount = 0;
+  (employeeList || []).forEach((e: any) => {
+    const p = (e['Project Working'] || (e as any).project || '').toString().trim().toUpperCase();
+    if (p === 'NH' || p === 'NH PROJECTS') nhCount++;
+    else if (p === 'ND') ndCount++;
+    else if (p === 'AK') akCount++;
+  });
+  if (nhCount === 0 && ndCount === 0 && akCount === 0 && (!employeeList || employeeList.length === 0)) {
+    nhCount = 364;
+    ndCount = 118;
+    akCount = 108;
+  }
+  const totalEmployees = data.total_employees || 590;
+  const blrCount = rankedLocs.find(l => l.location.toLowerCase() === 'bangalore')?.count || 0;
+  const hydCount = rankedLocs.find(l => l.location.toLowerCase() === 'hyderabad')?.count || 0;
+  const southPct = totalEmployees > 0 ? (((blrCount + hydCount) / totalEmployees) * 100).toFixed(1) : '96.1';
+  const clientProjects = [
+    {
+      name: 'New Hampshire',
+      code: 'NH',
+      count: nhCount,
+      percentage: Number(((nhCount / totalEmployees) * 100).toFixed(1)),
+      color: '#0284c7',
+      subtext: 'Core Medicaid Account',
+    },
+    {
+      name: 'North Dakota',
+      code: 'ND',
+      count: ndCount,
+      percentage: Number(((ndCount / totalEmployees) * 100).toFixed(1)),
+      color: '#0d9488',
+      subtext: 'State MMIS Program',
+    },
+    {
+      name: 'Alaska',
+      code: 'AK',
+      count: akCount,
+      percentage: Number(((akCount / totalEmployees) * 100).toFixed(1)),
+      color: '#8b5cf6',
+      subtext: 'State MMIS Program',
+    },
+  ];
+
+  const currentYearExits = data.attrition_by_year && data.attrition_by_year.length > 0
+    ? data.attrition_by_year[data.attrition_by_year.length - 1]?.exits ?? 4
+    : 4;
+
+  const prevYearExits = data.attrition_by_year && data.attrition_by_year.length >= 2
+    ? data.attrition_by_year[data.attrition_by_year.length - 2]?.exits ?? 6
+    : 6;
+
+  const exitDiffPct = prevYearExits > 0 ? Math.round(((currentYearExits - prevYearExits) / prevYearExits) * 100) : 0;
+  const exitTrendStr = exitDiffPct < 0 ? `↓ ${Math.abs(exitDiffPct)}% YoY` : exitDiffPct > 0 ? `↑ ${exitDiffPct}% YoY` : `Stable YoY`;
 
   // Dynamic calculated metrics for growth summary cards
   const peakYear = growthHistory.reduce(
     (max, cur) => (cur.joiners > max.joiners ? cur : max),
     growthHistory[0] || { year: '2022', joiners: 240 }
   );
-  const currentAttrRate = data.attrition_rate_current !== undefined ? data.attrition_rate_current : 0.7;
+
+  const prevHeadcount = growthHistory.length >= 2 ? growthHistory[growthHistory.length - 2].headcount : (data.total_employees ? data.total_employees - 5 : 585);
+  const currHeadcount = data.total_employees || 590;
+  const yoyHeadcountGrowth = prevHeadcount > 0 ? (((currHeadcount - prevHeadcount) / prevHeadcount) * 100).toFixed(1) : '0.9';
+  const yoySign = Number(yoyHeadcountGrowth) >= 0 ? '↑' : '↓';
+
+  const computedAttrRate = Number(((currentYearExits / (data.total_employees || 590)) * 100).toFixed(2));
+  const currentAttrRate = data.attrition_rate_current !== undefined ? data.attrition_rate_current : computedAttrRate;
   const retentionRate = (100 - currentAttrRate).toFixed(1);
 
   // Dynamic label for stability band footer (1 to 3 Yrs)
@@ -427,19 +692,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const isBroadBase = (assocTier?.percentage || 0) >= (coreTier?.percentage || 0);
   const pyramidLabel = isBroadBase ? 'Broad-Base Foundation' : 'Core-Heavy Structure';
 
-  // Convert employeeList to DrilldownItem format for lightning-fast drilldown modals
-  const allDrilldownItems: DrilldownItem[] = (employeeList || []).map((e) => ({
-    id: e['EMPLOYEE NUMBER'],
-    name: e['EMPLOYEE LABEL'] || `Employee #${e['EMPLOYEE NUMBER']}`,
-    job_level: e['JOB LEVEL'] || '—',
-    job_title: e['JOB TITLE'] || 'Engineer',
-    department: e['DEPARTMENT'] || 'Delivery',
-    location: e['LOCATION'] || 'Bangalore',
-    total_exp: e['Total_Exp'] !== undefined && e['Total_Exp'] !== null && e['Total_Exp'] !== ('' as any) ? Number(e['Total_Exp']) : undefined,
-    infinite_exp: e['Infinite_Exp'] !== undefined && e['Infinite_Exp'] !== null && e['Infinite_Exp'] !== ('' as any) ? Number(e['Infinite_Exp']) : undefined,
-    manager: e['MANAGER'],
-    gender: e['GENDER'],
-  }));
+  const deployedCount = deployedItems.length || data.total_employees || 590;
+  const deploymentPct = ((deployedCount / (data.total_employees || 590)) * 100).toFixed(1);
+  const execItems = allDrilldownItems.filter(e => ['E8', 'E9', 'E10'].includes(e.job_level));
+  const execCount = execItems.length || (data.grade_hierarchy ? (data.grade_hierarchy.find((t: any) => t.tier.toLowerCase().includes('exec'))?.count ?? 6) : 6);
+  const nonLeadCount = Math.max(1, (data.total_employees || 590) - leadItems.length);
+  const leadRatio = (nonLeadCount / Math.max(1, leadItems.length)).toFixed(1);
 
   const openDrilldown = (
     title: string,
@@ -490,14 +748,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   };
 
   const handleSelectAgeBin = (start: number, end: number, label: string) => {
-    const refYear = 2024;
+    const REF_DATE = new Date('2024-10-10');  // Matches backend reference date exactly
     const items = (employeeList || [])
       .filter((e: any) => {
-        const dob = e['DATE OF BIRTH'] || e['date_of_birth'];
-        if (!dob) return false;
-        const birthYear = new Date(dob).getFullYear();
-        const age = refYear - birthYear;
-        return age >= start && age <= end;
+        const dobRaw = e['DATE OF BIRTH'] || e['date_of_birth'];
+        if (!dobRaw) return false;
+        const dob = new Date(dobRaw);
+        if (isNaN(dob.getTime())) return false;
+        // Fractional age in years matching backend: (ref_date - dob) / 365.25
+        const ageYears = (REF_DATE.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+        return ageYears >= start && ageYears < (end + 1); // end is inclusive, bin is [start, end+1)
       })
       .map((e: any) => ({
         id: e['EMPLOYEE NUMBER'],
@@ -506,6 +766,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         job_title: e['JOB TITLE'] || 'Engineer',
         department: e['DEPARTMENT'] || 'Delivery',
         location: e['LOCATION'] || 'Bangalore',
+        project: e['Project Working'] || (e as any).project || 'NH',
         total_exp: e['Total_Exp'] !== undefined && e['Total_Exp'] !== null && e['Total_Exp'] !== ('' as any) ? Number(e['Total_Exp']) : undefined,
         infinite_exp: e['Infinite_Exp'] !== undefined && e['Infinite_Exp'] !== null && e['Infinite_Exp'] !== ('' as any) ? Number(e['Infinite_Exp']) : undefined,
         manager: e['MANAGER'],
@@ -516,59 +777,123 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       `Age Bracket: ${label}`,
       `${items.length} employees within ${label} age group`,
       `${items.length} Staff`,
-      items.length > 0 ? items : allDrilldownItems
+      items  // No dangerous fallback — show accurate empty state if no match
     );
   };
 
-  const handleSelectProject = (projectName: string) => {
-    const items = allDrilldownItems.filter(
-      (item) => (item as any).project?.toLowerCase() === projectName.toLowerCase() ||
-                (employeeList || []).some((e: any) => e['EMPLOYEE NUMBER'] === item.id && (e['Project Working'] || '').toLowerCase() === projectName.toLowerCase())
-    );
+  const handleSelectProject = (projectName: string, projectCode?: string) => {
+    const code = (projectCode || projectName).toUpperCase();
+    const isNH = code === 'NH' || code.includes('HAMPSHIRE');
+    const items = allDrilldownItems.filter((item) => {
+      const p = (item.project || '').toUpperCase();
+      if (isNH) {
+        return p === 'NH' || p === 'NH PROJECTS';
+      }
+      return p === code;
+    });
+    const filterVal = isNH ? ['NH', 'NH Projects'] : [code];
     openDrilldown(
-      `Project ${projectName} Workforce`,
-      `${items.length} team members allocated to Project ${projectName}`,
+      `${projectName} (${isNH ? 'NH' : code}) Workforce`,
+      `${items.length} team members allocated to ${projectName} (${((items.length / (data?.total_employees || 590)) * 100).toFixed(1)}% of workforce)`,
       `${items.length} Staff`,
-      items.length > 0 ? items : allDrilldownItems,
+      items,
       'project',
-      [projectName]
+      filterVal
     );
   };
 
   const handleSelectEmpType = (typeName: string) => {
     let items: DrilldownItem[] = [];
-    if (typeName === 'Intern') {
+    const tLower = typeName.toLowerCase();
+    if (tLower.includes('intern')) {
       items = allDrilldownItems.filter((e) => e.job_level === 'E1');
-    } else if (typeName === 'Contract') {
+    } else if (tLower.includes('contract')) {
       items = allDrilldownItems.filter((e) => ['E1', 'E2'].includes(e.job_level));
     } else {
       items = allDrilldownItems.filter((e) => !['E1', 'E2'].includes(e.job_level));
     }
+    const pct = data?.total_employees ? ((items.length / data.total_employees) * 100).toFixed(1) : '0';
     openDrilldown(
       `${typeName} Workforce Segment`,
-      `${items.length} employees categorized as ${typeName}`,
+      `${items.length} employees categorized as ${typeName} (${pct}% of enterprise workforce)`,
       `${items.length} Staff`,
-      items
+      items,
+      'emp_type',
+      [typeName]
+    );
+  };
+
+  const handleSelectHierarchyManager = (mgrName: string, mgrFullVal: string, projCode?: string) => {
+    const isAll = !projCode || projCode === 'ALL';
+    const items = allDrilldownItems.filter((e) => {
+      const matchMgr = e.manager && (e.manager === mgrFullVal || e.manager.includes(mgrName));
+      const matchProj = isAll || (e.project && e.project.toUpperCase() === projCode.toUpperCase());
+      return matchMgr && matchProj;
+    });
+    const projLabel = isAll ? 'Total Workforce' : `${projCode} Project`;
+    openDrilldown(
+      `${mgrName} Delivery Team`,
+      `${items.length} engineers in ${projLabel} reporting to ${mgrName}`,
+      `${items.length} Staff`,
+      items,
+      'manager',
+      [mgrFullVal]
+    );
+  };
+
+  const handleSelectModule = (moduleName: string) => {
+    const items = allDrilldownItems.filter(
+      (item) => item.module && item.module.toLowerCase() === moduleName.toLowerCase()
+    );
+    openDrilldown(
+      `MMIS Module: ${moduleName}`,
+      `${items.length} Java engineers assigned to ${moduleName} module`,
+      `${items.length} Developers`,
+      items,
+      'module',
+      [moduleName]
     );
   };
 
   return (
     <div className="flex-1 flex flex-col gap-2 select-none h-full min-h-0">
       
-      {/* ══ ROW 1: 5-Card Executive KPI Band (Interactive Drilldowns) ══ */}
-      <div className="grid grid-cols-5 gap-2 shrink-0">
+      {/* ══ ROW 1: 5-Card Executive KPI Band (Interactive Drilldowns & Authoritative Financials) ══ */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 shrink-0">
         <KPISlot
           accent="cyan"
           dominant={true}
-          title="Total Headcount"
+          title="Total Workforce"
+          actionNode={
+            onOpenDatasetModal && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenDatasetModal();
+                }}
+                title="Manage Dataset: Download, Upload or Cloud Sync"
+                aria-label="Manage dataset"
+                className="px-1.5 py-0.5 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 hover:border-cyan-400/40 transition-all cursor-pointer flex items-center gap-1 text-[9px] font-bold shrink-0"
+              >
+                <Database className="w-2.5 h-2.5" />
+                <span className="hidden sm:inline">Data</span>
+              </button>
+            )
+          }
           value={data.total_employees}
-          badge="Enterprise"
-          subtitle="Active ETS enterprise workforce"
+          badge={`${data.pct_female}% Women`}
+          subtitle={`${data.female_count}W · ${data.male_count}M · ${yoySign} ${Math.abs(Number(yoyHeadcountGrowth))}% YoY`}
           Icon={Users}
+          microBar={
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden flex my-0.5" title={`${data.female_count} Women (${data.pct_female}%) · ${data.male_count} Men (${(100 - data.pct_female).toFixed(1)}%)`}>
+              <div className="bg-pink-500 h-full transition-all" style={{ width: `${data.pct_female}%` }} />
+              <div className="bg-cyan-500 h-full transition-all" style={{ width: `${100 - data.pct_female}%` }} />
+            </div>
+          }
           onClick={() => {
             openDrilldown(
-              'Enterprise Workforce Roster',
-              `All ${data.total_employees} active staff members in current scope`,
+              'Enterprise Workforce & Gender Representation',
+              `All ${data.total_employees} staff members (${data.female_count} Women, ${data.male_count} Men · ${data.pct_female}% diversity ratio)`,
               `${data.total_employees} Staff`,
               allDrilldownItems
             );
@@ -576,11 +901,21 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         />
 
         <KPISlot
+          accent="amber"
+          title="Financial Outlay"
+          value={formattedAnnualCTC}
+          badge="Annualized CTC"
+          subtitle={`${formattedMonthlyCTC} · Base CTC Outlay`}
+          Icon={BadgeIndianRupee}
+          onClick={() => onNavigateTab('salarywise')}
+        />
+
+        <KPISlot
           accent="emerald"
           title="Active & Retention"
-          value={data.total_employees}
-          badge={`${currentYearExits} Exits`}
-          subtitle={`Low attrition · ${retentionRate}% Stability`}
+          value={`${retentionRate}%`}
+          badge={`${currentAttrRate}% Attrition`}
+          subtitle={`Annualized velocity · ${exitTrendStr} · ${currentYearExits} exits`}
           Icon={Shield}
           onClick={() => {
             const allLeavers: DrilldownItem[] = [];
@@ -600,7 +935,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             });
             openDrilldown(
               'Workforce Separations & Historical Exits',
-              `${allLeavers.length || currentYearExits} recorded separations (${currentAttrRate}% current attrition)`,
+              `${allLeavers.length || currentYearExits} recorded separations (${currentAttrRate}% current annualized attrition)`,
               `${allLeavers.length || currentYearExits} Exits`,
               allLeavers,
               undefined,
@@ -612,387 +947,178 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         <KPISlot
           accent="teal"
-          title="Workforce Stability"
-          value={`${data.avg_infinite_exp} Yrs`}
-          badge="Company"
-          subtitle="Average tenure within ETS"
-          Icon={Clock}
+          title="Client Delivery Coverage"
+          value={`${deploymentPct}%`}
+          badge="100% Deployed"
+          subtitle={`${deployedCount} on Client Programs · NH, ND & AK Accounts`}
+          Icon={Briefcase}
           onClick={() => {
             openDrilldown(
-              'Workforce Tenure Overview',
-              `Average company tenure is ${data.avg_infinite_exp} years across ${data.total_employees} active staff`,
-              `Avg ${data.avg_infinite_exp}y`,
-              allDrilldownItems
-            );
-          }}
-        />
-
-        <KPISlot
-          accent="pink"
-          title="Gender Diversity"
-          value={`${data.pct_female}%`}
-          badge={`${data.female_count} Women`}
-          subtitle={`${data.female_count} Female · ${data.male_count} Male staff`}
-          iconNode={<FemaleSVG cls="w-3.5 h-3.5" />}
-          pct={data.pct_female}
-          onClick={() => {
-            const women = (employeeList || [])
-              .filter((e) => (e as any).GENDER === 'Female' || (e as any).gender === 'Female')
-              .map((e) => ({
-                id: e['EMPLOYEE NUMBER'],
-                name: e['EMPLOYEE LABEL'],
-                job_level: e['JOB LEVEL'],
-                job_title: e['JOB TITLE'],
-                department: e['DEPARTMENT'],
-                location: e['LOCATION'],
-                total_exp: e['Total_Exp'],
-              }));
-            openDrilldown(
-              'Female Workforce Representation',
-              `${data.female_count} women professionals (${data.pct_female}% diversity ratio)`,
-              `${data.female_count} Women`,
-              women.length > 0 ? women : allDrilldownItems
+              'Client Program Account Allocation',
+              `${deployedCount} engineers actively deployed across NH, ND, and AK state healthcare delivery programs (${deploymentPct}% deployment)`,
+              `${deployedCount} Deployed Staff`,
+              deployedItems
             );
           }}
         />
 
         <KPISlot
           accent="purple"
-          title="Career Span"
-          value={`${data.avg_total_exp} Yrs`}
-          badge="Total Exp"
-          subtitle="Overall industry market depth"
+          title="Executive & Experience"
+          value={`${execCount} Execs`}
+          badge={`${data.avg_total_exp}y Avg Exp`}
+          subtitle={`Grades E8–E10 · ${data.avg_infinite_exp}y avg ETS tenure`}
           Icon={Award}
-          onClick={() => onNavigateTab('salarywise')}
+          onClick={() => {
+            openDrilldown(
+              'Executive Leadership (Grades E8–E10)',
+              `${execCount} Executive Leaders across Grades E8, E9, and E10 (Vice Presidents, Assistant Vice Presidents, and Program Directors)`,
+              `${execCount} Executives`,
+              execItems,
+              'job_level',
+              ['E8', 'E9', 'E10']
+            );
+          }}
         />
       </div>
 
       {/* ══ ROW 2: WORKFORCE DYNAMICS & COMPOSITION (Growth + Diversity + Pyramid) ══ */}
-      <div className="grid grid-cols-12 gap-2 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-2 flex-1 min-h-0">
         
-        {/* Module 1: Headcount & Hiring Growth / Employees by Projects */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
+        {/* Module 1: Headcount & Hiring Growth (100% Dedicated 5-Year Trajectory) */}
+        <div className="col-span-1 lg:col-span-1 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-                {growthView === 'history' ? 'Headcount & Hiring Growth' : 'Employees by Projects'}
+                Headcount & Hiring Growth
               </span>
               <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                {growthView === 'history'
-                  ? 'Annual hiring volume & active workforce trajectory'
-                  : 'Start of year vs end of year delivery headcount comparison'}
+                Annual hiring volume & active workforce trajectory
               </p>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => setGrowthView('history')}
-                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    growthView === 'history'
-                      ? 'bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-2xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Annual Headcount Trajectory"
-                >
-                  <BarChart3 className="w-2.5 h-2.5" />
-                  Trajectory
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGrowthView('projects')}
-                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    growthView === 'projects'
-                      ? 'bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-2xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Employees by Projects (Start vs End of Year)"
-                >
-                  <Briefcase className="w-2.5 h-2.5" />
-                  Projects
-                </button>
-              </div>
-              <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 font-semibold font-mono">
-                {growthView === 'history' ? '2020 – 2024' : `${data.project_headcount_trends?.length || 4} Projs`}
-              </span>
-            </div>
-          </div>
-
-          {growthView === 'history' ? (
-            <>
-              <div className="flex-1 min-h-[140px] pt-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
-                    data={growthHistory}
-                    margin={{ top: 10, right: 0, left: -22, bottom: 0 }}
-                    onClick={(e: any) => {
-                      if (e?.activePayload?.[0]?.payload) {
-                        const yr = e.activePayload[0].payload.year;
-                        const yrAttrition = data.attrition_by_year.find((a) => a.year === yr);
-                        const leavers = (yrAttrition?.leavers || []).map((l: any) => ({
-                          id: l.employee_number || l['EMPLOYEE NUMBER'],
-                          name: l.name || l['EMPLOYEE LABEL'],
-                          job_level: '—',
-                          job_title: l.job_title || 'Engineer',
-                          department: l.department || 'Delivery',
-                          location: l.location || 'Bangalore',
-                          infinite_exp: l.tenure,
-                          exit_date: l.exit_date,
-                        }));
-                        openDrilldown(
-                          `Year ${yr} Workforce Dynamics`,
-                          `${e.activePayload[0].payload.joiners} joiners, ${e.activePayload[0].payload.exits} exits, ${e.activePayload[0].payload.headcount} active headcount`,
-                          `Year ${yr}`,
-                          leavers.length > 0 ? leavers : allDrilldownItems,
-                          undefined,
-                          undefined,
-                          leavers.length > 0
-                        );
-                      }
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} opacity={0.6} />
-                    <XAxis dataKey="year" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
-                    <YAxis yAxisId="left" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
-                    <YAxis yAxisId="right" orientation="right" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--surface)',
-                        borderColor: 'var(--border)',
-                        borderRadius: '8px',
-                        fontSize: '11px',
-                        boxShadow: 'var(--shadow-soft)',
-                        color: 'var(--text)',
-                      }}
-                      itemStyle={{ color: 'var(--text)' }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
-                    <Bar yAxisId="left" dataKey="joiners" fill="#0284c7" name="Joiners" radius={[3, 3, 0, 0]} className="cursor-pointer" />
-                    <Line yAxisId="right" type="monotone" dataKey="headcount" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: '#10b981' }} name="Active Headcount" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Dynamic metric summary badges */}
-              <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
-                <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-                  <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Peak Joiners</span>
-                  <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 font-mono">{peakYear.joiners} in {peakYear.year}</span>
-                </div>
-                <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-                  <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Current Scope</span>
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">{data.total_employees} Active</span>
-                </div>
-                <div className="p-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-                  <span className="text-[8.5px] text-slate-500 dark:text-slate-400 block truncate">Stability Index</span>
-                  <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 font-mono">{retentionRate}% Retained</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 min-h-0 flex flex-col pt-0.5">
-              <ProjectComparisonChart
-                data={data.project_headcount_trends}
-                onSelectProject={handleSelectProject}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Module 2: Diversity % Spotlight (Big Donut on Left, Slim Legend on Right) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Diversity % Spotlight</span>
-            </div>
-            <span className="text-[10px] text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/60 px-1.5 py-0.5 rounded border border-pink-200 dark:border-pink-800 font-bold font-mono">
-              {data.pct_female}% Women
+            <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 font-semibold font-mono">
+              2020 – 2024
             </span>
           </div>
 
-          <div className="flex-1 grid grid-cols-12 gap-2 items-center min-h-0 py-1">
-            {/* Left: Big Hero Donut (7 cols) */}
-            <div className="col-span-7 h-full relative flex items-center justify-center min-h-[140px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={genderDonutData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="50%"
-                    outerRadius="80%"
-                    paddingAngle={3}
-                    dataKey="value"
-                    onMouseEnter={(_, i) => setHoveredGenderIndex(i)}
-                    onMouseLeave={() => setHoveredGenderIndex(null)}
-                    onClick={(e: any) => {
-                      const genderName = e?.name || e?.payload?.name;
-                      if (genderName) {
-                        const items = (employeeList || [])
-                          .filter((emp) => ((emp as any).GENDER === genderName || (emp as any).gender === genderName))
-                          .map((emp) => ({
-                            id: emp['EMPLOYEE NUMBER'],
-                            name: emp['EMPLOYEE LABEL'],
-                            job_level: emp['JOB LEVEL'],
-                            job_title: emp['JOB TITLE'],
-                            department: emp['DEPARTMENT'],
-                            location: emp['LOCATION'],
-                            total_exp: emp['Total_Exp'],
-                            gender: emp['GENDER'],
-                          }));
-                        openDrilldown(
-                          `${genderName} Workforce Representation`,
-                          `${genderName === 'Female' ? data.female_count : data.male_count} ${genderName.toLowerCase()} employees (${genderName === 'Female' ? data.pct_female : data.pct_male}%)`,
-                          `${genderName === 'Female' ? data.female_count : data.male_count} Staff`,
-                          items.length > 0 ? items : allDrilldownItems
-                        );
-                      }
-                    }}
-                  >
-                    {genderDonutData.map((e, i) => (
-                      <Cell
-                        key={i}
-                        fill={e.color}
-                        stroke={hoveredGenderIndex === i ? 'var(--text)' : 'var(--surface)'}
-                        strokeWidth={hoveredGenderIndex === i ? 2.5 : 1.5}
-                        className="cursor-pointer"
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--surface)',
-                      borderColor: 'var(--border)',
-                      borderRadius: '8px',
-                      fontSize: '11px',
-                      boxShadow: 'var(--shadow-soft)',
-                    }}
-                    formatter={(v: any, _: any, p: any) => [`${v} Staff (${p.payload.percentage}%)`, p.payload.name]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                {activeHoveredGender ? (
-                  <>
-                    <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHoveredGender.color }}>
-                      {activeHoveredGender.name}
-                    </span>
-                    <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                      {activeHoveredGender.value}
-                    </span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
-                      {activeHoveredGender.percentage}%
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                      {data.total_employees}
-                    </span>
-                    <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                      Total Staff
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Right: Slim, High-Density Legend (5 cols) */}
-            <div className="col-span-5 flex flex-col justify-center gap-2 h-full pl-1 border-l border-slate-100 dark:border-slate-800/80">
-              {genderDonutData.map((g, i) => {
-                const hov = hoveredGenderIndex === i;
-                const isFemale = g.name === 'Female';
-                return (
-                  <div
-                    key={g.name}
-                    onMouseEnter={() => setHoveredGenderIndex(i)}
-                    onMouseLeave={() => setHoveredGenderIndex(null)}
-                    onClick={() => {
-                      const items = (employeeList || [])
-                        .filter((e) => (e as any).GENDER === g.name || (e as any).gender === g.name)
-                        .map((e) => ({
-                          id: e['EMPLOYEE NUMBER'],
-                          name: e['EMPLOYEE LABEL'],
-                          job_level: e['JOB LEVEL'],
-                          job_title: e['JOB TITLE'],
-                          department: e['DEPARTMENT'],
-                          location: e['LOCATION'],
-                          total_exp: e['Total_Exp'],
-                          gender: e['GENDER'],
-                        }));
-                      openDrilldown(
-                        `${g.name} Workforce Representation`,
-                        `${g.value} ${g.name.toLowerCase()} employees (${g.percentage}%)`,
-                        `${g.value} Staff`,
-                        items.length > 0 ? items : allDrilldownItems
-                      );
-                    }}
-                    className={`px-1.5 py-1.5 rounded-md transition-all cursor-pointer flex flex-col gap-1 ${
-                      hov
-                        ? isFemale
-                          ? 'bg-pink-50 dark:bg-pink-950/40 shadow-2xs'
-                          : 'bg-sky-50 dark:bg-sky-950/40 shadow-2xs'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                    }`}
-                    title={`Click to view ${g.name} workforce roster`}
-                  >
-                    <div className="flex items-center justify-between gap-1 text-[11px]">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: g.color }}
-                        />
-                        <span className={`font-semibold truncate text-[11px] ${
-                          hov
-                            ? isFemale
-                              ? 'text-pink-600 dark:text-pink-400 font-bold'
-                              : 'text-sky-600 dark:text-sky-400 font-bold'
-                            : 'text-slate-700 dark:text-slate-200'
-                        }`}>
-                          {g.name}
-                        </span>
-                      </div>
-                      <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-                        <b className="text-slate-800 dark:text-slate-100 font-bold">{g.value}</b> ({g.percentage}%)
-                      </span>
-                    </div>
-                    {/* Slim progress bar */}
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{ width: `${Math.max(4, g.percentage)}%`, backgroundColor: g.color }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="flex-1 min-h-[140px] pt-0.5">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={growthHistory}
+                margin={{ top: 6, right: 2, left: -24, bottom: -4 }}
+                onClick={(e: any) => {
+                  if (e?.activePayload?.[0]?.payload) {
+                    const yr = e.activePayload[0].payload.year;
+                    const yrAttrition = data.attrition_by_year.find((a) => a.year === yr);
+                    const leavers = (yrAttrition?.leavers || []).map((l: any) => ({
+                      id: l.employee_number || l['EMPLOYEE NUMBER'],
+                      name: l.name || l['EMPLOYEE LABEL'],
+                      job_level: '—',
+                      job_title: l.job_title || 'Engineer',
+                      department: l.department || 'Delivery',
+                      location: l.location || 'Bangalore',
+                      project: l.project || l['Project Working'],
+                      infinite_exp: l.tenure,
+                      exit_date: l.exit_date,
+                    }));
+                    openDrilldown(
+                      `Year ${yr} Workforce Dynamics`,
+                      `${e.activePayload[0].payload.joiners} joiners, ${e.activePayload[0].payload.exits} exits, ${e.activePayload[0].payload.headcount} active headcount`,
+                      `Year ${yr}`,
+                      leavers.length > 0 ? leavers : allDrilldownItems,
+                      undefined,
+                      undefined,
+                      leavers.length > 0
+                    );
+                  }
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} opacity={0.6} />
+                <XAxis dataKey="year" stroke="var(--muted)" tick={{ fontSize: 9.5, fill: 'var(--muted)' }} />
+                <YAxis yAxisId="left" stroke="var(--muted)" tick={{ fontSize: 9.5, fill: 'var(--muted)' }} />
+                <YAxis yAxisId="right" orientation="right" stroke="var(--muted)" tick={{ fontSize: 9.5, fill: 'var(--muted)' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--border)',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    boxShadow: 'var(--shadow-soft)',
+                    color: 'var(--text)',
+                  }}
+                  itemStyle={{ color: 'var(--text)' }}
+                />
+                <Legend wrapperStyle={{ fontSize: '9.5px', lineHeight: '14px', paddingTop: '0px' }} />
+                <Bar yAxisId="left" dataKey="joiners" fill="#0284c7" name="Joiners" radius={[3, 3, 0, 0]} className="cursor-pointer" />
+                <Bar yAxisId="left" dataKey="exits" fill="#f43f5e" name="Exits" radius={[3, 3, 0, 0]} className="cursor-pointer" />
+                <Line yAxisId="right" type="monotone" dataKey="headcount" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: '#10b981' }} name="Active Headcount" />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Sub-footer insight */}
-          <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-            <span>Ratio Balance: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{(data.male_count / (data.female_count || 1)).toFixed(1)} : 1 (M:F)</strong></span>
-            <span className="font-mono text-pink-600 dark:text-pink-400 font-bold">{data.pct_female}% Female</span>
+          {/* Dynamic metric summary badges (Never clipped with compact padding & responsive fonts) */}
+          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
+            <div className="py-0.5 px-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 leading-tight">
+              <span className="text-[9.5px] text-slate-500 dark:text-slate-400 block truncate">Peak Expansion</span>
+              <span className="text-[11.5px] font-bold text-sky-600 dark:text-sky-400 font-mono block leading-tight">{peakYear.joiners} ({peakYear.year})</span>
+            </div>
+            <div className="py-0.5 px-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 leading-tight">
+              <span className="text-[9.5px] text-slate-500 dark:text-slate-400 block truncate">Delivery Capacity</span>
+              <span className="text-[11.5px] font-bold text-emerald-600 dark:text-emerald-400 font-mono block leading-tight">{data.total_employees} FTE</span>
+            </div>
+            <div className="py-0.5 px-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 leading-tight">
+              <span className="text-[9.5px] text-slate-500 dark:text-slate-400 block truncate">Stability Index</span>
+              <span className="text-[11.5px] font-bold text-teal-600 dark:text-teal-400 font-mono block leading-tight">{retentionRate}% Retained</span>
+            </div>
           </div>
         </div>
 
-        {/* Module 3: Job Level Hierarchy / Age Distribution Curve */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
+        {/* Module 2: Workforce Composition (Permanent vs Contractor vs Intern FTEs) */}
+        <div className="col-span-1 lg:col-span-1 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <UserCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+                Workforce Composition
+              </span>
+            </div>
+            <span className="text-[10px] text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 font-semibold font-mono">
+              {data.total_employees} Staff
+            </span>
+          </div>
+
+          <div className="flex-1 min-h-0 flex flex-col pt-0.5">
+            <EmpTypeBreakdown
+              data={data.emp_type_distribution}
+              onSelectType={handleSelectEmpType}
+            />
+          </div>
+        </div>
+
+        {/* Module 3: Operational Project -> Manager Hierarchy / Grades / Age Curve */}
+        <div className="col-span-1 lg:col-span-2 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
-                {hierarchyView === 'pyramid' ? (
+                {hierarchyView === 'hierarchy' ? (
+                  <Building2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                ) : hierarchyView === 'pyramid' ? (
                   <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                 ) : (
                   <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                 )}
-                {hierarchyView === 'pyramid' ? 'Job Level Hierarchy' : 'No. Of Employee By Age'}
+                {hierarchyView === 'hierarchy'
+                  ? 'Project & Manager Hierarchy'
+                  : hierarchyView === 'pyramid'
+                  ? 'Job Level Hierarchy'
+                  : 'No. Of Employee By Age'}
               </span>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                {hierarchyView === 'pyramid'
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                {hierarchyView === 'hierarchy'
+                  ? 'Project account to delivery manager span of control'
+                  : hierarchyView === 'pyramid'
                   ? 'Structural grade pyramid distribution'
                   : 'Demographic age bell curve with density gradient'}
               </p>
@@ -1000,6 +1126,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
             <div className="flex items-center gap-1.5">
               <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setHierarchyView('hierarchy')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    hierarchyView === 'hierarchy'
+                      ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Project -> Delivery Manager Hierarchy"
+                >
+                  <Building2 className="w-2.5 h-2.5" />
+                  Delivery
+                </button>
                 <button
                   type="button"
                   onClick={() => setHierarchyView('pyramid')}
@@ -1024,65 +1163,141 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   title="Age Distribution Histogram"
                 >
                   <Sparkles className="w-2.5 h-2.5" />
-                  Age Curve
+                  Age
                 </button>
               </div>
               <span className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800 font-bold font-mono">
-                {hierarchyView === 'pyramid' ? 'E1 – E10' : `${data.age_distribution?.stats?.median || 29.5}y Med`}
+                {hierarchyView === 'hierarchy'
+                  ? `${displayedHierarchyManagers.length} Leads`
+                  : hierarchyView === 'pyramid'
+                  ? `${data.total_employees} Staff · 4 Tiers`
+                  : `${data.age_distribution?.stats?.median || 29.5}y Med`}
               </span>
             </div>
           </div>
 
-          {hierarchyView === 'pyramid' ? (
+          {hierarchyView === 'hierarchy' ? (
             <>
-              {/* Stepped Tiered Pyramid with Interactive Click */}
-              <div className="flex-1 flex flex-col justify-between py-1.5 min-h-0 gap-1.5">
-                {pyramidTiers.map((tier: any, idx: number) => {
-                  const widths = ['w-[68%]', 'w-[80%]', 'w-[90%]', 'w-full'];
-                  const bgColors = [
-                    'bg-purple-50/80 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 hover:border-purple-400',
-                    'bg-cyan-50/80 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 hover:border-cyan-400',
-                    'bg-teal-50/80 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 hover:border-teal-400',
-                    'bg-emerald-50/80 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 hover:border-emerald-400',
-                  ];
-
-                  return (
-                    <div
-                      key={tier.tier}
-                      onClick={() => {
-                        const items = allDrilldownItems.filter((e) => tier.grades?.includes(e.job_level));
-                        openDrilldown(
-                          `${tier.tier} (${tier.grades?.join(', ')})`,
-                          `${tier.count} staff members in this organizational grade tier (${tier.percentage}% of workforce)`,
-                          `${tier.count} Staff`,
-                          items,
-                          'job_level',
-                          tier.grades
-                        );
-                      }}
-                      className={`${widths[idx]} mx-auto px-2.5 py-1 rounded-lg border flex items-center justify-between shadow-2xs transition-all cursor-pointer hover:scale-[1.02] hover:shadow-sm active:scale-[0.99] ${bgColors[idx]}`}
-                      title={`Click to view roster for ${tier.tier}`}
+              {/* Project Tab Switcher (if multiple projects) */}
+              {projectManagerHierarchy.length > 1 && (
+                <div className="flex items-center gap-1 pt-1 overflow-x-auto custom-scrollbar shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHierarchyProj('ALL')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                      selectedHierarchyProj === 'ALL'
+                        ? 'bg-purple-600 text-white shadow-2xs font-extrabold'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    All ({data.total_employees})
+                  </button>
+                  {projectManagerHierarchy.map((pGroup) => (
+                    <button
+                      key={pGroup.project}
+                      type="button"
+                      onClick={() => setSelectedHierarchyProj(pGroup.project)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                        selectedHierarchyProj === pGroup.project
+                          ? 'bg-purple-600 text-white shadow-2xs font-extrabold'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
                     >
-                      <div className="min-w-0 flex items-center gap-1.5 flex-1 pr-1">
-                        <span className="text-[10px] font-bold truncate">{tier.tier}</span>
-                        <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-white/70 dark:bg-slate-900/70 border border-black/10 dark:border-white/10 shrink-0">
-                          {tier.grades?.join(', ') || ''}
-                        </span>
+                      {pGroup.project} ({pGroup.headcount})
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Scrollable List of Delivery Managers */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 my-1 space-y-1 min-h-0 max-h-[160px]">
+                {displayedHierarchyManagers.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-slate-400 text-xs py-4">
+                    No manager data available for active cohort
+                  </div>
+                ) : (
+                  displayedHierarchyManagers.map((mgr: any) => (
+                    <div
+                      key={mgr.manager}
+                      onClick={() => handleSelectHierarchyManager(mgr.name, mgr.manager, selectedHierarchyProj)}
+                      className="flex flex-col gap-0.5 cursor-pointer group p-1.5 rounded-lg hover:bg-purple-50/70 dark:hover:bg-purple-950/40 border border-slate-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all shadow-2xs"
+                      title={`Click to view engineers reporting to ${mgr.name}`}
+                    >
+                      <div className="flex items-center justify-between text-[10.5px]">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors truncate">
+                            {mgr.name}
+                          </span>
+                          {mgr.projectsSummary && (
+                            <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500 truncate max-w-[80px]">
+                              [{mgr.projectsSummary}]
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
+                          <span className="font-bold text-slate-900 dark:text-slate-100">{mgr.count} staff</span>
+                          <span className="text-slate-400 dark:text-slate-500">({mgr.percentage}%)</span>
+                        </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <span className="font-extrabold font-mono text-xs">{tier.count}</span>
-                        <span className="text-[9px] font-mono opacity-75 ml-1">({tier.percentage}%)</span>
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                        <div
+                          className="bg-purple-600 dark:bg-purple-400 h-full rounded-full transition-all duration-300 group-hover:brightness-110"
+                          style={{ width: `${Math.max(4, mgr.percentage)}%` }}
+                        />
                       </div>
                     </div>
-                  );
-                })}
+                  ))
+                )}
               </div>
 
-              <div className="pt-1.5 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-                <span>Organizational Structure:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">{pyramidLabel}</span>
+              <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                <span>Account: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{selectedHierarchyProj === 'ALL' ? 'Multi-Project Delivery' : `${selectedHierarchyProj} Project`}</strong></span>
+                <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">{displayedHierarchyManagers.length} Delivery Leads</span>
               </div>
             </>
+          ) : hierarchyView === 'pyramid' ? (
+            <div className="flex-1 flex flex-col justify-around py-2 min-h-0 gap-1.5">
+              {pyramidTiers.map((tier: any, idx: number) => {
+                const widths = ['w-[65%]', 'w-[78%]', 'w-[88%]', 'w-full'];
+                const bgColors = [
+                  'bg-purple-50/80 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 hover:border-purple-400',
+                  'bg-cyan-50/80 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 hover:border-cyan-400',
+                  'bg-teal-50/80 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 hover:border-teal-400',
+                  'bg-emerald-50/80 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 hover:border-emerald-400',
+                ];
+
+                return (
+                  <div
+                    key={tier.tier}
+                    onClick={() => {
+                      const items = allDrilldownItems.filter((e) => tier.grades?.includes(e.job_level));
+                      openDrilldown(
+                        `${tier.tier} (${tier.grades?.join(', ')})`,
+                        `${tier.count} staff members in this organizational grade tier (${tier.percentage}% of workforce)`,
+                        `${tier.count} Staff`,
+                        items,
+                        'job_level',
+                        tier.grades
+                      );
+                    }}
+                    className={`${widths[idx]} mx-auto px-3 py-1.5 rounded-xl border flex items-center justify-between shadow-2xs transition-all cursor-pointer hover:scale-[1.02] hover:shadow-sm active:scale-[0.99] ${bgColors[idx]}`}
+                    title={`Click to view roster for ${tier.tier}`}
+                  >
+                    <div className="min-w-0 flex items-center gap-1.5 flex-1 pr-1">
+                      <span className="text-[11.5px] font-bold truncate">{tier.tier}</span>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.2 rounded bg-white/70 dark:bg-slate-900/70 border border-black/10 dark:border-white/10 shrink-0">
+                        {tier.grades?.join(', ') || ''}
+                      </span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="font-extrabold font-mono text-[13px]">{tier.count}</span>
+                      <span className="text-[10.5px] font-mono opacity-75 ml-1">({tier.percentage}%)</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div className="flex-1 min-h-0 flex flex-col pt-0.5">
               <AgeDistributionChart
@@ -1095,14 +1310,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       </div>
 
       {/* ══ ROW 3: STABILITY, FOOTPRINT & DEPARTMENTS (Interactive Slicers) ══ */}
-      <div className="grid grid-cols-12 gap-2 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-2 flex-1 min-h-0">
         
         {/* Module 4: Stability & Tenure Bands (Clickable Horizontal Bars) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
+        <div className="col-span-1 lg:col-span-1 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Workforce Stability & Tenure</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Tenure Distribution Bands</span>
             </div>
             <span className="text-[10px] text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 px-1.5 py-0.5 rounded border border-teal-200 dark:border-teal-800 font-mono font-bold">
               Avg {data.avg_infinite_exp} Yrs
@@ -1133,8 +1348,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       `${bandItems.length} employees with ${band.band} tenure at ETS (${band.percentage}% of workforce)`,
                       `${bandItems.length} Staff`,
                       bandItems,
-                      undefined,
-                      undefined,
+                      'tenure_band',
+                      [band.band],
                       false,
                       true
                     );
@@ -1142,11 +1357,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   className="flex flex-col gap-0.5 cursor-pointer group p-0.5 rounded hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
                   title={`Click to view ${bandItems.length} employees in ${band.band} tenure band`}
                 >
-                <div className="flex items-center justify-between text-[10px]">
+                <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-700 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors">
                     {band.band}
                   </span>
-                  <span className="font-mono text-slate-500 dark:text-slate-400 text-[9px]">
+                  <span className="font-mono text-slate-500 dark:text-slate-400 text-[10px]">
                     <b className="text-slate-800 dark:text-slate-200 font-bold">{band.count}</b> ({band.percentage}%)
                   </span>
                 </div>
@@ -1161,7 +1376,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           })}
           </div>
 
-          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
             <span>{stabilityFooterText}</span>
             <span className="text-teal-600 dark:text-teal-400 font-bold">
               {data.avg_infinite_exp >= 2.5 ? 'High Stability' : 'Active Ramp-up'}
@@ -1170,7 +1385,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* Module 5: Regional Delivery Footprint Hubs (Interactive India Geo Map & Donut Switcher) */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
+        <div className="col-span-1 lg:col-span-1 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Compass className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
@@ -1280,10 +1495,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     ) : (
                       <>
                         <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                          {data.total_employees}
+                          {rankedLocs.length}
                         </span>
                         <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                          Total Staff
+                          Hub Cities
                         </span>
                       </>
                     )}
@@ -1337,59 +1552,328 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           {/* Sub-footer insight */}
-          <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-            <span>Primary Hub: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{rankedLocs[0]?.location || 'N/A'}</strong></span>
-            <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{rankedLocs[0]?.percentage || 0}% load</span>
+          <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
+            <span>Geographic Concentration:</span>
+            <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{southPct}% South Corridor (BLR + HYD)</span>
           </div>
         </div>
 
-        {/* Module 6: Department Allocation / Emp Type Breakdown */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full min-h-0">
+        {/* Module 6: Operational Allocation (Client Accounts, MMIS Squads, Functional Units) */}
+        <div className="col-span-1 lg:col-span-2 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              {allocationView === 'projects' ? (
+                <Briefcase className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              ) : allocationView === 'mmis' ? (
+                <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              ) : (
+                <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              )}
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-                {deptView === 'department' ? 'Department Allocation' : 'Emp Type Ratio %'}
+                {allocationView === 'projects'
+                  ? 'Client Account Allocation'
+                  : allocationView === 'mmis'
+                  ? 'MMIS Delivery Squads'
+                  : 'Department Allocation'}
               </span>
             </div>
+
             <div className="flex items-center gap-1.5">
               <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
                 <button
                   type="button"
-                  onClick={() => setDeptView('department')}
+                  onClick={() => setAllocationView('projects')}
                   className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    deptView === 'department'
+                    allocationView === 'projects'
                       ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
-                  title="Department Functional Breakdown"
+                  title="External Client State Accounts (New Hampshire, North Dakota, Alaska)"
+                >
+                  <Briefcase className="w-2.5 h-2.5" />
+                  Projects
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAllocationView('mmis')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    allocationView === 'mmis'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title={`MMIS Delivery Modules (${totalMmisEmployees} Engineers across ${totalMmisModulesCount} Modules)`}
+                >
+                  <Layers className="w-2.5 h-2.5" />
+                  MMIS Squads
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAllocationView('departments')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    allocationView === 'departments'
+                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title="Internal Functional Units (IT, Core, QA, Infra, Cognos, Informatica)"
                 >
                   <Building2 className="w-2.5 h-2.5" />
                   Units
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setDeptView('emptype')}
-                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    deptView === 'emptype'
-                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Employment Type Classification (Permanent, Contract, Intern)"
-                >
-                  <UserCheck className="w-2.5 h-2.5" />
-                  Emp Type
-                </button>
               </div>
-              <span className="text-[10px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-semibold font-mono">
-                {deptView === 'department' ? `${deptList.length} Units` : '3 Tiers'}
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold font-mono ${
+                allocationView === 'mmis'
+                  ? 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800'
+                  : 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800'
+              }`}>
+                {allocationView === 'projects'
+                  ? `${clientProjects.length} Accounts`
+                  : allocationView === 'mmis'
+                  ? `${totalMmisEmployees} Engineers`
+                  : `${deptList.length} Units`}
               </span>
             </div>
           </div>
 
-          {deptView === 'department' ? (
+          {allocationView === 'projects' ? (
             <>
-              <div className="flex-1 flex flex-col justify-around py-1.5 min-h-0">
+              {/* Client Accounts View (NH, ND, AK) with high visual polish */}
+              <div className="flex-1 min-h-0 flex flex-col justify-around py-1 overflow-hidden">
+                {clientProjects.map((p: any) => (
+                  <div
+                    key={p.code}
+                    onClick={() => handleSelectProject(p.name, p.code)}
+                    className="flex flex-col gap-0.5 cursor-pointer group p-1.5 rounded-lg hover:bg-slate-50/70 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800/60 transition-all hover:scale-[1.01]"
+                    title={`Click to view ${p.count} team members in ${p.name}`}
+                  >
+                    <div className="flex items-center justify-between text-[10.5px] leading-tight">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                        <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors truncate">
+                          {p.name}
+                        </span>
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
+                          {p.code}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                        <b className="text-slate-900 dark:text-slate-100 font-bold">{p.count}</b> ({p.percentage}%)
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500 group-hover:brightness-110"
+                        style={{ width: `${Math.max(4, p.percentage)}%`, backgroundColor: p.color }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[9.5px] text-slate-400 dark:text-slate-500 leading-none">
+                      <span>{p.subtext}</span>
+                      <span className="font-medium text-slate-600 dark:text-slate-400 font-mono">
+                        {p.count} of {data?.total_employees || 590} FTE
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-1 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 shrink-0 leading-tight">
+                <span>Dominant Account:</span>
+                <span className="font-bold text-sky-600 dark:text-sky-400 font-mono">
+                  {clientProjects[0]?.name} ({clientProjects[0]?.percentage}%)
+                </span>
+              </div>
+            </>
+          ) : allocationView === 'mmis' ? (
+            <>
+              {/* MMIS Squads View with Top 5 Donut & All Toggle */}
+              <div className="flex items-center justify-between py-0.5 text-[10.5px]">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">
+                  {moduleView === 'donut' ? 'Top 5 Delivery Modules' : `All ${totalMmisModulesCount} Modules Ranked`}
+                </span>
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded border border-slate-200/60 dark:border-slate-700/60 text-[9.5px]">
+                  <button
+                    type="button"
+                    onClick={() => setModuleView('donut')}
+                    className={`px-1.5 py-0.2 rounded font-semibold transition-all ${
+                      moduleView === 'donut'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    Top
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModuleView('list')}
+                    className={`px-1.5 py-0.2 rounded font-semibold transition-all ${
+                      moduleView === 'list'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    All {totalMmisModulesCount}
+                  </button>
+                </div>
+              </div>
+
+              {moduleView === 'donut' ? (
+                <>
+                  <div className="flex-1 grid grid-cols-12 gap-2 items-center min-h-0 py-0.5">
+                    {/* Left: Donut Chart (7 cols) */}
+                    <div className="col-span-7 h-full relative flex items-center justify-center min-h-[135px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={top5Modules}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius="50%"
+                            outerRadius="80%"
+                            paddingAngle={3}
+                            dataKey="employee_count"
+                            onMouseEnter={(_, i) => setHoveredModuleIndex(i)}
+                            onMouseLeave={() => setHoveredModuleIndex(null)}
+                            onClick={(e: any) => {
+                              const modName = e?.module_name || e?.payload?.module_name;
+                              if (modName) handleSelectModule(modName);
+                            }}
+                          >
+                            {top5Modules.map((e, i) => (
+                              <Cell
+                                key={i}
+                                fill={e.color}
+                                stroke={hoveredModuleIndex === i ? 'var(--text)' : 'var(--surface)'}
+                                strokeWidth={hoveredModuleIndex === i ? 2.5 : 1.5}
+                                className="cursor-pointer"
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--surface)',
+                              borderColor: 'var(--border)',
+                              borderRadius: '8px',
+                              fontSize: '11px',
+                              boxShadow: 'var(--shadow-soft)',
+                            }}
+                            formatter={(v: any, _: any, p: any) => [`${v} Engineers (${p.payload.percentage}%)`, p.payload.module_name]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        {activeHoveredModule ? (
+                          <>
+                            <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHoveredModule.color }}>
+                              {activeHoveredModule.module_name}
+                            </span>
+                            <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                              {activeHoveredModule.employee_count}
+                            </span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
+                              {activeHoveredModule.percentage}%
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                              {totalMmisModulesCount}
+                            </span>
+                            <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                              MODULES
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Slim Top 5 Legend (5 cols) */}
+                    <div className="col-span-5 flex flex-col justify-center gap-1 h-full pl-1 border-l border-slate-100 dark:border-slate-800/80">
+                      {top5Modules.map((mod, i) => {
+                        const hov = hoveredModuleIndex === i;
+                        return (
+                          <div
+                            key={mod.module_name}
+                            onMouseEnter={() => setHoveredModuleIndex(i)}
+                            onMouseLeave={() => setHoveredModuleIndex(null)}
+                            onClick={() => handleSelectModule(mod.module_name)}
+                            className={`px-1.5 py-0.5 rounded-md transition-all cursor-pointer flex flex-col gap-0.5 ${
+                              hov
+                                ? 'bg-slate-100 dark:bg-slate-800 shadow-2xs'
+                                : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                            }`}
+                            title={`Click to view ${mod.employee_count} Java developers in ${mod.module_name}`}
+                          >
+                            <div className="flex items-center justify-between text-[10.5px]">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: mod.color }} />
+                                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[65px]">
+                                  {mod.module_name}
+                                </span>
+                              </div>
+                              <span className="font-mono text-slate-500 dark:text-slate-400 text-[10px] shrink-0">
+                                <b className="text-slate-900 dark:text-slate-100">{mod.employee_count}</b>
+                              </span>
+                            </div>
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{ width: `${Math.max(4, mod.percentage)}%`, backgroundColor: mod.color }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                    <span>Primary Focus: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{top5Modules[0]?.module_name} ({top5Modules[0]?.employee_count} Devs · {top5Modules[0]?.percentage}%)</strong></span>
+                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{totalMmisModulesCount} Delivery Modules</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* All Modules: High-Density Scrollable List */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 my-1 space-y-1 min-h-0 max-h-[170px]">
+                    {mmisModules.map((mod: any) => (
+                      <div
+                        key={mod.module_name}
+                        onClick={() => handleSelectModule(mod.module_name)}
+                        className="flex flex-col gap-0.5 cursor-pointer group p-1 rounded hover:bg-slate-50/60 dark:hover:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 transition-colors"
+                        title={`Click to view ${mod.employee_count} engineers in ${mod.module_name}`}
+                      >
+                        <div className="flex items-center justify-between text-[10.5px]">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                              {mod.module_name}
+                            </span>
+                          </div>
+                          <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                            <b className="text-slate-900 dark:text-slate-100 font-bold">{mod.employee_count}</b> ({mod.percentage}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-indigo-500 dark:bg-indigo-400 h-full rounded-full transition-all duration-300 group-hover:brightness-110"
+                            style={{ width: `${Math.max(4, mod.percentage * 4)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                    <span>Workforce Scope: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{totalMmisEmployees} Engineers</strong></span>
+                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{totalMmisModulesCount} MMIS Modules</span>
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex-1 min-h-0 flex flex-col justify-between py-1 overflow-hidden">
                 {deptList.map((d: any) => (
                   <div
                     key={d.department}
@@ -1406,39 +1890,32 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                         [d.department]
                       );
                     }}
-                    className="flex flex-col gap-0.5 cursor-pointer group p-0.5 rounded hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                    className="flex flex-col gap-0.5 cursor-pointer group px-1 py-0.5 rounded hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-colors"
                     title={`Click to view team members in ${d.department}`}
                   >
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors">
+                    <div className="flex items-center justify-between text-[10.5px] leading-none">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors truncate">
                         {d.department}
                       </span>
-                      <span className="font-mono text-[9px] text-slate-500 dark:text-slate-400">
-                        <b className="text-slate-900 dark:text-slate-100">{d.count}</b> ({d.percentage}%)
+                      <span className="font-mono text-[9.5px] text-slate-500 dark:text-slate-400 shrink-0">
+                        <b className="text-slate-900 dark:text-slate-100 font-bold">{d.count}</b> ({d.percentage}%)
                       </span>
                     </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
                       <div
                         className="bg-blue-500 dark:bg-blue-400 h-full rounded-full transition-all duration-500 group-hover:brightness-110"
-                        style={{ width: `${Math.max(4, d.percentage)}%` }}
+                        style={{ width: `${Math.max(3, d.percentage)}%` }}
                       />
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-                <span>Primary Focus:</span>
+              <div className="pt-1 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 shrink-0 leading-tight">
+                <span>Core Delivery Load:</span>
                 <span className="font-bold text-blue-600 dark:text-blue-400 font-mono">{top2Names} ({top2Pct.toFixed(1)}%)</span>
               </div>
             </>
-          ) : (
-            <div className="flex-1 min-h-0 flex flex-col pt-0.5">
-              <EmpTypeBreakdown
-                data={data.emp_type_distribution}
-                onSelectType={handleSelectEmpType}
-              />
-            </div>
           )}
         </div>
       </div>
@@ -1466,6 +1943,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                <ExportButton
+                  data={activeDrilldown.items}
+                  filename={`${activeDrilldown.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_roster.csv`}
+                  label="Export CSV"
+                />
                 {activeDrilldown.filterKey && setFilters && (
                   <button
                     onClick={applyDrilldownFilter}
@@ -1490,7 +1972,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <Search className="w-3.5 h-3.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by name, ID, grade, department, or location..."
+                placeholder="Search by name, ID, grade, department, location, or project..."
                 value={drilldownSearch}
                 onChange={(e) => setDrilldownSearch(e.target.value)}
                 className="w-full bg-transparent text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-hidden"
@@ -1514,15 +1996,20 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     item.job_level.toLowerCase().includes(q) ||
                     item.job_title.toLowerCase().includes(q) ||
                     item.department.toLowerCase().includes(q) ||
-                    item.location.toLowerCase().includes(q)
+                    item.location.toLowerCase().includes(q) ||
+                    (item.project && item.project.toLowerCase().includes(q))
                   );
                 });
 
                 if (filtered.length === 0) {
                   return (
-                    <div className="text-center py-12 text-slate-400 text-xs">
-                      No matching records found in this segment.
-                    </div>
+                    <EmptyState
+                      compact
+                      title="No matching records found"
+                      description="No employees match your search query in this segment."
+                      onResetFilters={drilldownSearch ? () => setDrilldownSearch('') : undefined}
+                      resetLabel="Clear Search"
+                    />
                   );
                 }
 

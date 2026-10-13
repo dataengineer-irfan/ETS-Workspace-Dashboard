@@ -1,0 +1,466 @@
+{
+  "timestamp": "2026-10-06 14:48:19",
+  "target_frontend": "http://127.0.0.1:42005",
+  "target_backend": "http://127.0.0.1:42006",
+  "total_checks": 48,
+  "passed_checks": 48,
+  "failed_checks": 0,
+  "failures": [],
+  "phases": {
+    "Phase 1: Login & Auth": {
+      "passed": 6,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Login Branding Title",
+          "status": "PASS",
+          "expected": "Workforce Intelligence in Title",
+          "actual": "Workforce Intelligence & Talent Governance",
+          "details": null
+        },
+        {
+          "check": "Username and Password Inputs Present",
+          "status": "PASS",
+          "expected": "True",
+          "actual": "True",
+          "details": null
+        },
+        {
+          "check": "Invalid Credentials Error Alert Rendered",
+          "status": "PASS",
+          "expected": "True",
+          "actual": "Invalid username or password.",
+          "details": null
+        },
+        {
+          "check": "Admin JWT Token Saved in LocalStorage",
+          "status": "PASS",
+          "expected": "True",
+          "actual": "True",
+          "details": null
+        },
+        {
+          "check": "Header Displays ADMIN Persona",
+          "status": "PASS",
+          "expected": "Contains ADMIN",
+          "actual": "ETS WORKFORCE\nWorkforce\nSkills\nClient Delivery\nCompensation\nLeave\nProfile\nRoster:\n590\nETS Genie\nA\nadmin\nADMIN",
+          "details": null
+        },
+        {
+          "check": "Admin Tab Bar Contains 6 Tabs",
+          "status": "PASS",
+          "expected": "6",
+          "actual": "6",
+          "details": null
+        }
+      ]
+    },
+    "Phase 2: Workforce (Home)": {
+      "passed": 10,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "KPI Total Headcount 590 Present",
+          "status": "PASS",
+          "expected": "Contains 590",
+          "actual": "590 found",
+          "details": null
+        },
+        {
+          "check": "KPI Female Diversity 30.8% Present",
+          "status": "PASS",
+          "expected": "Contains 30.8%",
+          "actual": "30.8% found",
+          "details": null
+        },
+        {
+          "check": "KPI Avg Experience 6.1y Present",
+          "status": "PASS",
+          "expected": "Contains 6.1",
+          "actual": "6.1 found",
+          "details": null
+        },
+        {
+          "check": "KPI Avg Tenure 2.89y Present",
+          "status": "PASS",
+          "expected": "Contains 2.89",
+          "actual": "2.89 found",
+          "details": null
+        },
+        {
+          "check": "Permanent Staff (282) Present",
+          "status": "PASS",
+          "expected": "Contains 282",
+          "actual": "282 found",
+          "details": null
+        },
+        {
+          "check": "Contract Specialists (137) Present",
+          "status": "PASS",
+          "expected": "Contains 137",
+          "actual": "137 found",
+          "details": null
+        },
+        {
+          "check": "Graduate Interns (171) Present",
+          "status": "PASS",
+          "expected": "Contains 171",
+          "actual": "171 found",
+          "details": null
+        },
+        {
+          "check": "Bangalore Hub (396) Present",
+          "status": "PASS",
+          "expected": "Contains 396",
+          "actual": "396 found",
+          "details": null
+        },
+        {
+          "check": "Hyderabad Hub (171) Present",
+          "status": "PASS",
+          "expected": "Contains 171",
+          "actual": "171 found",
+          "details": null
+        },
+        {
+          "check": "Zero Viewport Overflow (1440x900)",
+          "status": "PASS",
+          "expected": "0",
+          "actual": "0",
+          "details": null
+        }
+      ]
+    },
+    "Phase 3: Skills (Techwise)": {
+      "passed": 4,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Skills Tab Active URL",
+          "status": "PASS",
+          "expected": "tab=techwise",
+          "actual": "http://127.0.0.1:42005/dashboard?tab=techwise",
+          "details": null
+        },
+        {
+          "check": "In-Scope Headcount 590 Rendered",
+          "status": "PASS",
+          "expected": "Contains 590",
+          "actual": "590 found",
+          "details": null
+        },
+        {
+          "check": "Top Discipline QA Automation Rendered",
+          "status": "PASS",
+          "expected": "QA Automation / SDET",
+          "actual": "QA Automation found",
+          "details": null
+        },
+        {
+          "check": "Top Discipline Headcount (105) Rendered",
+          "status": "PASS",
+          "expected": "Contains 105",
+          "actual": "105 found",
+          "details": null
+        }
+      ]
+    },
+    "Phase 4: Client Delivery": {
+      "passed": 5,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Statewise Tab Active URL",
+          "status": "PASS",
+          "expected": "tab=statewise",
+          "actual": "http://127.0.0.1:42005/dashboard?tab=statewise",
+          "details": null
+        },
+        {
+          "check": "Project NH Rendered",
+          "status": "PASS",
+          "expected": "Contains NH",
+          "actual": "NH found",
+          "details": null
+        },
+        {
+          "check": "Project ND Rendered",
+          "status": "PASS",
+          "expected": "Contains ND",
+          "actual": "ND found",
+          "details": null
+        },
+        {
+          "check": "Project AK Rendered",
+          "status": "PASS",
+          "expected": "Contains AK",
+          "actual": "AK found",
+          "details": null
+        },
+        {
+          "check": "Employee Roster Table Rows Populated",
+          "status": "PASS",
+          "expected": "True",
+          "actual": "True",
+          "details": null
+        }
+      ]
+    },
+    "Phase 5: Compensation": {
+      "passed": 7,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Salarywise Tab Active URL",
+          "status": "PASS",
+          "expected": "tab=salarywise",
+          "actual": "http://127.0.0.1:42005/dashboard?tab=salarywise",
+          "details": null
+        },
+        {
+          "check": "Total CTC (INR 45.83 Cr / 458.3M) Rendered",
+          "status": "PASS",
+          "expected": "Contains 45.83 Cr",
+          "actual": "Found CTC value",
+          "details": null
+        },
+        {
+          "check": "Average CTC (INR 7.77 L / 776,779) Rendered",
+          "status": "PASS",
+          "expected": "Contains 7.77 L",
+          "actual": "Found Avg CTC value",
+          "details": null
+        },
+        {
+          "check": "Min CTC (INR 1.50 L) Rendered",
+          "status": "PASS",
+          "expected": "Contains 1.50 L",
+          "actual": "Found Min CTC value",
+          "details": null
+        },
+        {
+          "check": "Max CTC (INR 50.00 L) Rendered",
+          "status": "PASS",
+          "expected": "Contains 50.00 L",
+          "actual": "Found Max CTC value",
+          "details": null
+        },
+        {
+          "check": "Top Earner (#1031854 / Sreekanth) Rendered",
+          "status": "PASS",
+          "expected": "Contains 1031854",
+          "actual": "Found Top Earner",
+          "details": null
+        },
+        {
+          "check": "Multi-Year Trends Chart (2020-2024) Rendered",
+          "status": "PASS",
+          "expected": "Contains 2020 & 2024",
+          "actual": "Found multi-year series",
+          "details": null
+        }
+      ]
+    },
+    "Phase 6: Calendar & Leaves": {
+      "passed": 4,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Calendar Tab Active URL",
+          "status": "PASS",
+          "expected": "tab=calendar",
+          "actual": "http://127.0.0.1:42005/dashboard?tab=calendar",
+          "details": null
+        },
+        {
+          "check": "Total Leave Days (1,105.5) Rendered",
+          "status": "PASS",
+          "expected": "Contains 1105.5",
+          "actual": "Found leave days",
+          "details": null
+        },
+        {
+          "check": "Casual/Sick Leave Category Rendered",
+          "status": "PASS",
+          "expected": "Casual/Sick",
+          "actual": "Casual/Sick found",
+          "details": null
+        },
+        {
+          "check": "Privilege/Vacation Leave Category Rendered",
+          "status": "PASS",
+          "expected": "Privilege",
+          "actual": "Privilege found",
+          "details": null
+        }
+      ]
+    },
+    "Phase 7: Employee 360": {
+      "passed": 3,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Profile Tab Active URL",
+          "status": "PASS",
+          "expected": "tab=employee_details",
+          "actual": "http://127.0.0.1:42005/dashboard?tab=employee_details",
+          "details": null
+        },
+        {
+          "check": "Active Employee (1019272 / Anand) Rendered",
+          "status": "PASS",
+          "expected": "Contains 1019272",
+          "actual": "Found Anand Kumar",
+          "details": null
+        },
+        {
+          "check": "Employee Grade (E6) Rendered",
+          "status": "PASS",
+          "expected": "Contains E6",
+          "actual": "E6 found",
+          "details": null
+        }
+      ]
+    },
+    "Phase 8: Interactions": {
+      "passed": 3,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Theme Toggled to Dark Mode",
+          "status": "PASS",
+          "expected": "True",
+          "actual": "True",
+          "details": null
+        },
+        {
+          "check": "ETS Genie Copilot Drawer Opened",
+          "status": "PASS",
+          "expected": "True",
+          "actual": "True",
+          "details": null
+        },
+        {
+          "check": "Copilot Answer Contains Bangalore Headcount (396)",
+          "status": "PASS",
+          "expected": "Contains 396",
+          "actual": "ETS Genie\nAI ASSISTANT\n\nContext: EMPLOYEE DETAILS\n\nClear\nCopy\n\nHello! I am **ETS Genie**, your intelligent workforce ass",
+          "details": null
+        }
+      ]
+    },
+    "Phase 9: RBAC Enforcement": {
+      "passed": 4,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Header Displays EMPLOYEE Persona",
+          "status": "PASS",
+          "expected": "Contains EMPLOYEE",
+          "actual": "ETS WORKFORCE\nWorkforce\nSkills\nClient Delivery\nLeave\nProfile\nRoster:\n590\nETS Genie\nE\nemployee\nEMPLOYEE",
+          "details": null
+        },
+        {
+          "check": "Compensation Tab Hidden for Employee",
+          "status": "PASS",
+          "expected": "Compensation Absent",
+          "actual": "Workforce\nSkills\nClient Delivery\nLeave\nProfile",
+          "details": null
+        },
+        {
+          "check": "Adversarial Direct Access Returns 403 Forbidden Shield",
+          "status": "PASS",
+          "expected": "True",
+          "actual": "True",
+          "details": null
+        },
+        {
+          "check": "Zero Compensation Data Leaked in DOM",
+          "status": "PASS",
+          "expected": "No CTC Data",
+          "actual": "No CTC leaked",
+          "details": null
+        }
+      ]
+    },
+    "Phase 10: Runtime Stability": {
+      "passed": 2,
+      "failed": 0,
+      "checks": [
+        {
+          "check": "Zero Critical Console Errors",
+          "status": "PASS",
+          "expected": "0",
+          "actual": "0",
+          "details": null
+        },
+        {
+          "check": "Zero Uncaught Page Exceptions",
+          "status": "PASS",
+          "expected": "0",
+          "actual": "0",
+          "details": null
+        }
+      ]
+    }
+  },
+  "screenshots_captured": [
+    {
+      "file": "01_login_invalid_rejected.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\01_login_invalid_rejected.png",
+      "description": "Rejection alert on invalid credentials"
+    },
+    {
+      "file": "02_workforce_overview.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\02_workforce_overview.png",
+      "description": "Workforce Overview 100% fluid zero scroll"
+    },
+    {
+      "file": "03_skills_competency.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\03_skills_competency.png",
+      "description": "Skills and Competency dashboard"
+    },
+    {
+      "file": "04_client_program_delivery.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\04_client_program_delivery.png",
+      "description": "Client Program Delivery with Roster Table"
+    },
+    {
+      "file": "05a_compensation_overview.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\05a_compensation_overview.png",
+      "description": "Compensation Analytics Overview"
+    },
+    {
+      "file": "05b_compensation_trends.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\05b_compensation_trends.png",
+      "description": "Compensation Multi-Year Trends"
+    },
+    {
+      "file": "06_calendar_leaves.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\06_calendar_leaves.png",
+      "description": "Calendar and Leave analytics"
+    },
+    {
+      "file": "07_employee_360_profile.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\07_employee_360_profile.png",
+      "description": "Employee 360 Deep Profile"
+    },
+    {
+      "file": "08a_dark_mode_activated.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\08a_dark_mode_activated.png",
+      "description": "Dark theme across executive header and dashboard"
+    },
+    {
+      "file": "08b_copilot_drawer_active.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\08b_copilot_drawer_active.png",
+      "description": "AI Copilot deterministic query execution"
+    },
+    {
+      "file": "09_rbac_employee_denied_403.png",
+      "path": "c:\\Users\\affra\\Documents\\ETS\\ETS-Dashboard\\scratch\\frontend_qa_evidence\\09_rbac_employee_denied_403.png",
+      "description": "HTTP 403 Forbidden Shield displayed for Employee persona"
+    }
+  ],
+  "console_errors_logged": [],
+  "uncaught_page_exceptions": []
+}

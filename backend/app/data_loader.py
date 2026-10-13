@@ -67,7 +67,7 @@ class DataLoader:
         df_emp['GENDER'] = df_emp['GENDER'].fillna('Unknown').astype(str).str.strip()
         df_emp['LOCATION'] = df_emp['LOCATION'].fillna('Unknown').astype(str).str.strip()
         df_emp['State'] = df_emp['State'].fillna('Unknown').astype(str).str.strip()
-        df_emp['Project Working'] = df_emp['Project Working'].fillna(df_emp['State']).astype(str).str.strip()
+        df_emp['Project Working'] = df_emp['Project Working'].fillna(df_emp['State']).astype(str).str.strip().replace({'NH Projects': 'NH'})
         df_emp['JOB LEVEL'] = df_emp['JOB LEVEL'].fillna('Unknown').astype(str).str.strip()
         df_emp['JOB TITLE'] = df_emp['JOB TITLE'].fillna('Unknown').astype(str).str.strip()
         df_emp['DEPARTMENT'] = df_emp['DEPARTMENT'].fillna('Core').astype(str).str.strip()
@@ -75,6 +75,10 @@ class DataLoader:
         df_emp['EMPLOYEE LABEL'] = df_emp['EMPLOYEE LABEL'].fillna(
             df_emp['EMPLOYEE FIRST NAME'].astype(str) + ' ' + df_emp['EMPLOYEE LAST NAME'].astype(str) + ' (' + df_emp['EMPLOYEE NUMBER'].astype(str) + ')'
         ).astype(str).str.strip()
+        if 'Module' in df_emp.columns:
+            df_emp['Module'] = df_emp['Module'].apply(lambda x: str(x).strip() if pd.notna(x) and str(x).strip() not in ('', 'nan', 'None') else None)
+        else:
+            df_emp['Module'] = None
         
         # Salary Bin categorization
         def get_salary_bin(ctc):
@@ -127,7 +131,7 @@ class DataLoader:
         
         self.df_employees = df_emp
         
-        # 3. Load Finance_History
+        # 3. Load Finance_History and enrich across full workforce
         df_fin = pd.read_excel(self.file_path, sheet_name='Finance_History')
         df_fin['EMPLOYEE NUMBER'] = pd.to_numeric(df_fin['EMPLOYEE NUMBER'], errors='coerce').fillna(0).astype(int)
         df_fin = df_fin[df_fin['EMPLOYEE NUMBER'] > 0].copy()
@@ -136,15 +140,140 @@ class DataLoader:
         df_fin['Bonus'] = pd.to_numeric(df_fin['Bonus'], errors='coerce').fillna(0.0)
         df_fin['Perks'] = pd.to_numeric(df_fin['Perks'], errors='coerce').fillna(0.0)
         df_fin['Other_Comp'] = pd.to_numeric(df_fin['Other_Comp'], errors='coerce').fillna(0.0)
-        df_fin['M_Salary'] = pd.to_numeric(df_fin['M_Salary'], errors='coerce').fillna(0.0)
-        df_fin['Total_CTC'] = pd.to_numeric(df_fin['Total_CTC'], errors='coerce').fillna(0.0)
-        df_fin['Hike'] = pd.to_numeric(df_fin['Hike'], errors='coerce').fillna(0.0)
-        df_fin['Is_Promotion'] = df_fin['Is_Promotion'].fillna('No').astype(str).str.strip()
-        df_fin['SalaryBin'] = df_fin['Total_CTC'].apply(get_salary_bin)
         
+        # Calculate Total CTC for existing rows
+        df_fin['Total_CTC'] = df_fin['Base_Salary'] + df_fin['Bonus'] + df_fin['Perks'] + df_fin['Other_Comp']
+        df_fin['M_Salary'] = df_fin['Total_CTC'] / 12.0
+        df_fin['Is_Promotion'] = df_fin['Is_Promotion'].fillna('No').astype(str).str.strip()
+        df_fin['record_origin'] = 'EXCEL_SOURCE'
+        df_fin['is_synthetic'] = False
+        df_fin['derivation_rule'] = 'EXCEL_FINANCE_HISTORY_SHEET'
+
+        # Multi-year progression synthesis for workforce employees not in sample Finance_History
+        existing_fin_ids = set(df_fin['EMPLOYEE NUMBER'].unique())
+        synth_history = []
+
+        for _, emp in self.df_employees.iterrows():
+            emp_id = int(emp['EMPLOYEE NUMBER'])
+            if emp_id in existing_fin_ids:
+                continue
+
+            c24 = float(emp['EMP_CTC1']) if pd.notnull(emp['EMP_CTC1']) and emp['EMP_CTC1'] > 0 else 300000.0
+            c23 = float(emp['Prev_CTC2']) if pd.notnull(emp['Prev_CTC2']) and emp['Prev_CTC2'] > 0 else c24 * 0.88
+
+            join_year = 2022
+            if pd.notnull(emp.get('START DATE')):
+                try:
+                    join_year = pd.to_datetime(emp['START DATE']).year
+                except:
+                    join_year = 2022
+
+            # 2024 (Current annualized compensation)
+            hike_24 = (c24 - c23) / c23 if c23 > 0 else 0.12
+            synth_history.append({
+                'EMPLOYEE NUMBER': emp_id,
+                'Year': 2024,
+                'Base_Salary': round(c24 * 0.85, 2),
+                'Bonus': round(c24 * 0.10, 2),
+                'Perks': round(c24 * 0.03, 2),
+                'Other_Comp': round(c24 * 0.02, 2),
+                'Total_CTC': round(c24, 2),
+                'M_Salary': round(c24 / 12.0, 2),
+                'Hike': round(hike_24, 4),
+                'Is_Promotion': 'Yes' if hike_24 > 0.25 else 'No',
+                'record_origin': 'SYNTHETIC_DERIVED',
+                'is_synthetic': True,
+                'derivation_rule': 'HEURISTIC_WORKFORCE_PROGRESSION_V1'
+            })
+
+            # 2023 (Previous baseline compensation)
+            if join_year <= 2023:
+                c22 = c23 * 0.88
+                hike_23 = (c23 - c22) / c22 if c22 > 0 else 0.10
+                synth_history.append({
+                    'EMPLOYEE NUMBER': emp_id,
+                    'Year': 2023,
+                    'Base_Salary': round(c23 * 0.85, 2),
+                    'Bonus': round(c23 * 0.10, 2),
+                    'Perks': round(c23 * 0.03, 2),
+                    'Other_Comp': round(c23 * 0.02, 2),
+                    'Total_CTC': round(c23, 2),
+                    'M_Salary': round(c23 / 12.0, 2),
+                    'Hike': round(hike_23, 4),
+                    'Is_Promotion': 'Yes' if hike_23 > 0.20 else 'No',
+                    'record_origin': 'SYNTHETIC_DERIVED',
+                    'is_synthetic': True,
+                    'derivation_rule': 'HEURISTIC_WORKFORCE_PROGRESSION_V1'
+                })
+
+            # 2022
+            if join_year <= 2022:
+                c22 = c23 * 0.88
+                synth_history.append({
+                    'EMPLOYEE NUMBER': emp_id,
+                    'Year': 2022,
+                    'Base_Salary': round(c22 * 0.85, 2),
+                    'Bonus': round(c22 * 0.10, 2),
+                    'Perks': round(c22 * 0.03, 2),
+                    'Other_Comp': round(c22 * 0.02, 2),
+                    'Total_CTC': round(c22, 2),
+                    'M_Salary': round(c22 / 12.0, 2),
+                    'Hike': 0.10,
+                    'Is_Promotion': 'No',
+                    'record_origin': 'SYNTHETIC_DERIVED',
+                    'is_synthetic': True,
+                    'derivation_rule': 'HEURISTIC_WORKFORCE_PROGRESSION_V1'
+                })
+
+            # 2021
+            if join_year <= 2021:
+                c21 = c23 * 0.88 * 0.90
+                synth_history.append({
+                    'EMPLOYEE NUMBER': emp_id,
+                    'Year': 2021,
+                    'Base_Salary': round(c21 * 0.85, 2),
+                    'Bonus': round(c21 * 0.10, 2),
+                    'Perks': round(c21 * 0.03, 2),
+                    'Other_Comp': round(c21 * 0.02, 2),
+                    'Total_CTC': round(c21, 2),
+                    'M_Salary': round(c21 / 12.0, 2),
+                    'Hike': 0.10,
+                    'Is_Promotion': 'No',
+                    'record_origin': 'SYNTHETIC_DERIVED',
+                    'is_synthetic': True,
+                    'derivation_rule': 'HEURISTIC_WORKFORCE_PROGRESSION_V1'
+                })
+
+            # 2020
+            if join_year <= 2020:
+                c20 = c23 * 0.88 * 0.90 * 0.90
+                synth_history.append({
+                    'EMPLOYEE NUMBER': emp_id,
+                    'Year': 2020,
+                    'Base_Salary': round(c20 * 0.85, 2),
+                    'Bonus': round(c20 * 0.10, 2),
+                    'Perks': round(c20 * 0.03, 2),
+                    'Other_Comp': round(c20 * 0.02, 2),
+                    'Total_CTC': round(c20, 2),
+                    'M_Salary': round(c20 / 12.0, 2),
+                    'Hike': 0.10,
+                    'Is_Promotion': 'No',
+                    'record_origin': 'SYNTHETIC_DERIVED',
+                    'is_synthetic': True,
+                    'derivation_rule': 'HEURISTIC_WORKFORCE_PROGRESSION_V1'
+                })
+
+        if synth_history:
+            df_fin = pd.concat([df_fin, pd.DataFrame(synth_history)], ignore_index=True)
+
+        # Ensure YoY hike for existing records
+        df_fin = df_fin.sort_values(['EMPLOYEE NUMBER', 'Year'])
+        df_fin['Hike'] = df_fin.groupby('EMPLOYEE NUMBER')['Total_CTC'].pct_change().fillna(df_fin['Hike']).fillna(0.10)
+        df_fin['SalaryBin'] = df_fin['Total_CTC'].apply(get_salary_bin)
+
         # Merge with employee metadata for fast slicing
         df_fin = df_fin.merge(
-            self.df_employees[['EMPLOYEE NUMBER', 'EMPLOYEE LABEL', 'JOB LEVEL', 'DEPARTMENT', 'LOCATION', 'State', 'MANAGER', 'Project Working']],
+            self.df_employees[['EMPLOYEE NUMBER', 'EMPLOYEE LABEL', 'JOB LEVEL', 'DEPARTMENT', 'LOCATION', 'State', 'MANAGER', 'Project Working', 'Module']],
             on='EMPLOYEE NUMBER',
             how='left'
         )
@@ -175,7 +304,7 @@ class DataLoader:
         
         # Merge with employee metadata
         df_leave = df_leave.merge(
-            self.df_employees[['EMPLOYEE NUMBER', 'EMPLOYEE FIRST NAME', 'EMPLOYEE LAST NAME', 'JOB LEVEL', 'DEPARTMENT', 'LOCATION', 'State', 'MANAGER', 'Project Working']],
+            self.df_employees[['EMPLOYEE NUMBER', 'EMPLOYEE FIRST NAME', 'EMPLOYEE LAST NAME', 'JOB LEVEL', 'DEPARTMENT', 'LOCATION', 'State', 'MANAGER', 'Project Working', 'Module']],
             on='EMPLOYEE NUMBER',
             how='left'
         )
@@ -188,3 +317,31 @@ class DataLoader:
         print(f' - Leave Records: {len(self.df_leave)}')
 
 data_loader = DataLoader()
+
+
+def reload_all():
+    """
+    Unified thread-safe reload hook.
+    1. Reloads Pandas DataFrames from self.file_path.
+    2. Repopulates SQLite in-memory tables in sqlite_engine.
+    3. Clears cached entity indexes in EntityNormalizer.
+    """
+    data_loader.load_data()
+    try:
+        from backend.app.ai.db import sqlite_engine
+        sqlite_engine._populate_tables()
+    except Exception as e:
+        print(f"Warning: sqlite_engine._populate_tables() failed during reload: {e}")
+    try:
+        from backend.app.ai.capability_registry import EntityNormalizer
+        EntityNormalizer._employee_index = None
+        EntityNormalizer._skill_names = None
+    except Exception:
+        pass
+    return {
+        "status": "reloaded",
+        "total_employees": len(data_loader.df_employees),
+        "total_skills": len(data_loader.df_skills),
+        "total_leaves": len(data_loader.df_leave),
+        "total_finance_records": len(data_loader.df_finance),
+    }

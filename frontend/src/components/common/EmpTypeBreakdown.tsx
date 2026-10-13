@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserCheck, Briefcase, GraduationCap } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export interface EmpTypeItem {
   type: string;
@@ -79,43 +80,81 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
   }));
 
   const primaryType = typesWithColors[0];
+  const activeHoveredItem = hoveredType ? typesWithColors.find((t) => t.type === hoveredType) : null;
 
   return (
     <div className="w-full h-full flex flex-col justify-between select-none min-h-0">
-      {/* Main Content Area: Left 4 Cols (Proportional Gauge) + Right 8 Cols (Slim Legend Rows) */}
-      <div className="grid grid-cols-12 gap-2 flex-1 items-center min-h-[140px] py-1">
+      {/* Main Content Area: Left 5 Cols (Interactive Donut Ring) + Right 7 Cols (Slim Legend Rows) */}
+      <div className="grid grid-cols-12 gap-2 flex-1 items-center min-h-[140px] py-0.5">
         
-        {/* Left: Vertical Stacked Proportional Bar (4 cols) */}
-        <div className="col-span-4 h-full flex items-center justify-center">
-          <div className="relative w-11 h-[130px] rounded-lg overflow-hidden flex flex-col shadow-inner bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80">
-            {typesWithColors.map((item) => {
-              const isHov = hoveredType === item.type;
-              return (
-                <div
-                  key={item.type}
-                  style={{
-                    height: `${Math.max(16, item.percentage)}%`,
-                    backgroundColor: item.color,
-                  }}
-                  onMouseEnter={() => setHoveredType(item.type)}
-                  onMouseLeave={() => setHoveredType(null)}
-                  onClick={() => onSelectType && onSelectType(item.type)}
-                  className={`w-full flex items-center justify-center transition-all cursor-pointer relative group ${
-                    isHov ? 'brightness-110 shadow-md ring-2 ring-white/60 z-10' : 'opacity-95'
-                  }`}
-                  title={`${item.label}: ${item.count} staff (${item.percentage}%)`}
-                >
-                  <span className="text-[10px] font-black text-white font-mono drop-shadow-xs select-none">
-                    {Math.round(item.percentage)}%
-                  </span>
-                </div>
-              );
-            })}
+        {/* Left: Interactive Donut Chart (5 cols) */}
+        <div className="col-span-5 h-full relative flex items-center justify-center min-h-[135px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={typesWithColors}
+                cx="50%"
+                cy="50%"
+                innerRadius="50%"
+                outerRadius="80%"
+                paddingAngle={3}
+                dataKey="count"
+                onMouseEnter={(_, idx) => setHoveredType(typesWithColors[idx]?.type || null)}
+                onMouseLeave={() => setHoveredType(null)}
+                onClick={(entry: any) => onSelectType && onSelectType(entry.type)}
+              >
+                {typesWithColors.map((item) => (
+                  <Cell
+                    key={item.type}
+                    fill={item.color}
+                    stroke={hoveredType === item.type ? 'var(--text)' : 'var(--surface)'}
+                    strokeWidth={hoveredType === item.type ? 2.5 : 1.5}
+                    className="cursor-pointer transition-all"
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'var(--surface)',
+                  borderColor: 'var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '11px',
+                  boxShadow: 'var(--shadow-soft)',
+                }}
+                formatter={(val: any, _: any, p: any) => [`${val} Staff (${p.payload.percentage}%)`, p.payload.label]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          
+          {/* Donut Center Display */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            {activeHoveredItem ? (
+              <>
+                <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHoveredItem.color }}>
+                  {activeHoveredItem.type}
+                </span>
+                <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                  {activeHoveredItem.count}
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
+                  {activeHoveredItem.percentage}%
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+                  {data.total || 590}
+                </span>
+                <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                  TOTAL FTE
+                </span>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Right: Slim, High-Density Legend Rows (8 cols) - Matching Delivery Footprint & Diversity Spotlight */}
-        <div className="col-span-8 flex flex-col justify-center gap-1.5 h-full pl-1 border-l border-slate-100 dark:border-slate-800/80">
+        {/* Right: Slim, High-Density Legend Rows (7 cols) */}
+        <div className="col-span-7 flex flex-col justify-center gap-1 h-full pl-1 border-l border-slate-100 dark:border-slate-800/80">
           {typesWithColors.map((item) => {
             const isHov = hoveredType === item.type;
             return (
@@ -124,7 +163,7 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
                 onMouseEnter={() => setHoveredType(item.type)}
                 onMouseLeave={() => setHoveredType(null)}
                 onClick={() => onSelectType && onSelectType(item.type)}
-                className={`px-2 py-1.5 rounded-lg transition-all cursor-pointer flex flex-col gap-1 ${
+                className={`px-1.5 py-1 rounded-md transition-all cursor-pointer flex flex-col gap-0.5 ${
                   isHov
                     ? `${item.hoverBg} shadow-2xs`
                     : 'hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
@@ -132,9 +171,9 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
                 title={`Click to view ${item.label} workforce roster`}
               >
                 <div className="flex items-center justify-between gap-1 text-[11px]">
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${item.bg} ${item.text}`}
+                      className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${item.bg} ${item.text}`}
                     >
                       {getIcon(item.type)}
                     </div>
@@ -149,9 +188,9 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
                     </span>
                   </div>
 
-                  <div className="font-mono text-right shrink-0">
-                    <b className="text-slate-900 dark:text-slate-100 text-xs">{item.count}</b>{' '}
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <div className="font-mono text-right shrink-0 text-[10.5px]">
+                    <b className="text-slate-900 dark:text-slate-100">{item.count}</b>{' '}
+                    <span className="text-[9.5px] text-slate-500 dark:text-slate-400">
                       ({item.percentage}%)
                     </span>
                   </div>

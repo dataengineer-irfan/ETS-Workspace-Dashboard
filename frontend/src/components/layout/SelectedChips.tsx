@@ -11,6 +11,9 @@ const FIELD_LABELS: Record<string, string> = {
   project: 'Project',
   manager: 'Manager',
   department: 'Dept',
+  module: 'Module',
+  emp_type: 'Emp Type',
+  tenure_band: 'Tenure',
   skill_name: 'Skill',
   job_level: 'Grade',
   location: 'Location',
@@ -25,7 +28,7 @@ export const SelectedChips: React.FC<Props> = ({ filters, setFilters }) => {
   const rawEntries = Object.entries(filters || {}) as [string, any][];
   if (rawEntries.length === 0) return null;
 
-  const preferredOrder = ['project', 'manager', 'department', 'skill_name', 'job_level', 'location', 'year', 'month', 'date', 'state', 'search'];
+  const preferredOrder = ['project', 'manager', 'department', 'module', 'emp_type', 'tenure_band', 'skill_name', 'job_level', 'location', 'year', 'month', 'date', 'state', 'search'];
   const entries = rawEntries.sort((a, b) => {
     const ai = preferredOrder.indexOf(a[0]);
     const bi = preferredOrder.indexOf(b[0]);

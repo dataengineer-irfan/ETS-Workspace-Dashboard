@@ -44,3 +44,22 @@ venv/
 # PDF Exports
 pdf_exports/
 *.tsbuildinfo
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Backups & dumps
+*_backup*.xlsx
+*_backup*
+dump/
+
+# Scratch & test outputs
+scratch/
+test-results/
+playwright-report/
+reports/playwright_evidence/
+_output/
+*.quarantined
+

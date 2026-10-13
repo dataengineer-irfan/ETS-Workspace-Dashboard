@@ -1,240 +1,239 @@
-# ETS EMPLOYEE DASHBOARD - Enterprise System Architecture & Engineering Document
-
-## 1. Executive Summary & System Overview
-
-The **ETS Employee Dashboard & Workforce Intelligence System** is an enterprise-grade web application engineered to provide real-time visibility, predictive workforce analytics, compensation modeling, skills competency mapping, and attendance scheduling for ETS (Enterprise Technology Services).
-
-The system replaces and elevates traditional static Power BI reports into a high-density, interactive web application running on modern web standards with sub-millisecond response times, zero page-scroll layout optimization, and an embedded natural language AI Analytics Copilot.
+# ETS Enterprise Workforce Intelligence Platform & ETS Genie AI Engine
+## Comprehensive System Architecture Specification
 
 ---
 
-## 2. High-Level System Architecture
+## 1. Executive Summary
 
-`mermaid
-graph TB
-    subgraph ClientTier [Frontend Tier - React 18 + TypeScript + Tailwind CSS - Port 3036]
-        direction TB
-        AppShell[Executive Dashboard Shell - Zero-Scroll Viewport Layout]
-        NavControl[Compact Global Navigation & View Switcher]
-        
-        subgraph DashboardModules [Core Analytics Modules]
-            Tab1[1. ETS Employee Dashboard - Executive Home]
-            Tab2[2. Statewise Dashboard]
-            Tab3[3. ETS Employee Details - 360 Profile]
-            Tab4[4. Techwise Dashboard - Skills Matrix]
-            Tab5[5. Salarywise Dashboard - Compensation Tiers]
-            Tab6[6. Salarywise2 Dashboard - Pay & Promotion Analytics]
-            Tab7[7. Employee Calendar - Attendance & Leave Matrix]
-            Tab8[8. AI Copilot - NLP Data Intelligence Agent]
-        end
+The **ETS Enterprise Workforce Intelligence Platform** is a high-performance, executive-grade analytical application that provides unified visibility, predictive risk tracking, and real-time compensation/delivery intelligence across the ETS enterprise workforce.
 
-        UIState[Global State & Multi-Dimensional Cross-Filter Engine]
-        VizEngine[High-Density Charting Engine - Recharts + Chart.js]
-        
-        AppShell --> NavControl
-        NavControl --> DashboardModules
-        DashboardModules <--> UIState
-        DashboardModules --> VizEngine
-    end
+The platform pairs a responsive, interactive React 18 frontend with a high-throughput Python FastAPI backend and a specialized **Dual-Path AI Copilot (ETS Genie)** designed around a strict architectural philosophy:
 
-    subgraph ServerTier [Backend API Tier - Python 3.10+ / FastAPI / Uvicorn - Port 8000]
-        direction TB
-        Gateway[FastAPI Asynchronous Gateway & CORS Security Layer]
-        RouterLayer[Modular Domain Routers /api/v1/*]
-        
-        subgraph BusinessLogic [Core Processing & Analytics Engine]
-            ETL[Excel ETL & Normalization Pipeline]
-            DAXEngine[In-Memory DAX Analytics & Cross-Aggregation Engine]
-            FilterEngine[Multi-Attribute Dynamic Cross-Filtering Engine]
-            AICopilotEngine[NLP Intent Parser & Automated Insight Generator]
-        end
-
-        InMemoryStore[In-Memory Tabular & Relational Indexed Store - Pandas + NumPy]
-        
-        Gateway --> RouterLayer
-        RouterLayer --> BusinessLogic
-        BusinessLogic <--> InMemoryStore
-    end
-
-    subgraph DataStorage [Data Source Tier]
-        ExcelData[ETS_Dasboard_DS.xlsx - EMPLOYEES, SKILL, Finance_History, LEAVE, APPRAISAL_PROMOTION, SETTINGS]
-        PBIXSchema[Emp_7.21.pbix - Visual Schemas & DAX Business Logic]
-        ETL <--> ExcelData
-    end
-
-    ClientTier <===>|REST API JSON / Streaming Endpoints| ServerTier
-`
+> **"Python and SQL own the truth. The LLM owns language understanding, reasoning, interpretation, and synthesis."**
 
 ---
 
-## 3. Data Schema & Domain Entity Relationships
+## 2. High-Level Architecture Topology
 
-The data model ingests and correlates 6 core worksheets into an in-memory multidimensional schema:
+```mermaid
+flowchart TB
+    subgraph UI["🖥️ Presentation Layer (React 18 + TypeScript + Tailwind CSS)"]
+        Shell["App Shell & Global FilterBar<br/>(State, Project, Grade, Location, Manager, Module)"]
+        subgraph Tabs["Modular Analytical Workspaces"]
+            T1["Home Dashboard<br/>(Enterprise Overview & KPIs)"]
+            T2["Statewise Delivery<br/>(Client Accounts: NH, ND, AK)"]
+            T3["Techwise Skills<br/>(47 Skills & Depth Radar)"]
+            T4["Salary & Compensation<br/>(₹45.8Cr Outlay & Histograms)"]
+            T5["Attendance & Calendar<br/>(799 Leave Records & Seasonality)"]
+            T6["Employee 360° Profile<br/>(Dossier, 5-Yr History & 9-Box)"]
+        end
+        CopilotUI["ETS Genie Copilot Drawer<br/>(Conversational Executive Assistant)"]
+    end
 
-`mermaid
+    subgraph API["⚡ Backend Application Services (FastAPI + Python 3.12)"]
+        direction TB
+        R_Dash["Analytical REST Routers<br/>/api/home · /api/statewise · /api/techwise<br/>/api/salarywise · /api/calendar · /api/employee"]
+        R_AI["AI Copilot Router<br/>/api/ai/query · /api/ai/telemetry"]
+        AnalyticsEngine["Dynamic Slicing Engine (`analytics.py`)<br/>Multi-Dimensional Filtering & Cohort Aggregation"]
+    end
+
+    subgraph Genie["🧠 ETS Genie Dual-Core AI Engine"]
+        Router["Deterministic Intent Classifier & Capability Matcher"]
+        subgraph ClassA["Class A: Facts & Metrics (0 LLM Calls)"]
+            SQLGovA["SQL Governor & Query Builder"]
+            DBDirect["In-Memory SQLite Execution"]
+            AnswerA["Exact 1-Line Metric + SQL Trace"]
+        end
+        subgraph ClassB["Class B: Strategic Executive Reasoning"]
+            Collector["Deterministic SQL Evidence Collector"]
+            LocalLLM["Local LLM Gateway (Ollama: Qwen / Mistral)"]
+            AnswerB["4-Tier Strategic Synthesis (Summary, Drivers, Risks, Actions)"]
+        end
+    end
+
+    subgraph Storage["💾 Enterprise Data Layer"]
+        Excel["ETS_Dasboard_DS.xlsx<br/>(Enterprise Master Dataset)"]
+        DataLoader["In-Memory Data Loader (`data_loader.py`)<br/>Pandas DataFrames"]
+        SQLiteDB["Dual In-Memory SQLite Instances<br/>(Sandboxed, Read-Only Relational Projection)"]
+    end
+
+    Shell --> Tabs
+    Shell --> CopilotUI
+    Tabs -->|REST JSON| R_Dash
+    CopilotUI -->|REST JSON| R_AI
+
+    R_Dash --> AnalyticsEngine
+    AnalyticsEngine --> DataLoader
+    DataLoader --> SQLiteDB
+    Excel --> DataLoader
+
+    R_AI --> Router
+    Router -->|Factual / Metrics / Aggregates| ClassA
+    Router -->|Strategic Analysis / Risk / Synthesis| ClassB
+
+    SQLGovA --> SQLiteDB
+    DBDirect --> AnswerA
+    Collector --> SQLiteDB
+    Collector --> LocalLLM
+    LocalLLM --> AnswerB
+```
+
+---
+
+## 3. Data Architecture & Ground Truth Model
+
+The platform operates on an in-memory relational projection loaded directly from the enterprise master workbook (`ETS_Dasboard_DS.xlsx`).
+
+```mermaid
 erDiagram
-    EMPLOYEES ||--o{ SKILLS : 'possesses (1:N)'
-    EMPLOYEES ||--o{ FINANCE_HISTORY : 'compensated by (1:N)'
-    EMPLOYEES ||--o{ LEAVES : 'takes (1:N)'
-    EMPLOYEES ||--o{ APPRAISALS : 'reviewed under (1:N)'
-    EMPLOYEES }o--|| SETTINGS : 'categorized by'
+    EMPLOYEES ||--o{ SKILLS : "possesses"
+    EMPLOYEES ||--o{ FINANCE_HISTORY : "tracks"
+    EMPLOYEES ||--o{ LEAVE_RECORDS : "books"
 
     EMPLOYEES {
         int employee_number PK
-        string first_name
-        string last_name
-        string email
+        string employee_label
+        string job_level "E1 to E10"
+        string job_title
+        string department
+        string location "Bangalore, Hyderabad, Chennai, Pune"
+        string project_working "NH, ND, AK, NH Projects"
+        string state "NH, ND, AK"
+        float total_exp
+        float infinite_exp "Tenure at ETS"
+        float prior_exp
+        string manager
+        string gender "Male, Female"
+        string module "Claims, Member, Provider, etc."
         date date_of_birth
         date start_date
         date exit_date
-        string gender
-        string location
-        string department
-        string job_level
-        string job_title
-        string manager
-        float prior_experience
-        float infinite_experience
-        float total_experience
-        float current_ctc
-        float monthly_salary
-        string state
-        string project_working
-        string employee_label
     }
 
     SKILLS {
         int employee_number FK
-        string skill_name
-        string skill_type
-        string skill_level
-        string is_active
-        date assigned_date
+        string skill_name "47 Unique Technologies"
+        string skill_type "Primary, Secondary"
+        float skill_exp_years
+        string skill_level "Beginner, Intermediate, Advanced, Expert"
     }
 
     FINANCE_HISTORY {
         int employee_number FK
-        int year
+        int year "2020 - 2024"
         float base_salary
         float bonus
         float perks
         float other_comp
-        float monthly_salary
         float total_ctc
-        float hike_percentage
-        string is_promotion
+        float hike "Decimal / Percentage"
+        string is_promotion "Yes, No"
         date promotion_date
     }
 
-    LEAVES {
+    LEAVE_RECORDS {
         int employee_number FK
-        string employee_name
         date start_date
         date end_date
-        string leave_type
-        int day_value
-        string symbol
+        float day_value
+        string leave_type "Casual, Privilege, LOP, Maternity, etc."
+        string status "Approved"
     }
-`
+```
+
+### Verified Dataset Metrics
+- **Total Enterprise Workforce:** 590 employees (100% assigned to client accounts: NH=358, ND=118, AK=108, NH Projects=6).
+- **Gender Diversity:** 408 Men (69.2%), 182 Women (30.8%).
+- **Geographic Footprint:** Bangalore (396, 67.1%), Hyderabad (171, 29.0%), Chennai (13, 2.2%), Pune (10, 1.7%).
+- **Grade Hierarchy:** Associate (E1=171, E2=118), Core (E3=121, E4=78), Senior Delivery (E5=49, E6=23, E7=24), Executive Leadership (E8=1, E9=2, E10=3).
+- **Enterprise Annual Payroll:** ₹45,82,99,997 (₹45.83 Cr), Average CTC: ₹7.77L, Median: ₹2.50L.
+- **Skills Roster:** 2,177 verified technical skill records across 47 skills (Docker: 208, SQL: 177, QA Automation: 105).
+- **Historical Leaves:** 799 recorded leaves across 2022–2024.
 
 ---
 
-## 4. DAX Metric Formulas & Calculation Logic
+## 4. ETS Genie AI Engine Architecture
 
-| Metric Name | Mathematical & DAX Equivalent Formula | Description |
-| :--- | :--- | :--- |
-| **Total Headcount** | Total Emp = COUNTROWS(EMPLOYEES) | Total number of registered workforce members (590). |
-| **Gender Diversity** | % Male = DIVIDE(COUNT(Male), Total Emp) * 100<br>% Female = DIVIDE(COUNT(Female), Total Emp) * 100 | Proportion of workforce by gender (Male: 69.15%, Female: 30.85%). |
-| **Infinite / ETS Experience** | Infinite_Exp = (Current_Date - START_DATE) / 365.25 | Tenure strictly spent within the ETS organization (Avg: 3.04 yrs). |
-| **Prior (Non-ETS) Experience** | Prior_Exp = COALESCE(Prior EXPERIENCE1, 0) | Verified external professional experience (Avg: 3.21 yrs). |
-| **Total Experience** | Total_Exp = Prior_Exp + Infinite_Exp | Cumulative career experience (Avg: 6.25 yrs). |
-| **Attrition Rate by Year** | AttritionRate_Y = DIVIDE(Exits_in_Year, Total_Headcount_Start_of_Year) | Annualized exit rate from 2011 to 2024. |
-| **Salary Bins** | SalaryBin = SWITCH(TRUE(), CTC < 5L, '< 5L', CTC < 10L, '5-10L', CTC < 15L, '10-15L', CTC < 20L, '15-20L', '20L+') | Stratified pay bands for compensation analysis. |
-| **Annual Hike Pre vs Post Promotion** | Avg_Hike = AVERAGE(Finance_History.Hike) GROUP BY Year, Is_Promotion | Comparative increment percentage between promoted vs standard cycles. |
+ETS Genie implements a **Dual-Path Routing Boundary** to eliminate hallucinations while maintaining executive strategic reasoning.
 
----
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Executive / User
+    participant UI as AICopilotDrawer
+    participant Orch as LLMOrchestrator
+    participant Router as Intent Classifier
+    participant SQLGov as SQL Governor
+    participant SQLite as In-Memory DB
+    participant LLM as ModelGateway (Ollama)
 
-## 5. UI/UX Layout Architecture: Zero-Scroll Viewport Optimization
+    User->>UI: Types query
+    UI->>Orch: POST /api/ai/query { query, active_filters }
 
-To ensure seamless decision-making and optimal information density without browser scrolling:
-- **Viewport Layout**: Full-height pinned container (h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100).
-- **Compact Spacing Matrix**:
-  - Top Navigation Bar: h-14 with glassmorphic backdrop filter, tab pills, global search, and real-time system stats.
-  - Dashboard Body: h-[calc(100vh-3.5rem)] p-2.5 gap-2.5 flex flex-col overflow-hidden.
-  - Grid Systems: High-density CSS Grid (grid grid-cols-12 gap-2.5) calibrated for maximum visual hierarchy and zero outer overflow.
-  - Card Containers: Tight padding (p-2.5 to p-3), rounded edges (
-ounded-xl), subtle borders (order border-slate-800/80 bg-slate-900/70 backdrop-blur-md), and integrated micro-scroll/pagination within sub-tables only.
+    alt Class A: Factual / Aggregation / Ranking Query
+        Orch->>Router: Classify intent
+        Router-->>Orch: Intent = DETERMINISTIC_SQL (Matched Capability)
+        Orch->>SQLGov: Generate query via CapabilityRegistry & QueryBuilder
+        SQLGov->>SQLite: Execute read-only SELECT
+        SQLite-->>SQLGov: Result set (e.g. 590, Bangalore, Docker)
+        SQLGov-->>Orch: Deterministic result packet
+        Orch-->>UI: 1-line exact answer + SQL trace (0 LLM calls)
+    else Class B: Executive Strategic Reasoning Query
+        Orch->>Router: Classify intent
+        Router-->>Orch: Intent = REASONING_SYNTHESIS
+        Orch->>SQLGov: EvidenceCollector.gather_all_domains()
+        SQLGov->>SQLite: Query headcount, tenure, salary, skills, attrition
+        SQLite-->>SQLGov: Multi-table verified metrics packet
+        SQLGov-->>Orch: Ground-truth evidence packet
+        Orch->>LLM: ModelGateway.generate() with Strict Ground Truth Prompt
+        LLM-->>Orch: 4-Tier Structured Synthesis
+        Orch-->>UI: Executive Briefing (Summary, Drivers, Risks, Recommendations)
+    end
 
----
+    UI-->>User: Renders verified response with 1-click copy & telemetry
+```
 
-## 6. Point-to-Point Dashboard Module Design
+### Dual-Core Subsystems
+1. **Class A Route (Deterministic Facts — 0 LLM Calls):**
+   - Routes queries like: *"How many active employees do we have?"*, *"Which location has the most employees?"*, *"How many Docker engineers?"*.
+   - Uses regex and semantic intent classification in [`capability_registry.py`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/backend/app/ai/capability_registry.py).
+   - Generates sandboxed, read-only SQL via [`query_builder.py`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/backend/app/ai/query_builder.py).
+   - Enforces read-only isolation and timeout constraints via [`sql_governor.py`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/backend/app/ai/sql_governor.py).
+   - **Zero tokens spent. Zero hallucination risk.**
 
-### Module 1: ETS EMPLOYEE DASHBOARD (Executive Home)
-- **Top Metric Cards**: 6 core KPIs (Total Employees, Male Count & %, Female Count & %, Avg Infinite Exp, Avg Prior Exp, Avg Total Exp).
-- **Recent Hirings Donut**: Distribution of hires in 2024 vs 2023 vs historical.
-- **Attrition Rate Column Chart**: Longitudinal attrition rate across years.
-- **Workforce Location Donut**: Headcount distribution across Bangalore (67.1%), Hyderabad (29.0%), Chennai (2.2%), and Pune (1.7%).
-- **Quick Jump Navigator**: Interactive cards to immediately access Statewise, Techwise, Salarywise, and Calendar views.
-
-### Module 2: Statewise Dashboard
-- **Slicers**: State (NH, ND, AK), Emp Grade (E1–E10), Employee Search.
-- **Dynamic Indicators**: State Delivery Manager (SDM) lead badge, active filtered headcount.
-- **Experience Analysis by Job Level**: Clustered Bar chart comparing Prior Exp vs Infinite Exp across grades.
-- **Employee Distribution by Project & Grade**: Clustered Column chart (Job Level x Project).
-- **Workforce Breakdown by Geography**: Stacked Column chart (Job Level x Location).
-- **Interactive Employee Roster**: High-density table with instant sorting and CSV export.
-
-### Module 3: ETS Employee Details (Employee 360)
-- **Selector**: Instant fuzzy autocomplete search for any of the 590 employees.
-- **Employee Header & ID Card**: Photo avatar, Name, ID, Designation, Grade, Dept, Location, State, Manager, Email, Contact No.
-- **Experience Summary**: Infinite Experience, Prior Experience, Total Career Experience, Last Promotion Date.
-- **Skill Profile Matrix**: Primary Skills, Secondary Skills, Skill Levels (Advanced/Intermediate).
-- **Multi-Year Financial History Table**: 2020–2024 Base Salary, Bonus, Perks, Other Comp, Monthly Salary, Total CTC, Hike %.
-- **Dual-Axis Financial Trend**: Combined Bar (CTC, Bonus, Perks) and Line (Hike %) annual progression chart.
-
-### Module 4: Techwise Dashboard (Skills Matrix)
-- **Slicers**: Emp Grade, Location, State, Skill Name.
-- **Summary Cards**: Total Unique Skills (14+), Most Common Skill, Employees with Missing Skills.
-- **Skill Distribution Chart**: Employee Count per Skill with proficiency breakdown.
-- **Reporting Manager x Grade Heatmap / Pivot Matrix**: Grid of team strength by Grade.
-- **Skill Inventory Roster**: Filterable roster displaying employee skill sets, missing skill flags, and managers.
-
-### Module 5: Salarywise Dashboard (Compensation Overview)
-- **Slicers**: State, Year (2022–2024), CTC Range Bands.
-- **Compensation KPI Matrix**: Total Salary, Average Salary, Max Salary, Min Salary, Total CTC, Average CTC, Max CTC, Min CTC, Total Perks, Total Bonus.
-- **Manager x Grade CTC Pivot Matrix**: Aggregate CTC expenditure across leadership hierarchies.
-- **Top N Earners Table**: Filterable Top 5 / 10 / 25 / 50 earners with Monthly Salary, CTC, and Manager.
-
-### Module 6: Salarywise2 Dashboard (Advanced Pay & Promotion Analytics)
-- **Slicers**: State, Year, CTC Range.
-- **Average Salary by Team / Department**: Comparative bar/line across Core, Product, IT, Sales, Marketing.
-- **Longitudinal Pay Trends (2020–2024)**: Multi-line chart of Avg Salary, Avg CTC, Avg Bonus, and Avg Perks.
-- **Pre vs Post Promotion Hike Analysis**: Combo chart comparing hike percentages and perks for promoted vs non-promoted cycles.
-- **Component-Wise Compensation by Salary Band**: Stacked area chart showing salary composition across pay bands.
-- **Monthly Salary Distribution Overview**: Clustered bar chart of employee counts across monthly salary brackets.
-
-### Module 7: Employee Calendar (Attendance & Leave Matrix)
-- **Slicers**: Year, Month, Leave Type, Department, Manager.
-- **Interactive Visual Calendar**: Month/Week view with color-coded badges for Casual/Sick, Privilege, LOP, Maternity, Paternity, and Bereavement.
-- **Clickable Date Inspector**: Modal / Drawer revealing all employees on leave on any selected date.
-- **Workforce Distribution by Project**: Pie chart of project allocation.
-- **Geography x Job Level Workforce Pivot**: Pivot table of headcount across locations and grades.
-
-### Module 8: AI Copilot & Workforce Analytics Agent
-- **21 Intent Category Classification**: Precision routing across `WORKFORCE_COUNT`, `EMPLOYEE_SEARCH`, `EMPLOYEE_DETAILS`, `STATE_ANALYSIS`, `LOCATION_ANALYSIS`, `SKILL_ANALYSIS`, `TECHNICAL_SKILL_ANALYSIS`, `SALARY_ANALYSIS`, `GRADE_ANALYSIS`, `MANAGER_ANALYSIS`, `EXPERIENCE_ANALYSIS`, `LEAVE_ANALYSIS`, `CALENDAR_ANALYSIS`, `FINANCE_HISTORY`, `COMPARISON`, `TREND_ANALYSIS`, `FILTER_REQUEST`, `FOLLOW_UP_QUESTION`, `DATA_EXPORT_REQUEST`, `GENERAL_DASHBOARD_QUESTION`, and `UNSUPPORTED_QUERY`.
-- **Zero-Hallucination Data Grounding**: Explicit fallback rule returning *"I couldn't find that information in the available ETS data."* for out-of-scope queries (medical records, passwords, future forecasts, non-existent employees/states).
-- **Multi-Turn Context Resolution**: Inherits state, location, and intent filters across consecutive user questions.
-- **API Source Attribution & Chart Schema**: Injects source API endpoint paths (e.g. `Source: /api/statewise/kpis`) and structured Recharts JSON objects.
-- **Automated Test & Evaluation Suite**: Includes `tests/data_validation/test_data_integrity.py` (10/10 Passed) and `tests/copilot/evaluate_copilot.py` (58/58 Passed - 100.0% accuracy, 0 hallucinations).
+2. **Class B Route (Executive Strategic Synthesis):**
+   - Routes queries like: *"What are our three biggest workforce risks?"*, *"Where should leadership focus workforce investment?"*.
+   - Gathers multi-table ground truth metrics via [`evidence_collector.py`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/backend/app/ai/evidence_collector.py).
+   - Feeds verified metrics into the local LLM gateway ([`ollama_client.py`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/backend/app/ai/ollama_client.py)).
+   - Enforces a 4-tier structured executive schema:
+     - **Executive Summary:** Core strategic answer.
+     - **Key Drivers:** Quantitative factors supported by the data.
+     - **Quantified Risks:** Specific enterprise exposures (tenure, skills, cost).
+     - **Leadership Actions:** Prioritized high-impact recommendations.
 
 ---
 
-## 7. Security, Performance & Deployment Architecture
+## 5. Frontend Module Specifications
 
-- **Port Strategy**:
-  - Frontend Web UI: http://localhost:3036 (Vite dev server / production preview).
-  - Backend API: http://127.0.0.1:8000 (FastAPI / Uvicorn async ASGI server).
-- **Performance Benchmarks**:
-  - API query latency: < 15ms (via in-memory pre-indexed DataFrames).
-  - Client-side rendering: 60 FPS smooth transitions with zero DOM thrashing.
-  - Total bundle size: Optimized tree-shaking with Vite.
+| Module | Component | Primary Capabilities |
+|:---|:---|:---|
+| **Home** | [`HomeDashboard.tsx`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/frontend/src/components/tabs/HomeDashboard.tsx) | Executive KPI strip (YoY growth, 100% deployment, lead ratio), MMIS module breakdown (19 modules), job level pyramid (`E1`–`E10`), geographic concentration, and full workforce drilldown modal. |
+| **Client Delivery** | [`StatewiseDashboard.tsx`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/frontend/src/components/tabs/StatewiseDashboard.tsx) | Account analytics across New Hampshire (`NH`), North Dakota (`ND`), and Alaska (`AK`), Senior Delivery Manager breakdown, cross-filtering grade chart, and paginated roster. |
+| **Techwise** | [`TechwiseDashboard.tsx`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/frontend/src/components/tabs/TechwiseDashboard.tsx) | Technical depth across 47 skills, unclipped Y-axis domain (`[0, 'auto']`), Manager $\times$ Skill matrix with top cohort indicators, verified coverage gap benchmarks, and multi-skill sorting roster. |
+| **Salarywise** | [`SalarywiseDashboard.tsx`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/frontend/src/components/tabs/SalarywiseDashboard.tsx) | ₹45.83Cr annualized payroll telemetry, monthly cash outlay tracking, manager $\times$ grade CTC matrix, interactive CTC histogram with cohort isolation, and filtered rank indicators. |
+| **Calendar / Leave** | [`EmployeeCalendarDashboard.tsx`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/frontend/src/components/tabs/EmployeeCalendarDashboard.tsx) | Attendance tracking across 799 leave records, dynamic year resolution (`data.available_years`), monthly seasonality curves, null-safe geography $\times$ grade matrix, and all 6 leave types mini-legend. |
+| **Employee 360°** | [`Employee360Dashboard.tsx`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/frontend/src/components/tabs/Employee360Dashboard.tsx) | Individual dossier, verified KYC/Benefits data (truthful fallbacks), separation/exit alerts (`exit_date`), 5-year compensation history, normalized hike tiers, and 9-box performance matrix. |
+| **ETS Genie** | [`AICopilotDrawer.tsx`](file:///c:/Users/affra/Documents/ETS/ETS-Dashboard/frontend/src/components/ai/AICopilotDrawer.tsx) | Executive AI chat drawer, suggested query chips, 1-click response copying, and inspection modal for telemetry/SQL execution traces. |
+
+---
+
+## 6. Security, Governance & Verification Standards
+
+1. **SQL Injection & Mutation Guard:**
+   `sql_governor.py` disallows `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, and multi-statement queries. All executions run against a thread-safe, read-only in-memory replica.
+2. **Zero Framework Bloat:**
+   The entire intelligence stack runs on standard Python standard library and FastAPI primitives without opaque third-party agent orchestration frameworks.
+3. **Continuous Build Verification:**
+   The frontend compiles cleanly with TypeScript strict mode enabled (`tsc -b && vite build` in **3.3s with 0 errors**).
+4. **Certification Testing:**
+   All 53 routing boundary certification tests (`test_routing_boundary_certification.py`) and all 10 data integrity validation tests (`test_data_integrity.py`) execute with 100% pass rates.

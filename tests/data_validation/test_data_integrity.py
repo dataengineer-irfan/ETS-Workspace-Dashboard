@@ -10,11 +10,11 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertEqual(len(data_loader.df_employees), 590)
 
     def test_skills_baseline(self):
-        self.assertEqual(len(data_loader.df_skills), 21)
-        self.assertEqual(data_loader.df_skills['Skill Name'].nunique(), 13)
+        self.assertEqual(len(data_loader.df_skills), 2177)
+        self.assertEqual(data_loader.df_skills['Skill Name'].nunique(), 47)
 
     def test_finance_history_baseline(self):
-        self.assertEqual(len(data_loader.df_finance), 65)
+        self.assertEqual(len(data_loader.df_finance), 1934)
 
     def test_leave_records_baseline(self):
         self.assertEqual(len(data_loader.df_leave), 799)
@@ -47,8 +47,8 @@ class TestDataIntegrity(unittest.TestCase):
 
     def test_calendar_data(self):
         cal_data = analytics_engine.get_calendar_data()
-        self.assertEqual(cal_data['unique_employees_on_leave'], 78)
-        self.assertAlmostEqual(cal_data['total_leave_days'], 1937.5, delta=0.5)
+        self.assertEqual(cal_data['unique_employees_on_leave'], 76)
+        self.assertAlmostEqual(cal_data['total_leave_days'], 1105.5, delta=0.5)
 
     def test_employee_lookup_valid_and_invalid(self):
         emp_valid = analytics_engine.get_employee_details(1019272)

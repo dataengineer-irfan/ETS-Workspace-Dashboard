@@ -55,19 +55,52 @@ export const AdvancedEmployeeSearchModal: React.FC<AdvancedEmployeeSearchModalPr
       if (selectedGrade !== 'All' && e['JOB LEVEL'] !== selectedGrade) return false;
       if (selectedDept !== 'All' && e['DEPARTMENT'] !== selectedDept) return false;
       if (selectedLoc !== 'All' && e['LOCATION'] !== selectedLoc) return false;
-      if (selectedProject !== 'All' && e['Project Working'] !== selectedProject) return false;
+      if (selectedProject !== 'All') {
+        const proj = (e['Project Working'] || '').toUpperCase();
+        const filterUp = selectedProject.toUpperCase();
+        if (filterUp === 'NH') {
+          if (proj !== 'NH' && proj !== 'NH PROJECTS') return false;
+        } else {
+          if (proj !== filterUp) return false;
+        }
+      }
 
       if (search.trim()) {
         const term = search.toLowerCase().trim();
+        const isNumeric = /^\d+$/.test(term);
         const name = (e['EMPLOYEE LABEL'] || '').toLowerCase();
         const id = String(e['EMPLOYEE NUMBER']);
         const title = (e['JOB TITLE'] || '').toLowerCase();
-        const mgr = (e['MANAGER'] || '').toLowerCase();
-        const match = name.includes(term) || id.includes(term) || title.includes(term) || mgr.includes(term);
-        if (!match) return false;
+        const dept = (e['DEPARTMENT'] || '').toLowerCase();
+        const loc = (e['LOCATION'] || '').toLowerCase();
+
+        if (isNumeric) {
+          if (!id.includes(term)) return false;
+        } else {
+          if (!name.includes(term) && !id.includes(term) && !title.includes(term) && !dept.includes(term) && !loc.includes(term)) {
+            return false;
+          }
+        }
       }
       return true;
     }).sort((a, b) => {
+      // If searching, prioritize exact/prefix match for search term
+      if (search.trim()) {
+        const term = search.toLowerCase().trim();
+        const aId = String(a['EMPLOYEE NUMBER'] || '');
+        const bId = String(b['EMPLOYEE NUMBER'] || '');
+        const aName = (a['EMPLOYEE LABEL'] || '').toLowerCase();
+        const bName = (b['EMPLOYEE LABEL'] || '').toLowerCase();
+
+        if (aId === term && bId !== term) return -1;
+        if (bId === term && aId !== term) return 1;
+        if (aId.startsWith(term) && !bId.startsWith(term)) return -1;
+        if (bId.startsWith(term) && !aId.startsWith(term)) return 1;
+        if (aName === term && bName !== term) return -1;
+        if (bName === term && aName !== term) return 1;
+        if (aName.startsWith(term) && !bName.startsWith(term)) return -1;
+        if (bName.startsWith(term) && !aName.startsWith(term)) return 1;
+      }
       let comp = 0;
       if (sortBy === 'name') {
         comp = (a['EMPLOYEE LABEL'] || '').localeCompare(b['EMPLOYEE LABEL'] || '');
