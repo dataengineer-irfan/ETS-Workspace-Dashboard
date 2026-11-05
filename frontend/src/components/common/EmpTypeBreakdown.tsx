@@ -61,12 +61,12 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
   const getIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'permanent':
-        return <UserCheck className="w-3.5 h-3.5" />;
+        return <UserCheck className="w-2.5 h-2.5" />;
       case 'contract':
-        return <Briefcase className="w-3.5 h-3.5" />;
+        return <Briefcase className="w-2.5 h-2.5" />;
       case 'intern':
       default:
-        return <GraduationCap className="w-3.5 h-3.5" />;
+        return <GraduationCap className="w-2.5 h-2.5" />;
     }
   };
 
@@ -83,22 +83,20 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
   const activeHoveredItem = hoveredType ? typesWithColors.find((t) => t.type === hoveredType) : null;
 
   return (
-    <div className="w-full h-full flex flex-col justify-between select-none min-h-0">
-      {/* Main Content Area: Left 5 Cols (Interactive Donut Ring) + Right 7 Cols (Slim Legend Rows) */}
-      <div className="grid grid-cols-12 gap-2 flex-1 items-center min-h-[140px] py-0.5">
-        
-        {/* Left: Interactive Donut Chart (5 cols) */}
-        <div className="col-span-5 h-full relative flex items-center justify-center min-h-[135px]">
+    <div className="w-full h-full flex flex-col select-none min-h-0 min-w-0" data-composition>
+      <div className="grid grid-cols-12 gap-1.5 flex-1 items-stretch min-h-0 min-w-0 py-0.5">
+        <div className="col-span-5 h-full relative flex items-center justify-center min-h-0 min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={typesWithColors}
                 cx="50%"
                 cy="50%"
-                innerRadius="50%"
-                outerRadius="80%"
-                paddingAngle={3}
+                innerRadius="58%"
+                outerRadius="84%"
+                paddingAngle={2}
                 dataKey="count"
+                isAnimationActive={false}
                 onMouseEnter={(_, idx) => setHoveredType(typesWithColors[idx]?.type || null)}
                 onMouseLeave={() => setHoveredType(null)}
                 onClick={(entry: any) => onSelectType && onSelectType(entry.type)}
@@ -109,7 +107,7 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
                     fill={item.color}
                     stroke={hoveredType === item.type ? 'var(--text)' : 'var(--surface)'}
                     strokeWidth={hoveredType === item.type ? 2.5 : 1.5}
-                    className="cursor-pointer transition-all"
+                    className="cursor-pointer"
                   />
                 ))}
               </Pie>
@@ -125,36 +123,21 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
               />
             </PieChart>
           </ResponsiveContainer>
-          
-          {/* Donut Center Display */}
+
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            {activeHoveredItem ? (
-              <>
-                <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHoveredItem.color }}>
-                  {activeHoveredItem.type}
-                </span>
-                <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                  {activeHoveredItem.count}
-                </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
-                  {activeHoveredItem.percentage}%
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                  {data.total || 590}
-                </span>
-                <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                  TOTAL FTE
-                </span>
-              </>
-            )}
+            <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
+              {activeHoveredItem ? activeHoveredItem.count : (data.total || 590)}
+            </span>
+            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5 leading-none">
+              {activeHoveredItem ? `${activeHoveredItem.percentage}%` : 'Total FTE'}
+            </span>
           </div>
         </div>
 
-        {/* Right: Slim, High-Density Legend Rows (7 cols) */}
-        <div className="col-span-7 flex flex-col justify-center gap-1 h-full pl-1 border-l border-slate-100 dark:border-slate-800/80">
+        <div
+          className="col-span-7 min-w-0 min-h-0 h-full grid content-stretch pl-1.5 border-l border-slate-100 dark:border-slate-800/80"
+          style={{ gridTemplateRows: `repeat(${Math.max(typesWithColors.length, 1)}, minmax(0, 1fr))` }}
+        >
           {typesWithColors.map((item) => {
             const isHov = hoveredType === item.type;
             return (
@@ -163,48 +146,39 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
                 onMouseEnter={() => setHoveredType(item.type)}
                 onMouseLeave={() => setHoveredType(null)}
                 onClick={() => onSelectType && onSelectType(item.type)}
-                className={`px-1.5 py-1 rounded-md transition-all cursor-pointer flex flex-col gap-0.5 ${
+                className={`min-w-0 min-h-0 px-1 rounded-md cursor-pointer flex flex-col justify-center gap-0.5 ${
                   isHov
-                    ? `${item.hoverBg} shadow-2xs`
+                    ? `${item.hoverBg}`
                     : 'hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
                 }`}
                 title={`Click to view ${item.label} workforce roster`}
               >
-                <div className="flex items-center justify-between gap-1 text-[11px]">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <div
-                      className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${item.bg} ${item.text}`}
-                    >
-                      {getIcon(item.type)}
-                    </div>
-                    <span
-                      className={`font-semibold truncate text-[11px] ${
-                        isHov
-                          ? `${item.activeText} font-bold`
-                          : 'text-slate-700 dark:text-slate-200'
-                      }`}
-                    >
-                      {item.label}
-                    </span>
-                  </div>
-
-                  <div className="font-mono text-right shrink-0 text-[10.5px]">
-                    <b className="text-slate-900 dark:text-slate-100">{item.count}</b>{' '}
-                    <span className="text-[9.5px] text-slate-500 dark:text-slate-400">
-                      ({item.percentage}%)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Slim progress bar track */}
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: `${item.percentage}%`,
-                      backgroundColor: item.color,
-                    }}
-                  />
+                    className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 ${item.bg} ${item.text}`}
+                  >
+                    {getIcon(item.type)}
+                  </div>
+                  <span
+                    data-comp-name={item.label}
+                    className={`block min-w-0 flex-1 text-[11px] font-semibold leading-tight whitespace-normal break-words ${
+                      isHov ? `${item.activeText} font-bold` : 'text-slate-800 dark:text-slate-100'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0 pl-5">
+                  <span className="h-[3px] flex-1 min-w-0 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <span
+                      className="block h-full rounded-full"
+                      style={{ width: `${Math.max(4, Math.min(100, item.percentage))}%`, backgroundColor: item.color }}
+                    />
+                  </span>
+                  <span data-comp-count={item.count} className="shrink-0 whitespace-nowrap font-mono text-[10px] leading-none tabular-nums text-slate-500 dark:text-slate-400">
+                    <b className="text-slate-900 dark:text-slate-100">{item.count}</b>
+                    <span className="ml-0.5">({item.percentage}%)</span>
+                  </span>
                 </div>
               </div>
             );
@@ -212,10 +186,9 @@ export const EmpTypeBreakdown: React.FC<EmpTypeBreakdownProps> = ({
         </div>
       </div>
 
-      {/* Sub-footer insight (Integrated cleanly with zero overflow) */}
-      <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-        <span>Primary Workforce: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{primaryType?.label}</strong></span>
-        <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">
+      <div className="home-foot pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400 shrink-0 min-w-0">
+        <span className="min-w-0 whitespace-normal">Primary: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{primaryType?.label}</strong></span>
+        <span className="font-mono text-blue-600 dark:text-blue-400 font-bold shrink-0">
           {primaryType?.percentage}% core
         </span>
       </div>

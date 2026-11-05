@@ -534,7 +534,7 @@ export const DatasetOperationsModal: React.FC<DatasetOperationsModalProps> = ({
                   </span>
                 </div>
                 <p className="text-slate-400 text-[11px]">
-                  Provide a direct organization sharing URL to your <code className="text-slate-300 font-mono">ETS_Dasboard_DS.xlsx</code> on OneDrive or SharePoint. The backend automatically resolves direct download tokens and synchronizes the platform without manual file uploads.
+                  Provide a direct organization sharing URL to <code className="text-slate-300 font-mono">Infinite_ETS_India_Workforce.xlsx</code> on OneDrive or SharePoint. Pay stays in <code className="text-slate-300 font-mono">Infinite_ETS_India_Compensation.xlsx</code>. The backend resolves the download and reloads both pandas and Genie.
                 </p>
 
                 {/* URL Input */}
@@ -547,7 +547,7 @@ export const DatasetOperationsModal: React.FC<DatasetOperationsModalProps> = ({
                       type="url"
                       value={cloudUrl}
                       onChange={(e) => setCloudUrl(e.target.value)}
-                      placeholder="https://yourcompany.sharepoint.com/:x:/s/.../ETS_Dasboard_DS.xlsx?download=1"
+                      placeholder="https://yourcompany.sharepoint.com/:x:/s/.../Infinite_ETS_India_Workforce.xlsx?download=1"
                       className="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 focus:border-purple-400 focus:outline-hidden text-slate-200 font-mono text-[11px]"
                     />
                     <button
@@ -664,7 +664,7 @@ export const DatasetOperationsModal: React.FC<DatasetOperationsModalProps> = ({
         >
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
             <HardDrive className="w-3.5 h-3.5 text-slate-500" />
-            <span>Server Workbook: <code className="text-slate-300 font-mono">ETS_Dasboard_DS.xlsx</code></span>
+            <span>Server Workbook: <code className="text-slate-300 font-mono">{status?.file_name || 'Infinite_ETS_India_Workforce.xlsx'}</code></span>
           </div>
 
           <button

@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from backend.app.ai.semantic.catalog import FIELDS, MEASURES, SemanticCatalog
+from backend.app.ai.semantic.catalog import FIELDS, MEASURES, RELATIONS, SemanticCatalog
 from backend.app.ai.semantic.ir import Intent, IRStatus, QueryIR
 
 
@@ -115,6 +115,8 @@ class IRValidator:
         all_filters = ir.filters.flat()
         field_values_seen: dict[str, set] = {}
         for f in all_filters:
+            if f.field in RELATIONS or f.op == "EXISTS":
+                continue
             if f.field not in FIELDS:
                 errors.append(f"Filter field '{f.field}' does not exist in the ETS semantic catalog.")
             else:
@@ -125,11 +127,16 @@ class IRValidator:
                 # Check for contradictory equality filters on the same field:
                 # e.g., department = 'IT' AND department = 'Core' in the same filter group
                 if f.op == "=":
-                    if f.field not in field_values_seen:
-                        field_values_seen[f.field] = set()
-                    field_values_seen[f.field].add(f.value)
-                    if len(field_values_seen[f.field]) > 1:
-                        errors.append(f"Contradictory conditions detected: field '{f.field}' cannot simultaneously equal {list(field_values_seen[f.field])}.")
+                    field_def = FIELDS.get(f.field)
+                    single_valued = bool(
+                        field_def and field_def.table == "employees" and field_def.ftype == "categorical"
+                    )
+                    if single_valued:
+                        if f.field not in field_values_seen:
+                            field_values_seen[f.field] = set()
+                        field_values_seen[f.field].add(f.value)
+                        if len(field_values_seen[f.field]) > 1:
+                            errors.append(f"Contradictory conditions detected: field '{f.field}' cannot simultaneously equal {list(field_values_seen[f.field])}.")
 
         # 7. Comparison Validation
         if ir.intent == Intent.COMPARISON:

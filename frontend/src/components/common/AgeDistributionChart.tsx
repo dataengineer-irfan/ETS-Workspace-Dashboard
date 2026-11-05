@@ -101,19 +101,22 @@ export const AgeDistributionChart: React.FC<AgeDistributionProps> = ({
       </div>
 
       {/* Main Histogram Chart */}
-      <div className="flex-1 min-h-0 pt-0.5">
+      <div className="relative flex-1 min-h-0">
+        <div className="absolute inset-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={activeBins}
-            margin={{ top: 14, right: 2, left: -24, bottom: 0 }}
+            margin={{ top: 10, right: 2, left: -18, bottom: 0 }}
             barCategoryGap={binSize === 2 ? 1 : 2}
           >
             <XAxis
               dataKey="bin"
-              tick={{ fill: 'var(--text-muted, #94a3b8)', fontSize: binSize === 2 ? 8 : 9 }}
+              tick={{ fill: 'var(--text-muted, #94a3b8)', fontSize: 9 }}
               axisLine={{ stroke: 'var(--border, #cbd5e1)' }}
               tickLine={false}
-              interval={binSize === 2 ? 1 : 0}
+              interval={0}
+              height={18}
+              tickFormatter={(value: string) => String(value).split('-')[0]}
             />
             <YAxis
               tick={{ fill: 'var(--text-muted, #94a3b8)', fontSize: 9 }}
@@ -168,10 +171,11 @@ export const AgeDistributionChart: React.FC<AgeDistributionProps> = ({
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Footer Density Legend */}
-      <div className="pt-1 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9.5px] text-slate-500 dark:text-slate-400 shrink-0">
+      <div className="home-foot pt-1 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9.5px] text-slate-500 dark:text-slate-400 shrink-0">
         <div className="flex items-center gap-1.5">
           <span>Density:</span>
           <div className="flex items-center gap-1">

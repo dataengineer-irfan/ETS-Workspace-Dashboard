@@ -41,6 +41,7 @@ from backend.app.ai.semantic.catalog import (
     RANK_IMPLIED_MEASURE,
     RANK_WORDS,
     REASONING_CUES,
+    RELATIONS,
     RELATIVE_AVG_PHRASES,
     ROW_TARGET_WORDS,
     STATUS_DEFAULT_WORDS,
@@ -126,36 +127,30 @@ class SemanticParser:
         for jt in self.catalog.values.get("job_title", []):
             self.value_index.append((jt.lower(), "job_title", jt))
 
-        # 9. Skills
-        schema_dimension_words = {
-            'project', 'department', 'location', 'state', 'grade', 'level',
-            'manager', 'workforce', 'employee', 'data', 'management', 'technical',
-            'support', 'content', 'analysis', 'business', 'operations', 'service',
-            'and', 'the', 'for', 'with', 'etc', 'application', 'planning', 'workflows',
-            'gathering', 'tuning', 'manuals', 'studio', 'reporting', 'delivery',
-        }
+        # 8b. Modules loaded from the employee master
+        for mod in self.catalog.values.get("module", []):
+            self.value_index.append((str(mod).lower(), "module", mod))
+
+        # 9. Skills. Only the full catalog value is indexed, so a fragment
+        # of a longer skill name cannot become that skill.
         for sk in self.catalog.values.get("skill", []):
             s_clean = str(sk).strip()
             if not s_clean:
                 continue
             s_lower = s_clean.lower()
             self.value_index.append((s_lower, "skill", s_clean))
-            # Also index constituent technology tokens (e.g. 'python', 'java', 'react', 'docker', 'k8s')
-            parts = re.split(r'[\s/&(),+-]+', s_clean)
-            for part in parts:
-                p_clean = part.strip()
-                p_lower = p_clean.lower()
-                if len(p_clean) >= 3 and p_lower not in schema_dimension_words:
-                    self.value_index.append((p_lower, "skill", s_clean))
-                    if p_lower == "k8s":
-                        self.value_index.append(("k8s", "skill", s_clean))
-                    elif p_lower == "js":
-                        self.value_index.append(("javascript", "skill", s_clean))
+            # The catalog stores the skill's own name before a separator.
+            # That name is the member. Inner words of the name are not.
+            if " / " in s_clean:
+                lead = s_clean.split(" / ", 1)[0].strip()
+                if len(lead) >= 3 and lead.lower() != s_lower:
+                    self.value_index.append((lead.lower(), "skill", s_clean))
 
-        # Sort longest phrase first so longer matches take precedence
-        self.value_index.sort(key=lambda x: len(x[0]), reverse=True)
+        # Longest catalog value wins, so a skill name that contains a
+        # department name binds as that skill alone.
+        self.value_index.sort(key=lambda item: len(item[0]), reverse=True)
 
-        # 10. Dynamic Employee Names from SQLite database
+        # 11. Dynamic Employee Names from SQLite database
         self.employee_index: List[Tuple[str, int, str]] = []  # (name_token_lower, emp_num, full_label)
         try:
             cur = self.catalog.conn.cursor()
@@ -194,18 +189,12 @@ class SemanticParser:
         if frame:
             ir.trace.append(f"frame_extracted:{frame}")
 
-        # Step 2: Unsupported Concepts Check
+        # Step 2: Record unsupported concepts, but do not refuse until catalog binding.
+        # A concept phrase refuses only when no catalog-domain value fits the question.
+        pending_unsupported: List[str] = []
         for unsup_phrase, unsup_label in UNSUPPORTED_CONCEPTS.items():
             if re.search(rf"\b{re.escape(unsup_phrase)}\b", norm_q, re.IGNORECASE):
-                ir.unsupported_concepts.append(unsup_label)
-        if ir.unsupported_concepts:
-            ir.intent = Intent.UNSUPPORTED
-            ir.status = IRStatus.UNSUPPORTED
-            ir.confidence = 1.0
-            concepts_str = ", ".join(sorted(set(ir.unsupported_concepts)))
-            ir.unsupported_reason = f"ETS records do not contain operational or forward-looking data for: {concepts_str}."
-            ir.trace.append(f"unsupported_concepts_found:{concepts_str}")
-            return ir
+                pending_unsupported.append(unsup_label)
 
         # Step 3: Policy / Handbook Check
         for pol_cue in POLICY_CUES:
@@ -240,8 +229,9 @@ class SemanticParser:
         active_filters = context.get("active_filters") or {} if context else {}
         active_emp = active_filters.get("employee_number")
 
-        # Guard: Check for unbound pronouns referring to an individual without context or selected profile
-        has_pronoun = any(re.search(rf"\b{re.escape(p)}\b", norm_q, re.IGNORECASE) for p in PRONOUN_REFS)
+        # Guard: Check for unbound pronouns referring to an individual without context or selected profile.
+        # A pronoun span that sits inside a catalog-domain value is not an employee reference.
+        has_pronoun = self._has_unbound_pronoun(norm_q)
         if has_pronoun and not active_emp and (not hist or len(hist) == 0):
             ir.intent = Intent.AMBIGUOUS
             ir.status = IRStatus.AMBIGUOUS
@@ -262,7 +252,7 @@ class SemanticParser:
         if hist and len(hist) > 0:
             q_clean = norm_q.lower().strip()
             is_followup = False
-            if any(re.search(rf"\b{re.escape(p)}\b", norm_q, re.IGNORECASE) for p in PRONOUN_REFS):
+            if self._has_unbound_pronoun(norm_q):
                 is_followup = True
             elif any(q_clean.startswith(p) for p in ["what about", "how about", "and in ", "what if"]):
                 is_followup = True
@@ -291,8 +281,47 @@ class SemanticParser:
         detected_dims = self._extract_dimensions(norm_q, detected_filters)
         ir.dimensions = detected_dims
 
+        # B2. Keep a filter only when its value is in that field's catalog domain.
+        # An explicit unknown (anchored non-member) survives only when it is the sole
+        # value for a field that is not itself the grouping dimension.
+        detected_filters = self._apply_catalog_domain(detected_filters, detected_dims, ir)
+
+        if pending_unsupported:
+            catalog_bound = any(self._is_domain_member(f["field"], f["value"]) for f in detected_filters)
+            if not catalog_bound:
+                relation_named = any(
+                    re.search(rf"\b{re.escape(form)}\b", norm_q, re.IGNORECASE)
+                    for forms in RELATIONS.values()
+                    for form in forms
+                )
+                unknown_skills = [] if relation_named else self._unbound_tokens(norm_q)
+                if unknown_skills:
+                    for token in unknown_skills:
+                        detected_filters.append({
+                            "field": "skill",
+                            "op": "=",
+                            "value": token,
+                            "explicit_unknown": True,
+                        })
+                    ir.trace.append("unknown_catalog_value_counted")
+                else:
+                    ir.unsupported_concepts.extend(pending_unsupported)
+                    ir.intent = Intent.UNSUPPORTED
+                    ir.status = IRStatus.UNSUPPORTED
+                    ir.confidence = 1.0
+                    concepts_str = ", ".join(sorted(set(ir.unsupported_concepts)))
+                    ir.unsupported_reason = f"ETS records do not contain operational or forward-looking data for: {concepts_str}."
+                    ir.trace.append(f"unsupported_concepts_found:{concepts_str}")
+                    return ir
+            else:
+                ir.trace.append("catalog_value_bound_over_unsupported")
+
         # C. Detect Measures & Aggregations
         detected_metrics = self._extract_metrics(norm_q)
+        detected_metrics = self._prefer_count_over_band(norm_q, detected_metrics, detected_filters, detected_dims)
+        detected_metrics = self._keep_requested_count(norm_q, detected_metrics)
+        self._attach_relation(norm_q, detected_filters, detected_metrics)
+        self._bind_open_year(norm_q, detected_filters, detected_metrics, detected_dims)
         ir.metrics = detected_metrics
 
         # D. Detect Stratification / Controlling-for
@@ -300,6 +329,8 @@ class SemanticParser:
 
         # E. Detect Comparison Intent & Cohorts
         comparison_spec = self._extract_comparison(norm_q, detected_filters, detected_metrics, stratify_dims)
+        if comparison_spec is None:
+            comparison_spec = self._cohorts_from_shared_domain(norm_q, detected_filters)
 
         # F. Detect Gap Intent ("biggest gap in X between any two Y")
         gap_detected = any(re.search(rf"\b{re.escape(g)}\b", norm_q, re.IGNORECASE) for g in GAP_NOUNS) and any(
@@ -377,7 +408,7 @@ class SemanticParser:
                 agg = "COUNT" if m_key.startswith("count_") else ("SUM" if m_key.startswith("sum_") else "AVG")
                 clean_m = m_key.replace("count_", "").replace("avg_", "").replace("sum_", "")
                 ir.metrics = [MetricSpec(measure=clean_m, agg=agg, explicit_agg=False)]
-            elif ir.intent in (Intent.AGGREGATE, Intent.BREAKDOWN, Intent.RANKING):
+            elif ir.intent in (Intent.AGGREGATE, Intent.BREAKDOWN, Intent.RANKING, Intent.COMPARISON):
                 ir.metrics = [MetricSpec(measure="headcount", agg="COUNT", explicit_agg=False)]
                 ir.assumptions.append("Defaulted measure to headcount as no specific metric was requested.")
 
@@ -402,6 +433,128 @@ class SemanticParser:
     # -------------------------------------------------------------------------
     # Helper extraction methods
     # -------------------------------------------------------------------------
+
+    def _is_domain_member(self, field_key: str, value: Any) -> bool:
+        """True only when the value is already loaded in that field's catalog domain."""
+        if field_key not in self.catalog.values:
+            return False
+        return self.catalog.is_valid_value(field_key, value)
+
+    def _catalog_value_spans(self, text: str) -> List[Tuple[int, int]]:
+        text_lower = text.lower()
+        spans: List[Tuple[int, int]] = []
+        for phrase, _field, _canon in self.value_index:
+            if phrase not in text_lower:
+                continue
+            for match in re.finditer(rf"\b{re.escape(phrase)}\b", text_lower):
+                spans.append(match.span())
+        return spans
+
+    def _has_unbound_pronoun(self, text: str) -> bool:
+        """A pronoun is an employee reference only when it is not inside a catalog value."""
+        spans = self._catalog_value_spans(text)
+        for pronoun in PRONOUN_REFS:
+            for match in re.finditer(rf"\b{re.escape(pronoun)}\b", text, re.IGNORECASE):
+                start, end = match.span()
+                if not any(not (end <= s or start >= e) for s, e in spans):
+                    return True
+        return False
+
+    def _apply_catalog_domain(
+        self,
+        filters: List[Dict[str, Any]],
+        dims: List[str],
+        ir: Optional[Any],
+    ) -> List[Dict[str, Any]]:
+        """Drop filter values that are not members of the field's catalog domain.
+
+        A non-member is kept only when it was explicitly anchored as that field's
+        value, the field is not the grouping dimension, and no domain member is
+        already bound to the same field.
+        """
+        dim_set = set(dims or [])
+        member_fields = set()
+        for f in filters:
+            if self._is_domain_member(f["field"], f["value"]):
+                canon = self.catalog.canonical_value(f["field"], str(f["value"]))
+                if canon:
+                    f["value"] = canon
+                member_fields.add(f["field"])
+
+        kept: List[Dict[str, Any]] = []
+        seen = set()
+        dropped = set()
+        for f in filters:
+            field = f["field"]
+            value = f["value"]
+            key = (field, f.get("op"), str(value).lower())
+            if key in seen:
+                continue
+            if self._is_domain_member(field, value):
+                kept.append(f)
+                seen.add(key)
+                continue
+            if field in dim_set or field in member_fields or not f.get("explicit_unknown"):
+                dropped.add((field, str(value).lower()))
+                dropped.add((field, str(f.get("raw", "")).lower()))
+                continue
+            kept.append(f)
+            seen.add(key)
+
+        if ir is not None and dropped:
+            ir.unresolved_entities = [
+                e for e in ir.unresolved_entities
+                if (e.get("field"), str(e.get("value", "")).lower()) not in dropped
+                and (e.get("field"), str(e.get("raw", "")).lower()) not in dropped
+            ]
+        return kept
+
+    def _cohorts_from_shared_domain(self, text: str, filters: List[Dict[str, Any]]) -> Optional[ComparisonSpec]:
+        """Two values of one single-valued field are two cohorts.
+
+        A person has one location, one gender, and one status, so those values
+        cannot be true together. The comparison shape already runs each cohort
+        on its own.
+        """
+        text_lower = text.lower()
+        by_field: Dict[str, List[Dict[str, Any]]] = {}
+        for f in filters:
+            if f.get("op") != "=" or not self._is_domain_member(f["field"], f["value"]):
+                continue
+            field_def = FIELDS.get(f["field"])
+            if not field_def or field_def.table != "employees" or field_def.ftype != "categorical":
+                continue
+            by_field.setdefault(f["field"], []).append(f)
+
+        pairs: List[List[Dict[str, Any]]] = []
+        for group in by_field.values():
+            uniq: List[Dict[str, Any]] = []
+            seen_vals = set()
+            for f in sorted(group, key=lambda item: item["span"][0]):
+                marker = str(f["value"]).lower()
+                if marker in seen_vals:
+                    continue
+                seen_vals.add(marker)
+                uniq.append(f)
+            if len(uniq) >= 2:
+                pairs.append(uniq)
+        if not pairs:
+            return None
+        pairs.sort(key=lambda uniq: uniq[1]["span"][0] - uniq[0]["span"][0])
+        left, right = pairs[0][0], pairs[0][1]
+        calcs = [Calc.ABSOLUTE_DIFF.value, Calc.SIGNED_DIFF.value, Calc.PCT_DIFF.value, Calc.DIRECTION.value]
+        expected_dir = None
+        for comp_word, dir_code in COMPARATIVE_WORDS.items():
+            if re.search(rf"\b{re.escape(comp_word)}\b", text_lower):
+                expected_dir = "LEFT_HIGHER" if dir_code == "HIGHER" else "LEFT_LOWER"
+                break
+        return ComparisonSpec(
+            left=Cohort(label=str(left["value"]), filters=FilterGroup(items=[FilterSpec(left["field"], left["op"], left["value"])])),
+            right=Cohort(label=str(right["value"]), filters=FilterGroup(items=[FilterSpec(right["field"], right["op"], right["value"])])),
+            calculations=calcs,
+            expected_direction=expected_dir,
+            stratify_by=[],
+        )
 
     def _extract_discourse_frame(self, text: str) -> Tuple[str, Optional[str]]:
         """Separates opening discourse framing (e.g. 'From an HR analytics perspective,') from core query."""
@@ -454,7 +607,10 @@ class SemanticParser:
             if re.match(r'\s*(?:department|dept|division)', text[e_end:], re.IGNORECASE):
                 continue
             if not any(not (e_end <= s or e_start >= e) for s, e in consumed_spans):
-                filters.append({"field": "state", "op": "=", "value": c, "span": (e_start, e_end), "raw": c})
+                filters.append({
+                    "field": "state", "op": "=", "value": c, "span": (e_start, e_end), "raw": c,
+                    "explicit_unknown": not self._is_domain_member("state", c),
+                })
                 consumed_spans.add((e_start, e_end))
 
         # Check for negation prefixes: "outside Bangalore", "excluding Core", etc.
@@ -522,7 +678,10 @@ class SemanticParser:
                     "count", "headcount", "salary", "band", "bands", "combinations", "combination",
                 }
                 if c.lower() not in non_state_words:
-                    filters.append({"field": "state", "op": "=", "value": c.upper(), "span": (s_start, s_end), "raw": c})
+                    filters.append({
+                        "field": "state", "op": "=", "value": c.upper(), "span": (s_start, s_end), "raw": c,
+                        "explicit_unknown": True,
+                    })
                     if ir is not None:
                         ir.unresolved_entities.append({"field": "state", "raw": c, "value": c.upper(), "reason": f"Non-ETS state: {c}"})
                     consumed_spans.add((s_start, s_end))
@@ -546,8 +705,12 @@ class SemanticParser:
             if not any(not (d_end <= s or d_start >= e) for s, e in consumed_spans):
                 if c.lower() not in non_dept_words:
                     val = c.upper() if len(c) <= 3 else c.title()
-                    filters.append({"field": "department", "op": "=", "value": val, "span": (d_start, d_end), "raw": c})
-                    if ir is not None:
+                    member = self._is_domain_member("department", val) or self._is_domain_member("department", c)
+                    filters.append({
+                        "field": "department", "op": "=", "value": val, "span": (d_start, d_end), "raw": c,
+                        "explicit_unknown": not member,
+                    })
+                    if ir is not None and not member:
                         ir.unresolved_entities.append({"field": "department", "raw": c, "value": val, "reason": f"Non-ETS department: {c}"})
                     consumed_spans.add((d_start, d_end))
 
@@ -558,8 +721,12 @@ class SemanticParser:
             if not any(not (d_end <= s or d_start >= e) for s, e in consumed_spans):
                 if c.lower() not in non_dept_words:
                     val = c.upper() if len(c) <= 3 else c.title()
-                    filters.append({"field": "department", "op": "=", "value": val, "span": (d_start, d_end), "raw": c})
-                    if ir is not None:
+                    member = self._is_domain_member("department", val) or self._is_domain_member("department", c)
+                    filters.append({
+                        "field": "department", "op": "=", "value": val, "span": (d_start, d_end), "raw": c,
+                        "explicit_unknown": not member,
+                    })
+                    if ir is not None and not member:
                         ir.unresolved_entities.append({"field": "department", "raw": c, "value": val, "reason": f"Non-ETS department: {c}"})
                     consumed_spans.add((d_start, d_end))
 
@@ -570,11 +737,43 @@ class SemanticParser:
                 for m in re.finditer(pat, text_lower):
                     s_start, s_end = m.span()
                     if not any(not (s_end <= s or s_start >= e) for s, e in consumed_spans):
+                        # Department non-members bind only when the field noun anchors them.
+                        # A bare token ("accounts for") is not a department value.
+                        if f_key == "department":
+                            before = text_lower[max(0, s_start - 16):s_start]
+                            after = text_lower[s_end:s_end + 16]
+                            anchored = bool(
+                                re.search(r"(?:department|dept|division)\s*$", before)
+                                or re.search(r"^\s*(?:department|dept|division)\b", after)
+                            )
+                            if not anchored:
+                                continue
                         val = non_ets_val.upper() if len(non_ets_val) <= 3 else non_ets_val.title()
-                        filters.append({"field": f_key, "op": "=", "value": val, "span": (s_start, s_end), "raw": text[s_start:s_end]})
+                        filters.append({
+                            "field": f_key, "op": "=", "value": val, "span": (s_start, s_end),
+                            "raw": text[s_start:s_end], "explicit_unknown": True,
+                        })
                         if ir is not None:
                             ir.unresolved_entities.append({"field": f_key, "raw": text[s_start:s_end], "value": val, "reason": f"Non-ETS {f_key}: {val}"})
                         consumed_spans.add((s_start, s_end))
+
+        # A value named as a catalog skill, including one that is not in the domain.
+        skill_alt = "|".join(re.escape(n) for n in sorted(DIMENSION_NOUNS["skill"], key=len, reverse=True))
+        for m_skill in re.finditer(rf"\b([a-z0-9][a-z0-9 +#./-]{{0,40}}?)\s+as\s+(?:a|an)\s+(?:{skill_alt})\b", text_lower):
+            words = m_skill.group(1).split()
+            while words and words[0] in set(FUNCTION_WORDS) | set(POPULATION_NOUNS):
+                words.pop(0)
+            value = " ".join(words).strip()
+            if not value or self._is_domain_member("skill", value):
+                continue
+            start, end = m_skill.span(1)
+            if any(not (end <= s or start >= e) for s, e in consumed_spans):
+                continue
+            filters.append({
+                "field": "skill", "op": "=", "value": value, "span": (start, end),
+                "raw": value, "explicit_unknown": True,
+            })
+            consumed_spans.add((start, end))
 
         # Promotion / Non-Promotion filters
         m_np = re.search(r"\b(?:non-promotion|non promotion|without promotion|no promotion)\b", text_lower)
@@ -613,7 +812,7 @@ class SemanticParser:
                 # OR as compound dimension ("department-location combinations")
                 # OR in "breakdown by X"
                 compound_dim = "(?:location|department|salary\\s+band)" if dim_key == "project" else "(?:location|department|state|salary\\s+band)"
-                dim_pat = rf"(?:(?:by|across|per|each|every|within|split\s+by|grouped\s+by|break\s+down\s+by)\s+(?:the\s+)?{re.escape(noun)}\b|{re.escape(noun)}[- ]{compound_dim}\b|\b(?:which|what)\s+{re.escape(noun)}\b|\b{re.escape(noun)}\s+combinations?\b|\b{re.escape(noun)}\s+(?:breakdown|distribution|split|wise|matrix)\b)"
+                dim_pat = rf"(?:(?:by|across|per|each|every|within|split\s+by|grouped\s+by|break\s+down\s+by)\s+(?:the\s+)?{re.escape(noun)}\b|{re.escape(noun)}[- ]{compound_dim}\b|\b(?:which|what)\s+(?:\w+\s+)?{re.escape(noun)}\b|\b{re.escape(noun)}\s+combinations?\b|\b{re.escape(noun)}\s+(?:breakdown|distribution|split|wise|matrix)\b)"
                 if re.search(dim_pat, text_lower):
                     if dim_key not in dims:
                         dims.append(dim_key)
@@ -626,6 +825,10 @@ class SemanticParser:
                     break
                 # Plural form appearing in breakdown contexts: "across departments", "compare across states"
                 elif noun in PLURAL_DIMENSION_FORMS and re.search(rf"\b{re.escape(noun)}\b", text_lower):
+                    # A plural noun followed by a function word is not a grouping request.
+                    follower = re.search(rf"\b{re.escape(noun)}\s+([a-z]+)", text_lower)
+                    if follower and follower.group(1) in FUNCTION_WORDS and follower.group(1) not in {"by", "per", "each", "every", "and"}:
+                        continue
                     if dim_key not in dims:
                         dims.append(dim_key)
                     break
@@ -696,12 +899,10 @@ class SemanticParser:
                         if dist < nearest_dist and dist <= 45:
                             nearest_dist = dist
                             nearest_agg = agg_code
-                if nearest_agg:
+                if nearest_agg and nearest_agg in MEASURES[m_key].allowed_aggs:
                     agg = nearest_agg
                     explicit = True
-
-                # Check sum-implying phrases
-                if noun in SUM_IMPLYING_MEASURE_PHRASES:
+                elif noun in SUM_IMPLYING_MEASURE_PHRASES and "SUM" in MEASURES[m_key].allowed_aggs:
                     agg = "SUM"
                     explicit = True
 
@@ -715,6 +916,104 @@ class SemanticParser:
             metrics.append(MetricSpec(measure="headcount", agg="COUNT", explicit_agg=True))
 
         return metrics
+
+    def _prefer_count_over_band(
+        self,
+        text: str,
+        metrics: List[MetricSpec],
+        filters: List[Dict[str, Any]],
+        dims: List[str],
+    ) -> List[MetricSpec]:
+        """A count over a salary band stays a count of people."""
+        text_lower = text.lower()
+        band_present = any(f.get("field") == "salary_band" for f in filters) or "salary_band" in dims
+        if not band_present:
+            return metrics
+        count_cue = any(re.search(rf"\b{re.escape(c)}\b", text_lower) for c in COUNT_CUES)
+        if not count_cue and "salary_band" not in dims:
+            return metrics
+        pay = [m for m in metrics if m.measure in ("ctc", "monthly_salary") and not m.explicit_agg]
+        others = [m for m in metrics if m.measure not in ("ctc", "monthly_salary")]
+        if pay and not others:
+            return [MetricSpec(measure="headcount", agg="COUNT", explicit_agg=True)]
+        return metrics
+
+    def _keep_requested_count(self, text: str, metrics: List[MetricSpec]) -> List[MetricSpec]:
+        """A count cue keeps the count measure and drops a default pay average."""
+        text_lower = text.lower()
+        if not any(re.search(rf"\b{re.escape(c)}\b", text_lower) for c in COUNT_CUES):
+            return metrics
+        if not any(m.agg == "COUNT" for m in metrics):
+            return metrics
+        return [
+            m for m in metrics
+            if m.agg == "COUNT" or m.explicit_agg or m.measure not in ("ctc", "monthly_salary")
+        ]
+
+    def _bind_open_year(
+        self,
+        text: str,
+        filters: List[Dict[str, Any]],
+        metrics: List[MetricSpec],
+        dims: List[str],
+    ) -> None:
+        """A finance question that names a year, without choosing one, uses the latest year on record."""
+        if "year" in dims or any(f.get("field") == "year" for f in filters):
+            return
+        if not any(MEASURES[m.measure].table == "finance" for m in metrics):
+            return
+        if not re.search(r"\byear\b", text.lower()):
+            return
+        years = [y for y in self.catalog.values.get("year", []) if y is not None]
+        if not years:
+            return
+        filters.append({"field": "year", "op": "=", "value": max(years), "span": (0, 0), "raw": str(max(years))})
+
+    def _span_inside_longer(self, text: str, start: int, end: int, phrases: Dict[str, str]) -> bool:
+        for phrase in phrases:
+            if len(phrase) <= end - start:
+                continue
+            idx = text.find(phrase, max(0, start - len(phrase)), end + 1)
+            if idx != -1 and idx <= start and idx + len(phrase) >= end:
+                return True
+        return False
+
+    def _attach_relation(self, text: str, filters: List[Dict[str, Any]], metrics: List[MetricSpec]) -> None:
+        """A catalog relation is a link between employees, not a skill filter."""
+        text_lower = text.lower()
+        for rel, forms in RELATIONS.items():
+            if any(re.search(rf"\b{re.escape(form)}\b", text_lower) for form in forms):
+                filters.append({"field": rel, "op": "EXISTS", "value": 1})
+                if not metrics:
+                    metrics.append(MetricSpec(measure="headcount", agg="COUNT", explicit_agg=True))
+
+    def _unbound_tokens(self, text: str) -> List[str]:
+        """Tokens that are not members of any catalog field.
+
+        They stay as the value the question named, so a count over them is zero
+        rather than a refusal. Lexicon words and concept phrases are not values.
+        """
+        blocked = set(FUNCTION_WORDS)
+        blocked.update(POPULATION_NOUNS)
+        blocked.update(RANK_WORDS)
+        for phrase in list(UNSUPPORTED_CONCEPTS) + list(COUNT_CUES) + list(AGG_WORDS) + list(RELATIONS):
+            blocked.add(phrase.lower())
+        for forms in list(MEASURE_NOUNS.values()) + list(DIMENSION_NOUNS.values()) + list(RELATIONS.values()):
+            blocked.update(form.lower() for form in forms)
+        found: List[str] = []
+        for token in re.findall(r"[a-z][a-z0-9+#.]{2,}", text.lower()):
+            if token in blocked or self._in_any_domain(token):
+                continue
+            if token not in found:
+                found.append(token)
+        return found
+
+    def _in_any_domain(self, token: str) -> bool:
+        token_lower = token.lower()
+        for values in self.catalog.values.values():
+            if any(str(v).lower() == token_lower for v in values):
+                return True
+        return False
 
     def _extract_stratification(self, text: str) -> List[str]:
         """Detects 'after controlling for X', 'adjusting for Y' dimensions."""
@@ -888,21 +1187,29 @@ class SemanticParser:
 
         # 2. Superlatives: "highest", "lowest", "longest tenure", "most employees"
         for rank_word, direction in RANK_WORDS.items():
-            if re.search(rf"\b{re.escape(rank_word)}\b", text_lower):
-                # If rank_word is min/max/minimum/maximum and there are NO grouping dimensions and not row_level:
-                # it's an aggregation function (MIN/MAX), NOT a ranking!
-                if rank_word in ("minimum", "min", "maximum", "max") and not dims and not is_row_level:
+            matched = False
+            for m_rank in re.finditer(rf"\b{re.escape(rank_word)}\b", text_lower):
+                start, end = m_rank.span()
+                if self._span_inside_longer(text_lower, start, end, THRESHOLD_PHRASES):
                     continue
-                limit = 1
-                metric_key = metrics[0].key if metrics else "count_headcount"
-                # Check if superlative implies a measure
-                if rank_word in RANK_IMPLIED_MEASURE:
-                    implied_m = RANK_IMPLIED_MEASURE[rank_word]
-                    metric_key = f"avg_{implied_m}"
-                    if not metrics:
-                        metrics.append(MetricSpec(measure=implied_m, agg="AVG", explicit_agg=False))
-                ordering = OrderingSpec(metric_key=metric_key, direction=direction)
-                return ordering, limit, is_row_level
+                matched = True
+                break
+            if not matched:
+                continue
+            # If rank_word is min/max/minimum/maximum and there are NO grouping dimensions and not row_level:
+            # it's an aggregation function (MIN/MAX), NOT a ranking!
+            if rank_word in ("minimum", "min", "maximum", "max") and not dims and not is_row_level:
+                continue
+            limit = 1
+            metric_key = metrics[0].key if metrics else "count_headcount"
+            # Check if superlative implies a measure
+            if rank_word in RANK_IMPLIED_MEASURE:
+                implied_m = RANK_IMPLIED_MEASURE[rank_word]
+                metric_key = f"avg_{implied_m}"
+                if not metrics:
+                    metrics.append(MetricSpec(measure=implied_m, agg="AVG", explicit_agg=False))
+            ordering = OrderingSpec(metric_key=metric_key, direction=direction)
+            return ordering, limit, is_row_level
 
         # 3. Check for "which <dim> ... more" e.g. "which age group we have more employees", "which department has more"
         if re.search(r"\bwhich\s+[a-z_\s]+?\bmore\b", text_lower):
@@ -1064,9 +1371,15 @@ class SemanticParser:
 
         # 3. Dynamic employee name matching from SQLite employee_index
         if hasattr(self, "employee_index") and self.employee_index:
+            catalog_spans = self._catalog_value_spans(text)
             for phrase, emp_num, emp_label in self.employee_index:
                 pat = rf"\b{re.escape(phrase)}\b"
-                if re.search(pat, text_lower):
+                name_match = re.search(pat, text_lower)
+                if name_match:
+                    ns, ne = name_match.span()
+                    # A name token inside a longer catalog value is not a person lookup.
+                    if any(s <= ns and ne <= e and (e - s) > (ne - ns) for s, e in catalog_spans):
+                        continue
                     # Disambiguate Manager lookup vs Direct Reports (Reportees) lookup
                     # A. Direct Reports / Reportees cues:
                     # "who reports to X", "who are X's direct reports", "employees reporting to X", "show X's direct reports"

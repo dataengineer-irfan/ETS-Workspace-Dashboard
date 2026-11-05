@@ -1,0 +1,44 @@
+{
+  "normal": {
+    "innerW": 1272,
+    "innerH": 588,
+    "isLg": true,
+    "isXl": false,
+    "chartH": 258,
+    "chartW": 833,
+    "rechartsH": 206,
+    "barShapes": 23,
+    "depthH": 258,
+    "depthW": 411,
+    "bandCount": 4,
+    "bandLabels": [
+      "< 2 Yrs (Junior)153(25.9%)",
+      "2 - 5 Yrs (Mid)82(13.9%)",
+      "5 - 8 Yrs (Senior)255(43.2%)",
+      "8+ Yrs (Lead / SME)100(16.9%)"
+    ],
+    "sideBySide": true,
+    "rosterVisible": true
+  },
+  "fullscreen": {
+    "innerW": 1920,
+    "innerH": 1080,
+    "isLg": true,
+    "isXl": true,
+    "chartH": 455,
+    "chartW": 1265,
+    "rechartsH": 403,
+    "barShapes": 46,
+    "depthH": 455,
+    "depthW": 627,
+    "bandCount": 4,
+    "bandLabels": [
+      "< 2 Yrs (Junior)153(25.9%)",
+      "2 - 5 Yrs (Mid)82(13.9%)",
+      "5 - 8 Yrs (Senior)255(43.2%)",
+      "8+ Yrs (Lead / SME)100(16.9%)"
+    ],
+    "sideBySide": true,
+    "rosterVisible": true
+  }
+}

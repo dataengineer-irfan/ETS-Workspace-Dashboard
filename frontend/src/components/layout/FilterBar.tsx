@@ -15,10 +15,14 @@ interface FilterBarProps {
   setTechwiseMode?: (mode: TechwiseMode) => void;
   compensationMode?: CompensationMode;
   setCompensationMode?: (mode: CompensationMode) => void;
+  profileSwitch?: { label: string; title?: string; onClick: () => void } | null;
+  copilotDocked?: boolean;
+  extraActions?: React.ReactNode;
 }
 
 const FIELD_LABELS: Record<string, string> = {
   project: 'Project',
+  release: 'Release',
   manager: 'Manager',
   department: 'Dept',
   module: 'Module',
@@ -209,6 +213,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   setTechwiseMode,
   compensationMode = 'overview',
   setCompensationMode,
+  profileSwitch,
+  copilotDocked = false,
+  extraActions,
 }) => {
   const [localSearch, setLocalSearch] = React.useState<string>(filters.search || '');
   const searchTimeout = React.useRef<number | null>(null);
@@ -398,11 +405,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     return v !== undefined && v !== null && v !== '';
   }).length;
 
+  const skillsTab = activeTab === 'techwise';
+
   return (
-    <div className="flex flex-col shrink-0 select-none text-xs border-b border-slate-200 dark:border-[#223755] bg-white dark:bg-[#0a1526]">
-      {/* Tier 1: Primary Slicers Bar */}
-      <div className="min-h-[40px] h-auto px-3 py-1 flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar">
-        <div className="flex items-center gap-1.5 shrink-0">
+    <div className="app-filter-bar flex flex-col shrink-0 select-none text-xs border-b border-slate-200 dark:border-[#223755] bg-white dark:bg-[#0a1526]">
+      {/* Tier 1: Primary Slicers Bar. Skills view chips share this row. */}
+      <div className={
+        skillsTab
+          ? 'min-h-[40px] px-3 py-1 flex flex-nowrap items-center gap-1.5'
+          : 'min-h-[40px] h-auto px-3 py-1 flex flex-wrap items-center justify-between gap-2 overflow-x-auto custom-scrollbar'
+      }>
+        <div className={skillsTab ? 'flex flex-nowrap items-center gap-1.5 min-w-0 flex-1' : 'flex flex-wrap items-center gap-1.5'}>
           <div 
             className="flex items-center gap-1 text-slate-500 dark:text-slate-400 shrink-0 font-medium pr-1"
             title="Filters"
@@ -434,8 +447,24 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             />
           </div>
 
-          {/* 2. Reporting Manager Slicer */}
-          <div className="w-40 min-w-[150px] shrink-0">
+          {activeTab === 'ai_utilization' && (
+            <div className="w-28 min-w-[110px] shrink-0">
+              <Select
+                isMulti
+                options={mapOptions(options?.releases)}
+                value={getMultiValue('release')}
+                onChange={onMultiChange('release')}
+                placeholder="Release (All)"
+                styles={compactSelectStyles}
+                components={{ ValueContainer: CompactValueContainer }}
+                menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+                isClearable={false}
+              />
+            </div>
+          )}
+
+          {/* 2. Reporting Manager Slicer — AI utilization sheets carry Manager; wired in get_ai_utilization_kpis */}
+          <div className={skillsTab ? 'min-w-[124px] max-w-[160px] basis-[160px] grow shrink' : 'w-40 min-w-[150px] shrink-0'}>
             <Select
               isMulti
               options={managerSelectOptions}
@@ -449,41 +478,44 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             />
           </div>
 
-          {/* 3. Department Slicer */}
-          <div className="w-28 min-w-[105px] shrink-0">
-            <Select
-              isMulti
-              options={mapOptions(options?.departments)}
-              value={getMultiValue('department')}
-              onChange={onMultiChange('department')}
-              placeholder="Dept (All)"
-              styles={compactSelectStyles}
-              components={{ ValueContainer: CompactValueContainer }}
-              menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
-              isClearable={false}
-            />
-          </div>
+          {/* 3–4. Dept / Module are People-sheet dimensions only — hide on AI use (no AI column; Domain ≠ Module). */}
+          {activeTab !== 'ai_utilization' && (
+            <>
+              <div className="w-28 min-w-[105px] shrink-0">
+                <Select
+                  isMulti
+                  options={mapOptions(options?.departments)}
+                  value={getMultiValue('department')}
+                  onChange={onMultiChange('department')}
+                  placeholder="Dept (All)"
+                  styles={compactSelectStyles}
+                  components={{ ValueContainer: CompactValueContainer }}
+                  menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+                  isClearable={false}
+                />
+              </div>
 
-          {/* 4. MMIS Module Slicer */}
-          {options?.modules && options.modules.length > 0 && (
-            <div className="w-32 min-w-[120px] shrink-0">
-              <Select
-                isMulti
-                options={mapOptions(options?.modules)}
-                value={getMultiValue('module')}
-                onChange={onMultiChange('module')}
-                placeholder="Module (All)"
-                styles={compactSelectStyles}
-                components={{ ValueContainer: CompactValueContainer }}
-                menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
-                isClearable={false}
-              />
-            </div>
+              {options?.modules && options.modules.length > 0 && (
+                <div className={skillsTab ? 'min-w-[108px] max-w-[128px] basis-[128px] grow shrink' : 'w-32 min-w-[120px] shrink-0'}>
+                  <Select
+                    isMulti
+                    options={mapOptions(options?.modules)}
+                    value={getMultiValue('module')}
+                    onChange={onMultiChange('module')}
+                    placeholder="Module (All)"
+                    styles={compactSelectStyles}
+                    components={{ ValueContainer: CompactValueContainer }}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+                    isClearable={false}
+                  />
+                </div>
+              )}
+            </>
           )}
 
           {/* Page 3 (Techwise / Skills): Skill Slicer placed between Module and Grade */}
           {activeTab === 'techwise' && (
-            <div className="w-32 min-w-[120px] shrink-0">
+            <div className="min-w-[104px] max-w-[128px] basis-[128px] grow shrink">
               <Select
                 isMulti
                 options={mapOptions(options?.skills)}
@@ -546,16 +578,34 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           )}
         </div>
 
-        {/* Right side of Tier 1: View Switchers (Techwise or Compensation) & Reset button */}
-        <div className="flex items-center gap-2 shrink-0 ml-auto">
+        {/* Right side of Tier 1: View Switchers (Techwise or Compensation) */}
+        <div className={`${skillsTab ? 'flex items-center shrink-0' : 'flex flex-wrap items-center gap-2 ml-auto shrink-0'}${profileSwitch ? ' profile-switch-slot' : ''}${profileSwitch && copilotDocked ? ' genie-docked' : ''}`}>
+          {extraActions}
+          {profileSwitch && (
+            <button
+              type="button"
+              onClick={profileSwitch.onClick}
+              title={profileSwitch.title || profileSwitch.label}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-md whitespace-nowrap bg-slate-100 dark:bg-[#12223a] hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-[#223755] transition-colors cursor-pointer"
+            >
+              {profileSwitch.label}
+            </button>
+          )}
           {activeTab === 'techwise' && setTechwiseMode && (
-            <div className="flex items-center bg-slate-100 dark:bg-[#12223a] p-0.5 rounded-lg border border-slate-200 dark:border-[#223755] shrink-0 shadow-2xs">
+            <div
+              data-skills-views="true"
+              role="tablist"
+              aria-label="Skills views"
+              className="flex h-7 items-stretch shrink-0 overflow-hidden rounded-md border border-slate-200 dark:border-[#223755] bg-slate-100 dark:bg-[#12223a]"
+            >
               <button
                 type="button"
+                role="tab"
+                aria-selected={techwiseMode === 'depth'}
                 onClick={() => setTechwiseMode('depth')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                className={`px-1.5 text-[10px] font-semibold leading-none whitespace-nowrap transition-all cursor-pointer ${
                   techwiseMode === 'depth'
-                    ? 'bg-cyan-600 text-white shadow-xs'
+                    ? 'bg-cyan-600 text-white'
                     : 'text-slate-600 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-white dark:hover:bg-slate-800/60'
                 }`}
                 title="View Seniority & Experience Depth Breakdown"
@@ -564,10 +614,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={techwiseMode === 'modules'}
                 onClick={() => setTechwiseMode('modules')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                className={`px-1.5 text-[10px] font-semibold leading-none whitespace-nowrap transition-all cursor-pointer ${
                   techwiseMode === 'modules'
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-indigo-600 text-white'
                     : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-800/60'
                 }`}
                 title="View MMIS Enterprise Module Allocation"
@@ -576,10 +628,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={techwiseMode === 'matrix'}
                 onClick={() => setTechwiseMode('matrix')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                className={`px-1.5 text-[10px] font-semibold leading-none whitespace-nowrap transition-all cursor-pointer ${
                   techwiseMode === 'matrix'
-                    ? 'bg-cyan-600 text-white shadow-xs'
+                    ? 'bg-cyan-600 text-white'
                     : 'text-slate-600 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-white dark:hover:bg-slate-800/60'
                 }`}
                 title="View Manager x Skill Cross-Tab Matrix"
@@ -588,10 +642,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={techwiseMode === 'gaps'}
                 onClick={() => setTechwiseMode('gaps')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                className={`px-1.5 text-[10px] font-semibold leading-none whitespace-nowrap transition-all cursor-pointer ${
                   techwiseMode === 'gaps'
-                    ? 'bg-amber-600 text-white shadow-xs'
+                    ? 'bg-amber-600 text-white'
                     : 'text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-white dark:hover:bg-slate-800/60'
                 }`}
                 title="View Bench Targets & Skill Deficits"

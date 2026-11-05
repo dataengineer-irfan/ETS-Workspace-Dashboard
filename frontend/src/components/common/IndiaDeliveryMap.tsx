@@ -91,6 +91,24 @@ export const IndiaDeliveryMap: React.FC<IndiaDeliveryMapProps> = ({
   const [zoomMode, setZoomMode] = React.useState<'focus' | 'all'>('focus');
   const isFocus = zoomMode === 'focus';
   const viewBox = isFocus ? '150 480 340 450' : '70 20 860 960';
+  const svgRef = React.useRef<SVGSVGElement>(null);
+  const [fitScale, setFitScale] = React.useState(0);
+  React.useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const measure = () => {
+      const rect = svg.getBoundingClientRect();
+      const vb = svg.viewBox.baseVal;
+      if (!vb.width || !vb.height || !rect.width || !rect.height) return;
+      const scale = Math.min(rect.width / vb.width, rect.height / vb.height);
+      setFitScale(scale);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, [viewBox]);
+  const showMapLabels = 13 * fitScale >= 8;
 
   const locMap = React.useMemo(() => {
     const m = new Map<string, HubLocation>();
@@ -135,8 +153,9 @@ export const IndiaDeliveryMap: React.FC<IndiaDeliveryMapProps> = ({
       </div>
 
       <svg
+        ref={svgRef}
         viewBox={viewBox}
-        className="w-full h-full max-h-[165px] transition-all duration-300"
+        className="w-full h-full transition-all duration-300"
         preserveAspectRatio="xMidYMid meet"
       >
         {/* State Boundaries */}
@@ -236,7 +255,7 @@ export const IndiaDeliveryMap: React.FC<IndiaDeliveryMapProps> = ({
                   className="transition-all duration-150 drop-shadow-sm"
                 />
 
-                {/* Micro City Label with Contrast Halo and Permanent Percentage */}
+                {showMapLabels && (
                 <text
                   x={coord.labelDx * labelScale}
                   y={coord.labelDy * labelScale}
@@ -254,6 +273,7 @@ export const IndiaDeliveryMap: React.FC<IndiaDeliveryMapProps> = ({
                 >
                   {loc.location} {loc.percentage}%
                 </text>
+                )}
               </g>
             );
           })}

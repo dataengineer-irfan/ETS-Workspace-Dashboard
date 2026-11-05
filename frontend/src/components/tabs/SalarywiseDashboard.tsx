@@ -19,7 +19,6 @@ import {
   ArrowDown, 
   ChevronLeft, 
   ChevronRight,
-  Check,
   Filter,
   Shield
 } from 'lucide-react';
@@ -356,9 +355,14 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
     ];
   }, [data?.salary_histogram, data?.top_n_earners, effectiveManagerFilter, selectedGradeFilter, earnerSearch]);
 
+  const visibleBands = histogram.filter((band) => Number(band.count) > 0);
+  const topPayBand = visibleBands.reduce(
+    (max, cur) => (Number(cur.count) > Number(max?.count ?? -1) ? cur : max),
+    visibleBands[0]
+  );
   if (currentSubTab === 'trends') {
     return (
-      <div className="flex-1 min-h-0 flex flex-col overflow-y-auto custom-scrollbar">
+      <div className="pane-fit flex flex-col min-h-0">
         <Salarywise2Dashboard
           data={trendsData ?? null}
           loading={loading && !trendsData}
@@ -391,7 +395,7 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
   const managerCount = data.manager_grade_ctc_matrix?.managers?.length || 54;
 
   return (
-    <div className="flex-1 flex flex-col gap-1.5 overflow-hidden select-none min-h-0">
+    <div className="pane-fit flex flex-col gap-1.5 select-none">
       {/* Top 4 Compact KPI Cards (Dynamically reacting to in-scope cohort) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 shrink-0">
         <KPICard
@@ -454,9 +458,9 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
       </div>
 
       {/* Middle Visuals: 12-col grid */}
-      <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
+      <div className="pane-charts grid grid-cols-12 gap-1.5 min-w-0">
         {/* Left: 54 Managers x Grade CTC Matrix (8 Cols) */}
-        <div className="col-span-12 xl:col-span-8 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden">
+        <div className="col-span-12 lg:col-span-8 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
               <Grid className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
@@ -603,7 +607,7 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
                       >
                         <td 
                           onClick={() => handleCellClick(mgr)}
-                          className="py-1 px-2 font-sans text-slate-900 dark:text-slate-100 font-medium truncate max-w-[140px] cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 sticky left-0 z-10 bg-white dark:bg-[#0c1829] border-r border-slate-200 dark:border-slate-800"
+                          className="py-1 px-2 font-sans text-slate-900 dark:text-slate-100 font-medium whitespace-normal break-words leading-tight cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 sticky left-0 z-10 bg-white dark:bg-[#0c1829] border-r border-slate-200 dark:border-slate-800 min-w-[9.5rem]"
                           title={`Click to isolate ${mgr}'s team`}
                         >
                           {mgr}
@@ -659,7 +663,7 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
         </div>
 
         {/* Right: Top Earners Table (4 Cols) */}
-        <div className="col-span-12 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden min-h-0">
+        <div className="col-span-12 lg:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden min-h-0">
           <div className="flex flex-wrap items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0 gap-1.5">
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight whitespace-nowrap">
@@ -829,7 +833,7 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
                       <td className="py-1 px-1.5 text-slate-400 dark:text-slate-500 font-sans text-[10px]" title="Position in filtered list">
                         {topLimit === 'all' ? idx + 1 : (earnerPage - 1) * Number(topLimit) + idx + 1}
                       </td>
-                      <td className="py-1 px-1.5 font-sans font-medium text-slate-900 dark:text-slate-100 truncate max-w-[110px] group-hover:text-cyan-700 dark:group-hover:text-cyan-400" title={e.name}>
+                      <td className="py-1 px-1.5 font-sans font-medium text-slate-900 dark:text-slate-100 whitespace-normal break-words leading-tight group-hover:text-cyan-700 dark:group-hover:text-cyan-400" title={e.name}>
                         {e.name}
                       </td>
                       <td className="py-1 px-1 text-center font-sans">
@@ -895,105 +899,69 @@ export const SalarywiseDashboard: React.FC<SalarywiseDashboardProps> = ({
         </div>
       </div>
 
-      {/* Lower Row: CTC Distribution Band Histogram (Interactive Cross-Filter) */}
-      <div className="glass-panel rounded-xl p-2.5 shrink-0 min-h-[140px] h-auto flex flex-col justify-between overflow-hidden">
-        <div className="flex items-center justify-between text-[10px] font-bold text-slate-700 dark:text-slate-300 pb-1 border-b border-slate-100 dark:border-slate-800 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="uppercase tracking-wider font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <Filter className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
-              Workforce Compensation Distribution by Salary Band
+      {/* Lower Row: one-line salary band strip. Height stays with the content so the manager and earner row can use the rest. */}
+      <div className="comp-band glass-panel rounded-xl px-2.5 py-1.5 flex flex-col gap-1 overflow-hidden shrink-0">
+        <div className="flex items-center gap-2 min-w-0 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+          <span className="uppercase tracking-wider font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 shrink-0">
+            <Filter className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+            Workforce Compensation Distribution by Salary Band
+          </span>
+          {topPayBand && (
+            <span className="font-medium normal-case tracking-normal text-slate-500 dark:text-slate-400 truncate min-w-0">
+              {topPayBand.count} staff ({Number(topPayBand.percentage || 0).toFixed(1)}%) are in the {topPayBand.band || (topPayBand as { bin?: string }).bin} band.
             </span>
-          </div>
-          <div className="flex items-center gap-2 font-mono">
-            {selectedBandFilter && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedBandFilter(null);
-                  setEarnerPage(1);
-                  setManagerPage(1);
-                }}
-                className="px-2 py-0.5 rounded-full text-[9px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-800 flex items-center gap-1 hover:bg-rose-100 hover:text-rose-700 cursor-pointer transition-colors shadow-2xs"
-              >
-                Filtered: {selectedBandFilter} <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
+          )}
+          {selectedBandFilter && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedBandFilter(null);
+                setEarnerPage(1);
+                setManagerPage(1);
+              }}
+              className="ml-auto shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-800 flex items-center gap-1 hover:bg-rose-100 hover:text-rose-700 cursor-pointer transition-colors"
+            >
+              Filtered: {selectedBandFilter} <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
-        <div className="grid grid-cols-5 gap-2 pt-1.5 flex-1 items-stretch">
-          {histogram.map((band, idx) => {
+        <div className="flex items-center gap-3 min-w-0">
+          {visibleBands.map((band, idx) => {
             const bandName = band.band || (band as any).bin;
             const isSelected = selectedBandFilter === bandName;
             const bandColor = band.color || ['#0284c7', '#10b981', '#d97706', '#8b5cf6', '#ec4899'][idx % 5];
             const outlayCr = band.total_outlay ? (band.total_outlay / 10000000).toFixed(2) : null;
             const avgL = band.avg_ctc ? (band.avg_ctc / 100000).toFixed(1) : null;
-            
+            const maxCount = Math.max(...visibleBands.map((b) => Number(b.count) || 0), 1);
+
             return (
-              <div 
-                key={idx} 
+              <button
+                key={idx}
+                type="button"
                 onClick={() => {
                   setSelectedBandFilter(isSelected ? null : bandName);
                   setEarnerPage(1);
                   setManagerPage(1);
                 }}
-                className={`p-2 rounded-xl border flex flex-col justify-between cursor-pointer transition-all duration-150 relative overflow-hidden group ${
-                  isSelected 
-                    ? 'border-cyan-500 ring-2 ring-cyan-500/50 bg-cyan-50/90 dark:bg-cyan-950/80 shadow-md scale-[1.01]' 
-                    : 'bg-slate-50/80 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-700/80 hover:border-cyan-400 hover:bg-cyan-50/30 dark:hover:bg-slate-800/90 hover:scale-[1.005] hover:shadow-xs'
+                className={`comp-band-meter flex-1 min-w-0 rounded px-1 py-0.5 transition-colors ${
+                  isSelected ? 'bg-cyan-50/90 dark:bg-cyan-950/50' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                 }`}
-                title={`Click to isolate ${bandName} compensation cohort (${band.count} employees)`}
+                title={`${bandName}: ${band.count} staff${outlayCr ? ` · ₹${outlayCr} Cr outlay` : ''}${avgL ? ` · avg ₹${avgL}L` : ''}`}
               >
-                {/* Top Row: Band Title & Active Indicator */}
-                <div className="flex items-center justify-between text-[11px] font-bold">
-                  <span className="flex items-center gap-1.5">
-                    <span 
-                      className="w-2 h-2 rounded-full shrink-0" 
-                      style={{ backgroundColor: bandColor }} 
-                    />
-                    <span className={isSelected ? 'text-cyan-800 dark:text-cyan-200' : 'text-slate-800 dark:text-slate-100'}>
-                      {bandName}
-                    </span>
-                  </span>
-                  {isSelected ? (
-                    <span className="px-1.5 py-0.2 rounded text-[8px] font-extrabold bg-cyan-600 text-white flex items-center gap-0.5 shadow-2xs">
-                      ACTIVE <Check className="w-2.5 h-2.5" />
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300">
-                      {band.count} <span className="text-[9px] text-slate-400 font-normal">staff</span>
-                    </span>
-                  )}
-                </div>
-
-                {/* Middle: Financial Outlay & Avg CTC */}
-                <div className="flex items-baseline justify-between text-[10px] my-0.5 font-mono">
-                  <span className="text-slate-500 dark:text-slate-400 text-[9px]">
-                    {outlayCr ? `₹${outlayCr} Cr Outlay` : '—'}
-                  </span>
-                  <span className="text-cyan-700 dark:text-cyan-400 font-semibold text-[10px]">
-                    {avgL ? `Avg ₹${avgL}L` : '—'}
-                  </span>
-                </div>
-
-                {/* Bottom: Progress bar & Concentration */}
-                <div>
-                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all duration-300" 
-                      style={{ 
-                        width: `${Math.max(band.percentage, 1)}%`, 
-                        backgroundColor: bandColor,
-                        boxShadow: isSelected ? `0 0 8px ${bandColor}` : 'none'
-                      }} 
-                    />
-                  </div>
-                  <div className="flex justify-between items-center text-[9px] text-slate-400 dark:text-slate-500 mt-1">
-                    <span className="text-[8px] uppercase tracking-wider font-semibold">{isSelected ? 'Active Filter' : 'Share'}</span>
-                    <span className="font-bold font-mono text-slate-700 dark:text-slate-200">{band.percentage.toFixed(1)}%</span>
-                  </div>
-                </div>
-              </div>
+                <span className={`truncate text-[10px] font-semibold ${isSelected ? 'text-cyan-900 dark:text-cyan-200' : 'text-slate-800 dark:text-slate-100'}`}>
+                  {bandName}
+                </span>
+                <span className="comp-band-track">
+                  <span
+                    style={{
+                      width: `${Math.max(4, (Number(band.count) / maxCount) * 100)}%`,
+                      backgroundColor: bandColor,
+                    }}
+                  />
+                </span>
+                <span className="font-mono text-[10px] font-bold tabular-nums text-slate-800 dark:text-slate-100 text-right">{band.count}</span>
+              </button>
             );
           })}
         </div>

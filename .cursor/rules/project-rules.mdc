@@ -1,0 +1,25 @@
+---
+description: Project rules for working in the ETS Workforce Dashboard
+alwaysApply: true
+---
+
+# ETS Workforce Dashboard Project Rules
+
+Read `docs/` and the code you will change before editing. Match names, components, and services that already exist.
+
+- Understand the existing code before changing it.
+- Read the docs in `docs/` before implementation.
+- Reuse existing components and services.
+- Keep the change limited to what the task requires.
+- Preserve API contracts and the database design.
+- Follow the naming already used in the file you edit.
+- Do not duplicate logic, and do not add a new framework.
+- Keep the UI consistent with the current dashboard layout and styling.
+- Keep changes backward compatible with current routes, payloads, and stored data.
+- Update the docs in `docs/` when behavior changes.
+- Prefer a root-cause fix.
+
+```tsx
+// BAD: a second HTTP client and a new chart library for one card
+// GOOD: call the helper in frontend/src/api/client.ts and render with Recharts
+```

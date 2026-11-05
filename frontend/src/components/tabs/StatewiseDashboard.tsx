@@ -147,10 +147,23 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
     ? Object.keys(data.geography_grade_grouped[0]).filter(k => k !== 'job_level' && k !== 'total')
     : ['count'];
 
+  const locationTotals = geoKeys.map((key) => ({
+    name: key,
+    count: (geoGrouped || []).reduce((sum, row) => sum + (Number(row[key]) || 0), 0),
+  }));
+  const topLocation = locationTotals.reduce(
+    (max, cur) => (cur.count > (max?.count ?? -1) ? cur : max),
+    locationTotals[0]
+  );
+  const locationHeadcount = locationTotals.reduce((sum, loc) => sum + loc.count, 0);
+  const topLocationShare = locationHeadcount > 0 && topLocation
+    ? ((topLocation.count / locationHeadcount) * 100).toFixed(1)
+    : null;
+
   const GEO_PALETTE = ['#0284c7', '#0d9488', '#f97316', '#7c3aed', '#64748b'];
 
   return (
-    <div className="flex-1 flex flex-col gap-2.5 min-h-full select-none">
+    <div className="dash-fit flex flex-col gap-2 select-none">
       {/* Top 4 KPI Cards (Compact & Dominant In-Scope Workforce) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
         <KPICard
@@ -193,9 +206,9 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
       </div>
 
       {/* Middle Visuals: 3 Grouped Charts with Zero Axis Repetitions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 flex-1 min-h-[260px]">
+      <div className="pane-charts grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 min-h-0 items-stretch">
         {/* Chart 1: Experience Analysis by Job Level */}
-        <div className="col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-[240px]">
+        <div className="col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Experience Depth by Grade</span>
@@ -204,9 +217,9 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
             <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950 px-1.5 py-0.2 rounded border border-cyan-200 dark:border-cyan-800 font-semibold">Prior vs ETS</span>
           </div>
 
-          <div className="flex-1 min-h-0 pt-1">
+          <div className="flex-1 min-h-0 pt-0.5">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.experience_by_grade} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={data.experience_by_grade} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="job_level" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
                 <YAxis stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
@@ -216,6 +229,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
                 <Bar 
+                  isAnimationActive={false}
                   dataKey="prior_exp" 
                   fill="#d97706" 
                   name="Prior Exp (Yrs)" 
@@ -227,6 +241,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                   }}
                 />
                 <Bar 
+                  isAnimationActive={false}
                   dataKey="infinite_exp" 
                   fill="#0284c7" 
                   name="ETS Exp (Yrs)" 
@@ -243,7 +258,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
         </div>
 
         {/* Chart 2: Grouped Distribution by Job Level & Client Account */}
-        <div className="col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-[240px]">
+        <div className="col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Grade by Client Account</span>
@@ -252,7 +267,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
             <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800 font-semibold">Grouped</span>
           </div>
 
-          <div className="flex-1 min-h-0 pt-1">
+          <div className="flex-1 min-h-0 pt-0.5">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={projectGrouped as any[]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -265,6 +280,7 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
                 {projectKeys.map((key, idx) => (
                   <Bar
+                    isAnimationActive={false}
                     key={key}
                     dataKey={key}
                     fill={PROJECT_PALETTE[idx % PROJECT_PALETTE.length]}
@@ -283,18 +299,27 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
         </div>
 
         {/* Chart 3: Grouped Workforce by Delivery Location and Job Level */}
-        <div className="col-span-1 md:col-span-2 xl:col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-[240px]">
+        <div className="col-span-1 md:col-span-2 lg:col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Grade by Delivery Location</span>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">India Hubs</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Grade by Delivery Location</span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">India Hubs</span>
+              </div>
+              {topLocation && topLocationShare && (
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-normal break-words">
+                  {topLocation.name} holds {topLocation.count} ({topLocationShare}%).
+                </p>
+              )}
             </div>
-            <span className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950 px-1.5 py-0.2 rounded border border-purple-200 dark:border-purple-800 font-semibold">Hub Spread</span>
+            <span className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950 px-1.5 py-0.2 rounded border border-purple-200 dark:border-purple-800 font-semibold shrink-0">Hub Spread</span>
           </div>
 
-          <div className="flex-1 min-h-0 pt-1">
+          <div className="flex-1 min-h-0 pt-0.5 flex flex-col">
+            <div className="pane-plot flex-1">
+            <div className="pane-plot-fill">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={geoGrouped as any[]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={geoGrouped as any[]} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="job_level" stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
                 <YAxis stroke="var(--muted)" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
@@ -302,9 +327,9 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                   contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: 'var(--shadow-soft)' }}
                   itemStyle={{ color: 'var(--text)' }}
                 />
-                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
                 {geoKeys.map((key, idx) => (
                   <Bar
+                    isAnimationActive={false}
                     key={key}
                     dataKey={key}
                     fill={GEO_PALETTE[idx % GEO_PALETTE.length]}
@@ -319,12 +344,33 @@ export const StatewiseDashboard: React.FC<StatewiseDashboardProps> = ({
                 ))}
               </BarChart>
             </ResponsiveContainer>
+            </div>
+            </div>
+            <div className="shrink-0 grid grid-cols-2 gap-x-2 gap-y-1 pt-1">
+              {locationTotals.map((loc, idx) => (
+                <div key={loc.name} className="home-meter">
+                  <span className="flex items-start justify-between gap-1 w-full">
+                    <span className="home-legend-name text-slate-800 dark:text-slate-100">{loc.name}</span>
+                    <span className="home-meter-count"><b>{loc.count}</b></span>
+                  </span>
+                  <span className="home-meter-track">
+                    <span
+                      className="home-meter-fill"
+                      style={{
+                        width: `${locationHeadcount > 0 ? (loc.count / locationHeadcount) * 100 : 0}%`,
+                        backgroundColor: GEO_PALETTE[idx % GEO_PALETTE.length],
+                      }}
+                    />
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Bottom: Filtered Employee Listing Table (Calibrated Dynamic Height) */}
-      <div className="glass-panel rounded-xl p-2.5 shrink-0 min-h-[190px] h-auto flex-1 flex flex-col justify-between overflow-hidden shadow-2xs">
+      <div className="pane-roster glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden shadow-2xs min-h-[120px] lg:min-h-0">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Employee Listing</span>

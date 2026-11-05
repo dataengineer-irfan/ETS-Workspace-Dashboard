@@ -10,6 +10,7 @@ import { EmployeeProfileDrawer } from './components/common/EmployeeProfileDrawer
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DashboardSkeleton } from './components/common/DashboardSkeleton';
 import { DatasetOperationsModal } from './components/dataset/DatasetOperationsModal';
+import { ExportButton } from './components/common/ExportButton';
 
 // Code-split Auth views
 const Login = lazy(() => import('./components/auth/Login').then((m) => ({ default: m.Login })));
@@ -24,6 +25,8 @@ const Employee360Dashboard = lazy(() => import('./components/tabs/Employee360Das
 const TechwiseDashboard = lazy(() => import('./components/tabs/TechwiseDashboard').then((m) => ({ default: m.TechwiseDashboard })));
 const SalarywiseDashboard = lazy(() => import('./components/tabs/SalarywiseDashboard').then((m) => ({ default: m.SalarywiseDashboard })));
 const EmployeeCalendarDashboard = lazy(() => import('./components/tabs/EmployeeCalendarDashboard').then((m) => ({ default: m.EmployeeCalendarDashboard })));
+const WorkModelDashboard = lazy(() => import('./components/tabs/WorkModelDashboard').then((m) => ({ default: m.WorkModelDashboard })));
+const AIUtilizationDashboard = lazy(() => import('./components/tabs/AIUtilizationDashboard').then((m) => ({ default: m.AIUtilizationDashboard })));
 import type {
   FilterParams,
   FilterOptions,
@@ -36,6 +39,8 @@ import type {
   Salarywise2KPIs,
   CalendarData,
   CopilotResponse,
+  WorkModelKPIs,
+  AIUtilizationKPIs,
 } from './types/dashboard';
 import {
   fetchFilterOptions,
@@ -47,6 +52,8 @@ import {
   fetchSalarywiseKPIs,
   fetchSalarywise2KPIs,
   fetchCalendarData,
+  fetchWorkModelKPIs,
+  fetchAIUtilizationKPIs,
   reloadDataset,
 } from './api/client';
 
@@ -117,6 +124,9 @@ const DashboardView: React.FC = () => {
   const [salarywiseData, setSalarywiseData] = useState<SalarywiseKPIs | null>(null);
   const [salarywise2Data, setSalarywise2Data] = useState<Salarywise2KPIs | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
+  const [workModelData, setWorkModelData] = useState<WorkModelKPIs | null>(null);
+  const [aiUtilizationData, setAiUtilizationData] = useState<AIUtilizationKPIs | null>(null);
+  const [profileFocus, setProfileFocus] = useState<string | null>(null);
   const [techwiseMode, setTechwiseMode] = useState<TechwiseMode>('depth');
   const [compensationMode, setCompensationMode] = useState<CompensationMode>('overview');
   const [profileViewMode, setProfileViewMode] = useState<'360' | 'classic'>('360');
@@ -193,6 +203,12 @@ const DashboardView: React.FC = () => {
       } else if (activeTab === 'calendar') {
         const res = await fetchCalendarData(filters);
         setCalendarData(res);
+      } else if (activeTab === 'work_model') {
+        const res = await fetchWorkModelKPIs(filters);
+        setWorkModelData(res);
+      } else if (activeTab === 'ai_utilization') {
+        const res = await fetchAIUtilizationKPIs(filters);
+        setAiUtilizationData(res);
       }
     } catch (err) {
       console.error('Error fetching tab data:', err);
@@ -285,7 +301,7 @@ const DashboardView: React.FC = () => {
 
   return (
     <div className={`theme-${theme} ${theme} h-screen min-h-[560px] w-full overflow-hidden flex flex-col select-none`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-      {/* Executive Header */}
+      {/* Executive Header — tabs / roster / Genie only. Filters stay on FilterBar below. */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -298,6 +314,10 @@ const DashboardView: React.FC = () => {
             ? (techwiseData?.total_headcount ?? employeeList.length ?? 590)
             : activeTab === 'home'
             ? (homeData?.total_employees ?? employeeList.length ?? 590)
+            : activeTab === 'work_model'
+            ? (workModelData?.headcount ?? employeeList.length ?? 590)
+            : activeTab === 'ai_utilization'
+            ? (aiUtilizationData?.summary?.people_using ?? employeeList.length ?? 590)
             : (employeeList.length || 590)
         }
         theme={theme}
@@ -307,7 +327,7 @@ const DashboardView: React.FC = () => {
         onOpenDatasetModal={() => setDatasetModalOpen(true)}
       />
 
-      {/* Inline Slicer / Filter Bar */}
+      {/* Filter pane — separate row from the heading (Project, Release, Export, etc.) */}
       <FilterBar
         filters={filters}
         setFilters={setFilters}
@@ -317,6 +337,36 @@ const DashboardView: React.FC = () => {
         setTechwiseMode={setTechwiseMode}
         compensationMode={compensationMode}
         setCompensationMode={setCompensationMode}
+        copilotDocked={copilotOpen}
+        extraActions={
+          activeTab === 'ai_utilization' ? (
+            <ExportButton
+              data={(aiUtilizationData?.health ?? []).map((row) => ({
+                project: row.project,
+                health_score: row.health_score,
+                band: row.band,
+                adoption_pct: row.adoption_pct,
+                hours_saved: row.hours_saved,
+                value_usd: row.value_usd ?? row.est_cost_savings_usd,
+                manager: row.manager,
+                roi_index: row.roi_index,
+                coverage_pct: row.coverage_pct,
+                ai_value_usd: row.ai_value_usd,
+              }))}
+              filename="ai_use_executive.csv"
+              label="Export"
+            />
+          ) : null
+        }
+        profileSwitch={
+          activeTab === 'employee_details' && profileViewMode === '360'
+            ? {
+                label: 'Classic Dossier',
+                title: 'Open the classic dossier view',
+                onClick: () => setProfileViewMode('classic'),
+              }
+            : null
+        }
       />
 
       {/* Main Viewport Container & Docked Copilot (Push Layout) */}
@@ -355,6 +405,27 @@ const DashboardView: React.FC = () => {
                     filters={filters}
                     setFilters={setFilters}
                     onOpenDatasetModal={() => setDatasetModalOpen(true)}
+                    onOpenTraining={() => {
+                      setProfileFocus('training');
+                      setActiveTab('employee_details');
+                    }}
+                  />
+                )}
+
+                {activeTab === 'work_model' && (
+                  <WorkModelDashboard
+                    data={workModelData}
+                    loading={loading && !workModelData}
+                    onSelectEmployee={handleSelectEmployee}
+                  />
+                )}
+
+                {activeTab === 'ai_utilization' && (
+                  <AIUtilizationDashboard
+                    data={aiUtilizationData}
+                    loading={loading && !aiUtilizationData}
+                    onSelectEmployee={handleSelectEmployee}
+                    filters={filters}
                   />
                 )}
 
@@ -377,11 +448,11 @@ const DashboardView: React.FC = () => {
                       selectedEmpNumber={selectedEmpNumber}
                       onSelectEmployee={setSelectedEmpNumber}
                       loading={loading && !employeeDetails}
-                      onSwitchView={() => setProfileViewMode('classic')}
                       calendarData={calendarData}
+                      profileFocus={profileFocus}
                     />
                   ) : (
-                    <div className="flex-1 flex flex-col min-h-0 gap-1">
+                    <div className="dash-fit flex flex-col min-h-0 min-w-0 gap-1">
                       <div className="flex justify-end shrink-0">
                         <button
                           onClick={() => setProfileViewMode('360')}
@@ -396,6 +467,7 @@ const DashboardView: React.FC = () => {
                         selectedEmpNumber={selectedEmpNumber}
                         onSelectEmployee={setSelectedEmpNumber}
                         loading={loading && !employeeDetails}
+                        profileFocus={profileFocus}
                       />
                     </div>
                   )

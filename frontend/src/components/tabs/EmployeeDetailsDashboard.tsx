@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Select from 'react-select';
 import type { EmployeeDetails, EmployeeListItem } from '../../types/dashboard';
 import { KPICard } from '../common/KPICard';
+import { TrainingDetail } from '../common/TrainingDetail';
 import { ExportButton } from '../common/ExportButton';
 import { 
   User, 
@@ -47,6 +48,7 @@ interface EmployeeDetailsDashboardProps {
   selectedEmpNumber?: number;
   onSelectEmployee: (empNumber: number) => void;
   loading: boolean;
+  profileFocus?: string | null;
 }
 
 // Enterprise custom styles for react-select employee selector
@@ -143,7 +145,12 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
   employeeList,
   onSelectEmployee,
   loading,
+  profileFocus,
 }) => {
+  useEffect(() => {
+    if (profileFocus !== 'training') return;
+    document.getElementById('training-detail')?.scrollIntoView({ block: 'nearest' });
+  }, [profileFocus, employee?.employee_number]);
   // Power BI Style Employee Slicer States (Inspired by Compensation filter without holidays)
   const [slicerSearch, setSlicerSearch] = useState('');
   const [gradeFilter, setGradeFilter] = useState<string>('All');
@@ -351,11 +358,11 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
   const talentBox = employee.job_level >= 'E5' ? 'Box 1: Top Tier / Key Impact' : 'Box 2: High Contributor';
 
   return (
-    <div className="flex-1 flex flex-col gap-1.5 select-none min-h-0 overflow-hidden">
+    <div className="flex-1 flex flex-col gap-1.5 select-none min-h-0 min-w-0 overflow-hidden">
       {/* ========================================================================= */}
       {/* 1. Fortune 5 Executive Identity & Organization Card (Inspired by User Ref) */}
       {/* ========================================================================= */}
-      <div className="glass-panel rounded-xl p-2.5 shrink-0 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-2">
+      <div className="glass-panel rounded-xl p-2 shrink-0 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-1.5">
         {/* Top Row: Employee Avatar, Clean Title, Badges & High-Utility Slicer */}
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-3 min-w-0">
@@ -364,7 +371,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 tracking-tight truncate">
+                <h1 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 tracking-tight whitespace-normal break-words">
                   {employee.name} <span className="text-slate-400 dark:text-slate-500 font-mono font-medium text-xs">({employee.employee_number})</span>
                 </h1>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-cyan-100 dark:bg-cyan-950/70 text-cyan-950 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 shrink-0 font-mono">
@@ -408,7 +415,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </div>
 
         {/* Bottom Row: 6-Attribute Fortune 5 Metadata Grid (Matching Image 1 Style) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 p-2 rounded-lg bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 text-[11px]">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 p-1.5 rounded-lg bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 text-[11px]">
           <div>
             <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400/90 block">
               JOB TITLE
@@ -516,7 +523,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
           {/* Project Quick Filter Pills */}
           <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded border border-slate-200 dark:border-slate-700 text-[9px] font-mono shrink-0">
             <span className="px-1 text-slate-400 font-sans font-bold text-[8px]">PROJ</span>
-            {['All', 'NH', 'ND', 'AK'].map((p) => (
+            {['All', 'NH', 'ND', 'AK', 'Maven'].map((p) => (
               <button
                 key={p}
                 onClick={() => setProjectFilter(p)}
@@ -555,7 +562,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 shrink-0">
         {/* Card 1: Annual Total CTC & Peer Benchmark */}
-        <div className="p-2.5 rounded-xl glass-panel border border-cyan-300 dark:border-cyan-800/80 bg-gradient-to-br from-cyan-50/50 dark:from-cyan-950/20 to-transparent flex flex-col justify-between shadow-xs">
+        <div className="p-1.5 rounded-xl glass-panel border border-cyan-300 dark:border-cyan-800/80 bg-gradient-to-br from-cyan-50/50 dark:from-cyan-950/20 to-transparent flex flex-col justify-between shadow-xs max-h-[86px] overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-cyan-900 dark:text-cyan-300 flex items-center gap-1">
               <Award className="w-3.5 h-3.5 text-cyan-600" />
@@ -565,7 +572,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
               FY24 Active
             </span>
           </div>
-          <div className="my-1.5">
+          <div className="my-0.5">
             <div className="flex items-baseline justify-between gap-1">
               <div className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono">
                 {currentCTC > 0 ? `₹${(currentCTC / 100000).toFixed(2)} L` : 'Pending'}
@@ -590,7 +597,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </div>
 
         {/* Card 2: Employment Timeline, Lateral Rehire & Experience Benchmark */}
-        <div className="p-2.5 rounded-xl glass-panel border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-xs">
+        <div className="p-1.5 rounded-xl glass-panel border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-xs max-h-[86px] overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1">
               <CalendarCheck className="w-3.5 h-3.5 text-emerald-600" />
@@ -637,7 +644,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </div>
 
         {/* Card 3: Personal & Statutory Identity */}
-        <div className="p-2.5 rounded-xl glass-panel border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-xs">
+        <div className="p-1.5 rounded-xl glass-panel border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-xs max-h-[86px] overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1">
               <User className="w-3.5 h-3.5 text-cyan-600" />
@@ -647,7 +654,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
               KYC Verified
             </span>
           </div>
-          <div className="my-1.5">
+          <div className="my-0.5">
             <div className="text-xs font-bold text-slate-900 dark:text-slate-100 font-mono">
               DOB: {dob} <span className="text-slate-500 font-normal">({age} Yrs)</span>
             </div>
@@ -662,7 +669,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </div>
 
         {/* Card 4: Health Insurance & Emergency Contact */}
-        <div className="p-2.5 rounded-xl glass-panel border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-xs">
+        <div className="p-1.5 rounded-xl glass-panel border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-xs max-h-[86px] overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
@@ -672,7 +679,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
               Active TPA
             </span>
           </div>
-          <div className="my-1.5">
+          <div className="my-0.5">
             <div className="text-xs font-bold text-slate-900 dark:text-slate-100 font-mono truncate" title={mediclaimNo}>
               Policy: {mediclaimNo}
             </div>
@@ -690,13 +697,13 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
       {/* ========================================================================= */}
       {/* 4. Middle & Bottom: Unified Talent Dossier & Financial Analytics          */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
+      <div className="pane-grid dossier-grid grid grid-cols-12 gap-1.5 flex-1 min-h-0 min-w-0 overflow-hidden">
         {/* Left Column (col-span-4): Unified Executive Talent & Attendance Dossier */}
-        <div className="col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-y-auto custom-scrollbar border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="col-span-4 min-w-0 min-h-0 glass-panel rounded-xl p-2.5 flex flex-col gap-2 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xs">
           
           {/* Section 1: Verified Technical Competencies */}
-          <div className="flex flex-col gap-1.5 shrink-0">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
+          <div className="flex flex-col gap-1.5 min-h-0 flex-1 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0 min-w-0">
               <div className="flex items-center gap-1.5">
                 <Code className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Verified Skills & Technical Competencies</span>
@@ -707,7 +714,7 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
             </div>
 
             {/* Skill tags */}
-            <div className="flex flex-wrap gap-1 max-h-[85px] overflow-y-auto custom-scrollbar content-start">
+            <div className="flex flex-wrap gap-1 min-h-0 flex-1 overflow-y-auto custom-scrollbar content-start">
               {employee.skills.length > 0 ? (
                 employee.skills.map((s, idx) => (
                   <div
@@ -740,11 +747,13 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-between text-[9px] text-slate-400">
+            <div className="flex items-center justify-between text-[9px] text-slate-400 shrink-0 min-w-0">
               <span>Role Capability Alignment:</span>
               <span className="text-cyan-700 dark:text-cyan-400 font-bold font-mono">Grade {employee.job_level} · 100% Aligned</span>
             </div>
           </div>
+
+          <TrainingDetail trainings={employee.trainings} />
 
           {/* Section 2: Executive Performance & 9-Box Velocity */}
           <div className="py-2 border-t border-b border-slate-100 dark:border-slate-800 flex flex-col gap-1.5 shrink-0">
@@ -831,8 +840,8 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
         </div>
 
         {/* Right Column (col-span-8): Financial Trends Chart & Financial Details Pivot Table */}
-        <div className="col-span-8 flex flex-col gap-1.5 min-h-0">
-          <div className="glass-panel rounded-xl p-2.5 flex-1 flex flex-col justify-between overflow-hidden">
+        <div className="col-span-8 min-w-0 min-h-0 flex flex-col gap-1.5 h-full">
+          <div className="glass-panel rounded-xl p-2.5 flex-[1.4] min-h-0 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
               <div className="flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -841,7 +850,8 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
               <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/60 font-semibold">Multi-Year Progression</span>
             </div>
 
-            <div className="flex-1 min-h-0 pt-0.5">
+            <div className="pane-plot flex-1">
+              <div className="pane-plot-fill">
               {employee.finance_history.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={employee.finance_history} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
@@ -854,10 +864,10 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
                       itemStyle={{ color: 'var(--text)' }}
                     />
                     <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
-                    <Bar yAxisId="left" dataKey="Base_Salary" fill="#0284c7" name="Base Salary" radius={[3, 3, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Bonus" fill="#10b981" name="Bonus" radius={[3, 3, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="Perks" fill="#f59e0b" name="Perks" radius={[3, 3, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="Hike" stroke="#ec4899" strokeWidth={2} name="Hike %" />
+                    <Bar isAnimationActive={false} yAxisId="left" dataKey="Base_Salary" fill="#0284c7" name="Base Salary" radius={[3, 3, 0, 0]} />
+                    <Bar isAnimationActive={false} yAxisId="left" dataKey="Bonus" fill="#10b981" name="Bonus" radius={[3, 3, 0, 0]} />
+                    <Bar isAnimationActive={false} yAxisId="left" dataKey="Perks" fill="#f59e0b" name="Perks" radius={[3, 3, 0, 0]} />
+                    <Line isAnimationActive={false} yAxisId="right" type="monotone" dataKey="Hike" stroke="#ec4899" strokeWidth={2} name="Hike %" />
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
@@ -865,11 +875,12 @@ export const EmployeeDetailsDashboard: React.FC<EmployeeDetailsDashboardProps> =
                   No multi-year financial history available for this employee.
                 </div>
               )}
+              </div>
             </div>
           </div>
 
           {/* Financial Breakdown Table */}
-          <div className="glass-panel rounded-xl p-2 shrink-0 h-32 flex flex-col justify-between overflow-hidden">
+          <div className="glass-panel rounded-xl p-2 flex-[0.75] min-h-0 flex flex-col justify-between overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Financial Details Pivot Table</span>
               <ExportButton data={employee.finance_history} filename={`financial_history_${employee.employee_number}.csv`} />

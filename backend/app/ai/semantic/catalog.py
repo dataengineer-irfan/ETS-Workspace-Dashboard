@@ -60,6 +60,7 @@ FIELDS: Dict[str, FieldDef] = {
     "primary_skill": FieldDef("primary_skill", "Primary Skill", "e.primary_skill", "categorical", plural="primary skills"),
     "skill": FieldDef("skill", "Skill", "s.skill_name", "categorical", table="skills", plural="skills"),
     "leave_type": FieldDef("leave_type", "Leave Type", "l.leave_type", "categorical", table="leaves", plural="leave types"),
+    "module": FieldDef("module", "Module", "e.module", "categorical", plural="modules"),
     "year": FieldDef("year", "Year", "f.year", "categorical", table="finance", plural="years"),
     "is_promotion": FieldDef("is_promotion", "Is Promotion", "f.is_promotion", "categorical", table="finance", plural="promotions"),
     # numeric row-level fields (row thresholds / listings)
@@ -132,12 +133,12 @@ MEASURES: Dict[str, MeasureDef] = {
         needs=("leave_agg",),
         caveat="Leave records exist for only a subset of employees; employees without leave records count as 0 days."),
     "hike": MeasureDef(
-        "hike", "Salary Hike", None, ("AVG", "MIN", "MAX"), "AVG", "pct",
+        "hike", "Salary Hike", None, ("AVG", "MIN", "MAX", "MEDIAN"), "AVG", "pct",
         "Year-on-year hike percentage from authoritative (non-synthetic) finance history records.",
         table="finance",
         caveat="Only authoritative Excel-sourced finance history records are used; synthetic derived records are excluded."),
     "bonus": MeasureDef(
-        "bonus", "Bonus", None, ("AVG", "SUM", "MIN", "MAX"), "AVG", "INR",
+        "bonus", "Bonus", None, ("AVG", "SUM", "MIN", "MAX", "MEDIAN"), "AVG", "INR",
         "Bonus amount from authoritative (non-synthetic) finance history records.",
         table="finance",
         caveat="Only authoritative Excel-sourced finance history records are used; synthetic derived records are excluded."),
@@ -171,6 +172,7 @@ DIMENSION_NOUNS: Dict[str, List[str]] = {
     "primary_skill": ["primary skill", "primary skills"],
     "skill": ["skill", "skills", "technology", "technologies", "tech stack", "tech stacks", "competency", "competencies", "skill set", "skillset", "skill sets"],
     "leave_type": ["leave type", "leave types", "type of leave", "types of leave", "leave category", "leave categories"],
+    "module": ["module", "modules"],
     "year": ["year", "years", "financial year", "fiscal year"],
 }
 PLURAL_DIMENSION_FORMS = {
@@ -209,7 +211,10 @@ MEASURE_NOUNS: Dict[str, List[str]] = {
     "promotions": ["promotions", "promotion count", "number of promotions", "promotion"],
 }
 # measures that imply a SUM aggregation in their surface form
-SUM_IMPLYING_MEASURE_PHRASES = {"payroll", "salary cost", "payroll cost", "compensation cost", "cost"}
+SUM_IMPLYING_MEASURE_PHRASES = {
+    "payroll", "salary cost", "payroll cost", "compensation cost", "cost",
+    "leave days", "days of leave", "leave consumption", "leaves taken", "leave taken",
+}
 
 AGG_WORDS: Dict[str, str] = {
     "average": "AVG", "avg": "AVG", "mean": "AVG", "typical": "AVG", "avg.": "AVG", "per capita": "AVG", "per-employee": "AVG",
@@ -257,6 +262,12 @@ RELATIVE_AVG_PHRASES: Dict[str, str] = {
 
 COMPARE_CUES = ["compare", "compared", "comparing", "comparison", "versus", "vs", "vs.", "relative to", "differ", "differs",
                 "difference", "differences", "contrast", "against", "how does", "stack up", "gap between", "gap in", "gap"]
+
+# Relations already present in the employee master. Surface forms name the link,
+# not a skill or a department.
+RELATIONS: Dict[str, List[str]] = {
+    "manages": ["direct report", "direct reports", "reportee", "reportees"],
+}
 GAP_NOUNS = ["gap", "gaps", "difference", "spread", "disparity", "variance", "range", "delta"]
 OUTLIER_PHRASES = ["most unusual", "unusual", "stands out", "stand out", "stands out most", "outlier", "outliers", "anomalous",
                    "anomaly", "anomalies", "most different", "deviates", "deviate", "deviation", "atypical", "out of line"]
@@ -492,6 +503,7 @@ class SemanticCatalog:
         self.values["primary_skill"] = q("SELECT DISTINCT primary_skill FROM employees")
         self.values["skill"] = q("SELECT DISTINCT skill_name FROM skills")
         self.values["leave_type"] = q("SELECT DISTINCT leave_type FROM leaves")
+        self.values["module"] = q("SELECT DISTINCT module FROM employees")
         self.values["year"] = q("SELECT DISTINCT year FROM finance_history WHERE is_synthetic = 0")
         self.values["age_group"] = ["Under 25", "25-29", "30-34", "35-39", "40-44", "45-49", "50+"]
         cur = self.conn.cursor()
@@ -531,5 +543,6 @@ def salary_band_surface_forms(band: str) -> List[str]:
     if m:
         n = m.group(1)
         forms |= {f"{n}l+", f"{n} l+", f"{n}l plus", f"{n} lakh plus", f"{n} lakh+", f"{n}+ lakh", f"above {n}l", f"over {n}l",
+                  f"above {n} lakh", f"over {n} lakh", f"above {n} lakhs", f"over {n} lakhs",
                   f"{n}l and above", f"{n} lakh and above"}
     return sorted(forms)

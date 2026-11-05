@@ -8,6 +8,8 @@ from backend.app.routers import (
     salarywise,
     salarywise2,
     calendar_leave,
+    work_model,
+    ai_utilization,
     copilot,
     auth,
     dataset
@@ -99,6 +101,8 @@ app.include_router(techwise.router)
 app.include_router(salarywise.router)
 app.include_router(salarywise2.router)
 app.include_router(calendar_leave.router)
+app.include_router(work_model.router)
+app.include_router(ai_utilization.router)
 app.include_router(copilot.router)
 app.include_router(dataset.router)
 
@@ -118,13 +122,9 @@ def health_check():
     dependencies=[Depends(require_roles(["ADMIN", "HR_ANALYTICS"]))]
 )
 def reload_dataset():
-    from backend.app.data_loader import data_loader
-    data_loader.load_data()
-    return {
-        "status": "reloaded",
-        "total_employees": len(data_loader.df_employees),
-        "total_skills": len(data_loader.df_skills)
-    }
+    from backend.app.data_loader import reload_all
+    # Pandas plus the in-memory SQLite copy Genie reads, so a header Refresh cannot leave Genie stale.
+    return reload_all()
 
 if __name__ == "__main__":
     import uvicorn

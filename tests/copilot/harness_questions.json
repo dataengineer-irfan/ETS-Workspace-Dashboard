@@ -1,0 +1,2002 @@
+[
+  {
+    "topic": "location-headcount",
+    "question": "How many active people are based in Bangalore?"
+  },
+  {
+    "topic": "location-headcount",
+    "question": "What share of the roster sits in Bangalore?"
+  },
+  {
+    "topic": "location-grade",
+    "question": "Which job levels are most common among Bangalore staff?"
+  },
+  {
+    "topic": "location-department",
+    "question": "How is the Bangalore roster split across departments?"
+  },
+  {
+    "topic": "location-tenure",
+    "question": "What is the median ETS tenure for people in Bangalore?"
+  },
+  {
+    "topic": "location-attrition",
+    "question": "How many separated employees were last based in Bangalore?"
+  },
+  {
+    "topic": "location-pay",
+    "question": "What is the median annual CTC for the Bangalore workforce?"
+  },
+  {
+    "topic": "location-leave",
+    "question": "Which leave type accounts for the most days in Bangalore?"
+  },
+  {
+    "topic": "location-skills",
+    "question": "What primary skills show up most often in Bangalore?"
+  },
+  {
+    "topic": "location-gender",
+    "question": "What is the gender mix of the Bangalore workforce?"
+  },
+  {
+    "topic": "location-manager",
+    "question": "How many distinct managers have reports sitting in Bangalore?"
+  },
+  {
+    "topic": "location-project",
+    "question": "Which delivery account has the most people in Bangalore?"
+  },
+  {
+    "topic": "location-headcount",
+    "question": "How many active people are based in Chennai?"
+  },
+  {
+    "topic": "location-headcount",
+    "question": "What share of the roster sits in Chennai?"
+  },
+  {
+    "topic": "location-grade",
+    "question": "Which job levels are most common among Chennai staff?"
+  },
+  {
+    "topic": "location-department",
+    "question": "How is the Chennai roster split across departments?"
+  },
+  {
+    "topic": "location-tenure",
+    "question": "What is the median ETS tenure for people in Chennai?"
+  },
+  {
+    "topic": "location-attrition",
+    "question": "How many separated employees were last based in Chennai?"
+  },
+  {
+    "topic": "location-pay",
+    "question": "What is the median annual CTC for the Chennai workforce?"
+  },
+  {
+    "topic": "location-leave",
+    "question": "Which leave type accounts for the most days in Chennai?"
+  },
+  {
+    "topic": "location-skills",
+    "question": "What primary skills show up most often in Chennai?"
+  },
+  {
+    "topic": "location-gender",
+    "question": "What is the gender mix of the Chennai workforce?"
+  },
+  {
+    "topic": "location-manager",
+    "question": "How many distinct managers have reports sitting in Chennai?"
+  },
+  {
+    "topic": "location-project",
+    "question": "Which delivery account has the most people in Chennai?"
+  },
+  {
+    "topic": "location-headcount",
+    "question": "How many active people are based in Hyderabad?"
+  },
+  {
+    "topic": "location-headcount",
+    "question": "What share of the roster sits in Hyderabad?"
+  },
+  {
+    "topic": "location-grade",
+    "question": "Which job levels are most common among Hyderabad staff?"
+  },
+  {
+    "topic": "location-department",
+    "question": "How is the Hyderabad roster split across departments?"
+  },
+  {
+    "topic": "location-tenure",
+    "question": "What is the median ETS tenure for people in Hyderabad?"
+  },
+  {
+    "topic": "location-attrition",
+    "question": "How many separated employees were last based in Hyderabad?"
+  },
+  {
+    "topic": "location-pay",
+    "question": "What is the median annual CTC for the Hyderabad workforce?"
+  },
+  {
+    "topic": "location-leave",
+    "question": "Which leave type accounts for the most days in Hyderabad?"
+  },
+  {
+    "topic": "location-skills",
+    "question": "What primary skills show up most often in Hyderabad?"
+  },
+  {
+    "topic": "location-gender",
+    "question": "What is the gender mix of the Hyderabad workforce?"
+  },
+  {
+    "topic": "location-manager",
+    "question": "How many distinct managers have reports sitting in Hyderabad?"
+  },
+  {
+    "topic": "location-project",
+    "question": "Which delivery account has the most people in Hyderabad?"
+  },
+  {
+    "topic": "location-headcount",
+    "question": "How many active people are based in Pune?"
+  },
+  {
+    "topic": "location-headcount",
+    "question": "What share of the roster sits in Pune?"
+  },
+  {
+    "topic": "location-grade",
+    "question": "Which job levels are most common among Pune staff?"
+  },
+  {
+    "topic": "location-department",
+    "question": "How is the Pune roster split across departments?"
+  },
+  {
+    "topic": "location-tenure",
+    "question": "What is the median ETS tenure for people in Pune?"
+  },
+  {
+    "topic": "location-attrition",
+    "question": "How many separated employees were last based in Pune?"
+  },
+  {
+    "topic": "location-pay",
+    "question": "What is the median annual CTC for the Pune workforce?"
+  },
+  {
+    "topic": "location-leave",
+    "question": "Which leave type accounts for the most days in Pune?"
+  },
+  {
+    "topic": "location-skills",
+    "question": "What primary skills show up most often in Pune?"
+  },
+  {
+    "topic": "location-gender",
+    "question": "What is the gender mix of the Pune workforce?"
+  },
+  {
+    "topic": "location-manager",
+    "question": "How many distinct managers have reports sitting in Pune?"
+  },
+  {
+    "topic": "location-project",
+    "question": "Which delivery account has the most people in Pune?"
+  },
+  {
+    "topic": "department-headcount",
+    "question": "How large is the Cognos department right now?"
+  },
+  {
+    "topic": "department-location",
+    "question": "Where is the Cognos team concentrated by city?"
+  },
+  {
+    "topic": "department-grade",
+    "question": "What does the grade pyramid look like inside Cognos?"
+  },
+  {
+    "topic": "department-pay",
+    "question": "How does median CTC in Cognos compare with the company median?"
+  },
+  {
+    "topic": "department-tenure",
+    "question": "Who in Cognos has the longest ETS tenure, described by grade and city rather than by number?"
+  },
+  {
+    "topic": "department-leave",
+    "question": "How many leave days did Cognos consume in the latest leave year?"
+  },
+  {
+    "topic": "department-skills",
+    "question": "Which skills are most repeated inside Cognos?"
+  },
+  {
+    "topic": "department-attrition",
+    "question": "What share of Cognos is marked separated?"
+  },
+  {
+    "topic": "department-project",
+    "question": "Which account does Cognos staff mostly bill to?"
+  },
+  {
+    "topic": "department-manager",
+    "question": "How many managers sit over the Cognos roster?"
+  },
+  {
+    "topic": "department-promotion",
+    "question": "How many Cognos employees were promoted in the latest compensation year?"
+  },
+  {
+    "topic": "department-headcount",
+    "question": "How large is the Core department right now?"
+  },
+  {
+    "topic": "department-location",
+    "question": "Where is the Core team concentrated by city?"
+  },
+  {
+    "topic": "department-grade",
+    "question": "What does the grade pyramid look like inside Core?"
+  },
+  {
+    "topic": "department-pay",
+    "question": "How does median CTC in Core compare with the company median?"
+  },
+  {
+    "topic": "department-tenure",
+    "question": "Who in Core has the longest ETS tenure, described by grade and city rather than by number?"
+  },
+  {
+    "topic": "department-leave",
+    "question": "How many leave days did Core consume in the latest leave year?"
+  },
+  {
+    "topic": "department-skills",
+    "question": "Which skills are most repeated inside Core?"
+  },
+  {
+    "topic": "department-attrition",
+    "question": "What share of Core is marked separated?"
+  },
+  {
+    "topic": "department-project",
+    "question": "Which account does Core staff mostly bill to?"
+  },
+  {
+    "topic": "department-manager",
+    "question": "How many managers sit over the Core roster?"
+  },
+  {
+    "topic": "department-promotion",
+    "question": "How many Core employees were promoted in the latest compensation year?"
+  },
+  {
+    "topic": "department-headcount",
+    "question": "How large is the IT department right now?"
+  },
+  {
+    "topic": "department-location",
+    "question": "Where is the IT team concentrated by city?"
+  },
+  {
+    "topic": "department-grade",
+    "question": "What does the grade pyramid look like inside IT?"
+  },
+  {
+    "topic": "department-pay",
+    "question": "How does median CTC in IT compare with the company median?"
+  },
+  {
+    "topic": "department-tenure",
+    "question": "Who in IT has the longest ETS tenure, described by grade and city rather than by number?"
+  },
+  {
+    "topic": "department-leave",
+    "question": "How many leave days did IT consume in the latest leave year?"
+  },
+  {
+    "topic": "department-skills",
+    "question": "Which skills are most repeated inside IT?"
+  },
+  {
+    "topic": "department-attrition",
+    "question": "What share of IT is marked separated?"
+  },
+  {
+    "topic": "department-project",
+    "question": "Which account does IT staff mostly bill to?"
+  },
+  {
+    "topic": "department-manager",
+    "question": "How many managers sit over the IT roster?"
+  },
+  {
+    "topic": "department-promotion",
+    "question": "How many IT employees were promoted in the latest compensation year?"
+  },
+  {
+    "topic": "department-headcount",
+    "question": "How large is the Informatica department right now?"
+  },
+  {
+    "topic": "department-location",
+    "question": "Where is the Informatica team concentrated by city?"
+  },
+  {
+    "topic": "department-grade",
+    "question": "What does the grade pyramid look like inside Informatica?"
+  },
+  {
+    "topic": "department-pay",
+    "question": "How does median CTC in Informatica compare with the company median?"
+  },
+  {
+    "topic": "department-tenure",
+    "question": "Who in Informatica has the longest ETS tenure, described by grade and city rather than by number?"
+  },
+  {
+    "topic": "department-leave",
+    "question": "How many leave days did Informatica consume in the latest leave year?"
+  },
+  {
+    "topic": "department-skills",
+    "question": "Which skills are most repeated inside Informatica?"
+  },
+  {
+    "topic": "department-attrition",
+    "question": "What share of Informatica is marked separated?"
+  },
+  {
+    "topic": "department-project",
+    "question": "Which account does Informatica staff mostly bill to?"
+  },
+  {
+    "topic": "department-manager",
+    "question": "How many managers sit over the Informatica roster?"
+  },
+  {
+    "topic": "department-promotion",
+    "question": "How many Informatica employees were promoted in the latest compensation year?"
+  },
+  {
+    "topic": "department-headcount",
+    "question": "How large is the Infra department right now?"
+  },
+  {
+    "topic": "department-location",
+    "question": "Where is the Infra team concentrated by city?"
+  },
+  {
+    "topic": "department-grade",
+    "question": "What does the grade pyramid look like inside Infra?"
+  },
+  {
+    "topic": "department-pay",
+    "question": "How does median CTC in Infra compare with the company median?"
+  },
+  {
+    "topic": "department-tenure",
+    "question": "Who in Infra has the longest ETS tenure, described by grade and city rather than by number?"
+  },
+  {
+    "topic": "department-leave",
+    "question": "How many leave days did Infra consume in the latest leave year?"
+  },
+  {
+    "topic": "department-skills",
+    "question": "Which skills are most repeated inside Infra?"
+  },
+  {
+    "topic": "department-attrition",
+    "question": "What share of Infra is marked separated?"
+  },
+  {
+    "topic": "department-project",
+    "question": "Which account does Infra staff mostly bill to?"
+  },
+  {
+    "topic": "department-manager",
+    "question": "How many managers sit over the Infra roster?"
+  },
+  {
+    "topic": "department-promotion",
+    "question": "How many Infra employees were promoted in the latest compensation year?"
+  },
+  {
+    "topic": "department-headcount",
+    "question": "How large is the QA department right now?"
+  },
+  {
+    "topic": "department-location",
+    "question": "Where is the QA team concentrated by city?"
+  },
+  {
+    "topic": "department-grade",
+    "question": "What does the grade pyramid look like inside QA?"
+  },
+  {
+    "topic": "department-pay",
+    "question": "How does median CTC in QA compare with the company median?"
+  },
+  {
+    "topic": "department-tenure",
+    "question": "Who in QA has the longest ETS tenure, described by grade and city rather than by number?"
+  },
+  {
+    "topic": "department-leave",
+    "question": "How many leave days did QA consume in the latest leave year?"
+  },
+  {
+    "topic": "department-skills",
+    "question": "Which skills are most repeated inside QA?"
+  },
+  {
+    "topic": "department-attrition",
+    "question": "What share of QA is marked separated?"
+  },
+  {
+    "topic": "department-project",
+    "question": "Which account does QA staff mostly bill to?"
+  },
+  {
+    "topic": "department-manager",
+    "question": "How many managers sit over the QA roster?"
+  },
+  {
+    "topic": "department-promotion",
+    "question": "How many QA employees were promoted in the latest compensation year?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E1?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E1?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E1?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E1 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E1 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E1 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E1?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E1 people have at least one direct report?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E2?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E2?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E2?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E2 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E2 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E2 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E2?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E2 people have at least one direct report?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E3?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E3?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E3?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E3 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E3 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E3 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E3?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E3 people have at least one direct report?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E4?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E4?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E4?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E4 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E4 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E4 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E4?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E4 people have at least one direct report?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E5?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E5?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E5?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E5 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E5 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E5 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E5?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E5 people have at least one direct report?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E6?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E6?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E6?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E6 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E6 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E6 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E6?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E6 people have at least one direct report?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E7?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E7?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E7?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E7 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E7 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E7 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E7?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E7 people have at least one direct report?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E8?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E8?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E8?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E8 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E8 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E8 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E8?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E8 people have at least one direct report?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E9?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E9?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E9?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E9 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E9 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E9 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E9?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E9 people have at least one direct report?"
+  },
+  {
+    "topic": "grade-headcount",
+    "question": "How many people are currently at grade E10?"
+  },
+  {
+    "topic": "grade-pay",
+    "question": "What salary band contains most of grade E10?"
+  },
+  {
+    "topic": "grade-tenure",
+    "question": "What is the typical ETS tenure at grade E10?"
+  },
+  {
+    "topic": "grade-location",
+    "question": "Which city holds the most grade E10 employees?"
+  },
+  {
+    "topic": "grade-department",
+    "question": "Which department employs the most grade E10 staff?"
+  },
+  {
+    "topic": "grade-leave",
+    "question": "Do grade E10 employees take more Privilege leave than Casual or Sick leave?"
+  },
+  {
+    "topic": "grade-hike",
+    "question": "What was the median hike percent recorded for grade E10?"
+  },
+  {
+    "topic": "grade-span",
+    "question": "How many grade E10 people have at least one direct report?"
+  },
+  {
+    "topic": "project-headcount",
+    "question": "How many employees are tagged to the NH account?"
+  },
+  {
+    "topic": "project-department",
+    "question": "Which departments supply the NH account?"
+  },
+  {
+    "topic": "project-grade",
+    "question": "What grade mix is staffed on NH?"
+  },
+  {
+    "topic": "project-location",
+    "question": "Which city contributes the most people to NH?"
+  },
+  {
+    "topic": "project-leave",
+    "question": "How many leave days were logged by people on NH?"
+  },
+  {
+    "topic": "project-pay",
+    "question": "Is median CTC on NH above or below the company median?"
+  },
+  {
+    "topic": "project-skills",
+    "question": "What skills are most common on the NH roster?"
+  },
+  {
+    "topic": "project-manager",
+    "question": "Which managers cover the largest slices of NH?"
+  },
+  {
+    "topic": "project-headcount",
+    "question": "How many employees are tagged to the ND account?"
+  },
+  {
+    "topic": "project-department",
+    "question": "Which departments supply the ND account?"
+  },
+  {
+    "topic": "project-grade",
+    "question": "What grade mix is staffed on ND?"
+  },
+  {
+    "topic": "project-location",
+    "question": "Which city contributes the most people to ND?"
+  },
+  {
+    "topic": "project-leave",
+    "question": "How many leave days were logged by people on ND?"
+  },
+  {
+    "topic": "project-pay",
+    "question": "Is median CTC on ND above or below the company median?"
+  },
+  {
+    "topic": "project-skills",
+    "question": "What skills are most common on the ND roster?"
+  },
+  {
+    "topic": "project-manager",
+    "question": "Which managers cover the largest slices of ND?"
+  },
+  {
+    "topic": "project-headcount",
+    "question": "How many employees are tagged to the AK account?"
+  },
+  {
+    "topic": "project-department",
+    "question": "Which departments supply the AK account?"
+  },
+  {
+    "topic": "project-grade",
+    "question": "What grade mix is staffed on AK?"
+  },
+  {
+    "topic": "project-location",
+    "question": "Which city contributes the most people to AK?"
+  },
+  {
+    "topic": "project-leave",
+    "question": "How many leave days were logged by people on AK?"
+  },
+  {
+    "topic": "project-pay",
+    "question": "Is median CTC on AK above or below the company median?"
+  },
+  {
+    "topic": "project-skills",
+    "question": "What skills are most common on the AK roster?"
+  },
+  {
+    "topic": "project-manager",
+    "question": "Which managers cover the largest slices of AK?"
+  },
+  {
+    "topic": "project-headcount",
+    "question": "How many employees are tagged to the NH Projects account?"
+  },
+  {
+    "topic": "project-department",
+    "question": "Which departments supply the NH Projects account?"
+  },
+  {
+    "topic": "project-grade",
+    "question": "What grade mix is staffed on NH Projects?"
+  },
+  {
+    "topic": "project-location",
+    "question": "Which city contributes the most people to NH Projects?"
+  },
+  {
+    "topic": "project-leave",
+    "question": "How many leave days were logged by people on NH Projects?"
+  },
+  {
+    "topic": "project-pay",
+    "question": "Is median CTC on NH Projects above or below the company median?"
+  },
+  {
+    "topic": "project-skills",
+    "question": "What skills are most common on the NH Projects roster?"
+  },
+  {
+    "topic": "project-manager",
+    "question": "Which managers cover the largest slices of NH Projects?"
+  },
+  {
+    "topic": "module-headcount",
+    "question": "How many people are assigned to the Claims module?"
+  },
+  {
+    "topic": "module-department",
+    "question": "Which department dominates the Claims module?"
+  },
+  {
+    "topic": "module-grade",
+    "question": "What grades are staffed on the Claims module?"
+  },
+  {
+    "topic": "module-location",
+    "question": "Which city supplies the Claims module?"
+  },
+  {
+    "topic": "module-leave",
+    "question": "How much leave did the Claims module consume?"
+  },
+  {
+    "topic": "module-skills",
+    "question": "Which skills are concentrated on the Claims module?"
+  },
+  {
+    "topic": "module-headcount",
+    "question": "How many people are assigned to the Member module?"
+  },
+  {
+    "topic": "module-department",
+    "question": "Which department dominates the Member module?"
+  },
+  {
+    "topic": "module-grade",
+    "question": "What grades are staffed on the Member module?"
+  },
+  {
+    "topic": "module-location",
+    "question": "Which city supplies the Member module?"
+  },
+  {
+    "topic": "module-leave",
+    "question": "How much leave did the Member module consume?"
+  },
+  {
+    "topic": "module-skills",
+    "question": "Which skills are concentrated on the Member module?"
+  },
+  {
+    "topic": "module-headcount",
+    "question": "How many people are assigned to the Provider module?"
+  },
+  {
+    "topic": "module-department",
+    "question": "Which department dominates the Provider module?"
+  },
+  {
+    "topic": "module-grade",
+    "question": "What grades are staffed on the Provider module?"
+  },
+  {
+    "topic": "module-location",
+    "question": "Which city supplies the Provider module?"
+  },
+  {
+    "topic": "module-leave",
+    "question": "How much leave did the Provider module consume?"
+  },
+  {
+    "topic": "module-skills",
+    "question": "Which skills are concentrated on the Provider module?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Java as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Java?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Java practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Java?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Java?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Java held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Informatica PowerCenter as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Informatica PowerCenter?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Informatica PowerCenter practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Informatica PowerCenter?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Informatica PowerCenter?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Informatica PowerCenter held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Cognos Analytics as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Cognos Analytics?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Cognos Analytics practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Cognos Analytics?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Cognos Analytics?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Cognos Analytics held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Selenium as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Selenium?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Selenium practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Selenium?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Selenium?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Selenium held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list SQL Server as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in SQL Server?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most SQL Server practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for SQL Server?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries SQL Server?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is SQL Server held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Tableau as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Tableau?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Tableau practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Tableau?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Tableau?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Tableau held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list AWS as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in AWS?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most AWS practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for AWS?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries AWS?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is AWS held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list React as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in React?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most React practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for React?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries React?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is React held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Oracle as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Oracle?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Oracle practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Oracle?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Oracle?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Oracle held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Spark as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Spark?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Spark practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Spark?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Spark?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Spark held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Docker as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Docker?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Docker practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Docker?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Docker?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Docker held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Kubernetes as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Kubernetes?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Kubernetes practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Kubernetes?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Kubernetes?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Kubernetes held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Postman as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Postman?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Postman practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Postman?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Postman?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Postman held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list Python scripting as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in Python scripting?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most Python scripting practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for Python scripting?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries Python scripting?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is Python scripting held by only a handful of people?"
+  },
+  {
+    "topic": "skill-coverage",
+    "question": "How many employees list QA Automation as a skill?"
+  },
+  {
+    "topic": "skill-depth",
+    "question": "How many people have an advanced level in QA Automation?"
+  },
+  {
+    "topic": "skill-department",
+    "question": "Which department holds the most QA Automation practitioners?"
+  },
+  {
+    "topic": "skill-location",
+    "question": "Which city has the deepest bench for QA Automation?"
+  },
+  {
+    "topic": "skill-grade",
+    "question": "What grade range usually carries QA Automation?"
+  },
+  {
+    "topic": "skill-single",
+    "question": "Is QA Automation held by only a handful of people?"
+  },
+  {
+    "topic": "leave-volume",
+    "question": "How many days of Privilege leave were recorded?"
+  },
+  {
+    "topic": "leave-people",
+    "question": "How many distinct employees used Privilege leave?"
+  },
+  {
+    "topic": "leave-department",
+    "question": "Which department logged the most Privilege days?"
+  },
+  {
+    "topic": "leave-location",
+    "question": "Which city logged the most Privilege days?"
+  },
+  {
+    "topic": "leave-grade",
+    "question": "Which grade used the most Privilege leave?"
+  },
+  {
+    "topic": "leave-duration",
+    "question": "What is the typical duration of a Privilege spell?"
+  },
+  {
+    "topic": "leave-volume",
+    "question": "How many days of Casual or Sick leave were recorded?"
+  },
+  {
+    "topic": "leave-people",
+    "question": "How many distinct employees used Casual or Sick leave?"
+  },
+  {
+    "topic": "leave-department",
+    "question": "Which department logged the most Casual or Sick days?"
+  },
+  {
+    "topic": "leave-location",
+    "question": "Which city logged the most Casual or Sick days?"
+  },
+  {
+    "topic": "leave-grade",
+    "question": "Which grade used the most Casual or Sick leave?"
+  },
+  {
+    "topic": "leave-duration",
+    "question": "What is the typical duration of a Casual or Sick spell?"
+  },
+  {
+    "topic": "leave-volume",
+    "question": "How many days of Loss of Pay leave were recorded?"
+  },
+  {
+    "topic": "leave-people",
+    "question": "How many distinct employees used Loss of Pay leave?"
+  },
+  {
+    "topic": "leave-department",
+    "question": "Which department logged the most Loss of Pay days?"
+  },
+  {
+    "topic": "leave-location",
+    "question": "Which city logged the most Loss of Pay days?"
+  },
+  {
+    "topic": "leave-grade",
+    "question": "Which grade used the most Loss of Pay leave?"
+  },
+  {
+    "topic": "leave-duration",
+    "question": "What is the typical duration of a Loss of Pay spell?"
+  },
+  {
+    "topic": "leave-volume",
+    "question": "How many days of Maternity leave were recorded?"
+  },
+  {
+    "topic": "leave-people",
+    "question": "How many distinct employees used Maternity leave?"
+  },
+  {
+    "topic": "leave-department",
+    "question": "Which department logged the most Maternity days?"
+  },
+  {
+    "topic": "leave-location",
+    "question": "Which city logged the most Maternity days?"
+  },
+  {
+    "topic": "leave-grade",
+    "question": "Which grade used the most Maternity leave?"
+  },
+  {
+    "topic": "leave-duration",
+    "question": "What is the typical duration of a Maternity spell?"
+  },
+  {
+    "topic": "leave-volume",
+    "question": "How many days of Paternity leave were recorded?"
+  },
+  {
+    "topic": "leave-people",
+    "question": "How many distinct employees used Paternity leave?"
+  },
+  {
+    "topic": "leave-department",
+    "question": "Which department logged the most Paternity days?"
+  },
+  {
+    "topic": "leave-location",
+    "question": "Which city logged the most Paternity days?"
+  },
+  {
+    "topic": "leave-grade",
+    "question": "Which grade used the most Paternity leave?"
+  },
+  {
+    "topic": "leave-duration",
+    "question": "What is the typical duration of a Paternity spell?"
+  },
+  {
+    "topic": "leave-volume",
+    "question": "How many days of Bereavement leave were recorded?"
+  },
+  {
+    "topic": "leave-people",
+    "question": "How many distinct employees used Bereavement leave?"
+  },
+  {
+    "topic": "leave-department",
+    "question": "Which department logged the most Bereavement days?"
+  },
+  {
+    "topic": "leave-location",
+    "question": "Which city logged the most Bereavement days?"
+  },
+  {
+    "topic": "leave-grade",
+    "question": "Which grade used the most Bereavement leave?"
+  },
+  {
+    "topic": "leave-duration",
+    "question": "What is the typical duration of a Bereavement spell?"
+  },
+  {
+    "topic": "pay-band",
+    "question": "How many employees fall in the under 5 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-location",
+    "question": "Which city has the most people in the under 5 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-department",
+    "question": "Which department is over-represented in the under 5 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-grade",
+    "question": "Which grades dominate the under 5 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band",
+    "question": "How many employees fall in the 5 to 10 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-location",
+    "question": "Which city has the most people in the 5 to 10 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-department",
+    "question": "Which department is over-represented in the 5 to 10 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-grade",
+    "question": "Which grades dominate the 5 to 10 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band",
+    "question": "How many employees fall in the 10 to 15 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-location",
+    "question": "Which city has the most people in the 10 to 15 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-department",
+    "question": "Which department is over-represented in the 10 to 15 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-grade",
+    "question": "Which grades dominate the 10 to 15 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band",
+    "question": "How many employees fall in the 15 to 20 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-location",
+    "question": "Which city has the most people in the 15 to 20 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-department",
+    "question": "Which department is over-represented in the 15 to 20 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-grade",
+    "question": "Which grades dominate the 15 to 20 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band",
+    "question": "How many employees fall in the above 20 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-location",
+    "question": "Which city has the most people in the above 20 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-department",
+    "question": "Which department is over-represented in the above 20 lakh CTC band?"
+  },
+  {
+    "topic": "pay-band-grade",
+    "question": "Which grades dominate the above 20 lakh CTC band?"
+  },
+  {
+    "topic": "compare-location",
+    "question": "Does Bangalore or Chennai have the larger active roster?"
+  },
+  {
+    "topic": "compare-location-pay",
+    "question": "Is median CTC higher in Bangalore or in Chennai?"
+  },
+  {
+    "topic": "compare-location-tenure",
+    "question": "Which of Bangalore and Chennai has the longer median ETS tenure?"
+  },
+  {
+    "topic": "compare-location-leave",
+    "question": "Which of Bangalore and Chennai logged more leave days?"
+  },
+  {
+    "topic": "compare-location",
+    "question": "Does Hyderabad or Pune have the larger active roster?"
+  },
+  {
+    "topic": "compare-location-pay",
+    "question": "Is median CTC higher in Hyderabad or in Pune?"
+  },
+  {
+    "topic": "compare-location-tenure",
+    "question": "Which of Hyderabad and Pune has the longer median ETS tenure?"
+  },
+  {
+    "topic": "compare-location-leave",
+    "question": "Which of Hyderabad and Pune logged more leave days?"
+  },
+  {
+    "topic": "compare-location",
+    "question": "Does Bangalore or Hyderabad have the larger active roster?"
+  },
+  {
+    "topic": "compare-location-pay",
+    "question": "Is median CTC higher in Bangalore or in Hyderabad?"
+  },
+  {
+    "topic": "compare-location-tenure",
+    "question": "Which of Bangalore and Hyderabad has the longer median ETS tenure?"
+  },
+  {
+    "topic": "compare-location-leave",
+    "question": "Which of Bangalore and Hyderabad logged more leave days?"
+  },
+  {
+    "topic": "compare-location",
+    "question": "Does Chennai or Pune have the larger active roster?"
+  },
+  {
+    "topic": "compare-location-pay",
+    "question": "Is median CTC higher in Chennai or in Pune?"
+  },
+  {
+    "topic": "compare-location-tenure",
+    "question": "Which of Chennai and Pune has the longer median ETS tenure?"
+  },
+  {
+    "topic": "compare-location-leave",
+    "question": "Which of Chennai and Pune logged more leave days?"
+  },
+  {
+    "topic": "compare-department",
+    "question": "Is QA or IT the larger department?"
+  },
+  {
+    "topic": "compare-department-pay",
+    "question": "Which pays more at the median, QA or IT?"
+  },
+  {
+    "topic": "compare-department-leave",
+    "question": "Did QA or IT consume more leave days?"
+  },
+  {
+    "topic": "compare-department-attrition",
+    "question": "Which of QA and IT has the higher separated share?"
+  },
+  {
+    "topic": "compare-department",
+    "question": "Is Cognos or Informatica the larger department?"
+  },
+  {
+    "topic": "compare-department-pay",
+    "question": "Which pays more at the median, Cognos or Informatica?"
+  },
+  {
+    "topic": "compare-department-leave",
+    "question": "Did Cognos or Informatica consume more leave days?"
+  },
+  {
+    "topic": "compare-department-attrition",
+    "question": "Which of Cognos and Informatica has the higher separated share?"
+  },
+  {
+    "topic": "compare-department",
+    "question": "Is Core or Infra the larger department?"
+  },
+  {
+    "topic": "compare-department-pay",
+    "question": "Which pays more at the median, Core or Infra?"
+  },
+  {
+    "topic": "compare-department-leave",
+    "question": "Did Core or Infra consume more leave days?"
+  },
+  {
+    "topic": "compare-department-attrition",
+    "question": "Which of Core and Infra has the higher separated share?"
+  },
+  {
+    "topic": "compare-department",
+    "question": "Is QA or Cognos the larger department?"
+  },
+  {
+    "topic": "compare-department-pay",
+    "question": "Which pays more at the median, QA or Cognos?"
+  },
+  {
+    "topic": "compare-department-leave",
+    "question": "Did QA or Cognos consume more leave days?"
+  },
+  {
+    "topic": "compare-department-attrition",
+    "question": "Which of QA and Cognos has the higher separated share?"
+  },
+  {
+    "topic": "compare-grade",
+    "question": "How many more people are at E1 than at E2?"
+  },
+  {
+    "topic": "compare-grade-pay",
+    "question": "How wide is the median CTC gap between E1 and E2?"
+  },
+  {
+    "topic": "compare-grade-tenure",
+    "question": "Is median tenure longer at E1 or at E2?"
+  },
+  {
+    "topic": "compare-grade",
+    "question": "How many more people are at E3 than at E5?"
+  },
+  {
+    "topic": "compare-grade-pay",
+    "question": "How wide is the median CTC gap between E3 and E5?"
+  },
+  {
+    "topic": "compare-grade-tenure",
+    "question": "Is median tenure longer at E3 or at E5?"
+  },
+  {
+    "topic": "compare-grade",
+    "question": "How many more people are at E4 than at E7?"
+  },
+  {
+    "topic": "compare-grade-pay",
+    "question": "How wide is the median CTC gap between E4 and E7?"
+  },
+  {
+    "topic": "compare-grade-tenure",
+    "question": "Is median tenure longer at E4 or at E7?"
+  },
+  {
+    "topic": "compare-grade",
+    "question": "How many more people are at E6 than at E8?"
+  },
+  {
+    "topic": "compare-grade-pay",
+    "question": "How wide is the median CTC gap between E6 and E8?"
+  },
+  {
+    "topic": "compare-grade-tenure",
+    "question": "Is median tenure longer at E6 or at E8?"
+  },
+  {
+    "topic": "compare-grade",
+    "question": "How many more people are at E8 than at E10?"
+  },
+  {
+    "topic": "compare-grade-pay",
+    "question": "How wide is the median CTC gap between E8 and E10?"
+  },
+  {
+    "topic": "compare-grade-tenure",
+    "question": "Is median tenure longer at E8 or at E10?"
+  },
+  {
+    "topic": "tenure-band",
+    "question": "How many people have less than two years of ETS tenure?"
+  },
+  {
+    "topic": "tenure-band",
+    "question": "How many people have between two and five years of ETS tenure?"
+  },
+  {
+    "topic": "tenure-band",
+    "question": "How many people have more than eight years of ETS tenure?"
+  },
+  {
+    "topic": "tenure-band",
+    "question": "What share of the roster joined within the last twelve months?"
+  },
+  {
+    "topic": "age-band",
+    "question": "How many employees are under 30?"
+  },
+  {
+    "topic": "age-band",
+    "question": "How many employees are between 30 and 40?"
+  },
+  {
+    "topic": "age-band",
+    "question": "How many employees are over 45?"
+  },
+  {
+    "topic": "age-band",
+    "question": "What is the median age by department?"
+  },
+  {
+    "topic": "status",
+    "question": "How many employees are currently active?"
+  },
+  {
+    "topic": "status",
+    "question": "How many employees are marked separated?"
+  },
+  {
+    "topic": "status",
+    "question": "What is the active-to-separated ratio?"
+  },
+  {
+    "topic": "status",
+    "question": "How many separated people left from QA?"
+  },
+  {
+    "topic": "gender",
+    "question": "What is the company-wide gender split?"
+  },
+  {
+    "topic": "gender",
+    "question": "Which department has the most even gender split?"
+  },
+  {
+    "topic": "gender",
+    "question": "Which city has the highest share of women on the roster?"
+  },
+  {
+    "topic": "promotion",
+    "question": "How many promotions were recorded in the latest compensation year?"
+  },
+  {
+    "topic": "promotion",
+    "question": "Which department recorded the most promotions?"
+  },
+  {
+    "topic": "promotion",
+    "question": "Which grade received the most promotions?"
+  },
+  {
+    "topic": "hike",
+    "question": "What is the median hike percent across the latest compensation year?"
+  },
+  {
+    "topic": "hike",
+    "question": "Which department saw the strongest median hike?"
+  },
+  {
+    "topic": "hike",
+    "question": "Did people who were promoted also receive a higher hike than people who were not?"
+  },
+  {
+    "topic": "rehire",
+    "question": "How many employees are flagged as rehires?"
+  },
+  {
+    "topic": "rehire",
+    "question": "Which department has the most rehires?"
+  },
+  {
+    "topic": "span",
+    "question": "What is the median number of direct reports per manager?"
+  },
+  {
+    "topic": "span",
+    "question": "How many managers have more than fifteen direct reports?"
+  },
+  {
+    "topic": "span",
+    "question": "How many people have no manager recorded?"
+  },
+  {
+    "topic": "primary-skill",
+    "question": "How many distinct primary skills are in use?"
+  },
+  {
+    "topic": "primary-skill",
+    "question": "Which primary skill is tied to the highest median CTC?"
+  },
+  {
+    "topic": "primary-skill",
+    "question": "Which primary skill is carried by the fewest people?"
+  },
+  {
+    "topic": "bonus",
+    "question": "What share of the latest CTC is bonus rather than base, at the median?"
+  },
+  {
+    "topic": "bonus",
+    "question": "Which grade has the highest median bonus?"
+  },
+  {
+    "topic": "perks",
+    "question": "Which department has the highest median perks amount?"
+  },
+  {
+    "topic": "ctc-trend",
+    "question": "Did company median CTC rise or fall between the two latest compensation years?"
+  },
+  {
+    "topic": "ctc-trend",
+    "question": "Which grade showed the steepest CTC rise year over year?"
+  },
+  {
+    "topic": "leave-season",
+    "question": "Which month had the heaviest leave-day total?"
+  },
+  {
+    "topic": "leave-season",
+    "question": "Which month had the lightest leave-day total?"
+  },
+  {
+    "topic": "leave-season",
+    "question": "Was leave heavier in the first half of the leave year or the second half?"
+  },
+  {
+    "topic": "leave-overlap",
+    "question": "On a typical January day, how many people were on leave at once?"
+  },
+  {
+    "topic": "leave-long",
+    "question": "How many leave spells lasted longer than ten days?"
+  },
+  {
+    "topic": "leave-lop",
+    "question": "What share of all leave days was Loss of Pay?"
+  },
+  {
+    "topic": "bench-risk",
+    "question": "Which skill is held by only one or two people?"
+  },
+  {
+    "topic": "bench-risk",
+    "question": "Are there departments with no one skilled in SQL Server?"
+  },
+  {
+    "topic": "delivery-mix",
+    "question": "What fraction of headcount is on NH versus ND versus AK?"
+  },
+  {
+    "topic": "delivery-mix",
+    "question": "Does NH Projects sit mostly in one city?"
+  },
+  {
+    "topic": "org-shape",
+    "question": "What percentage of headcount sits in the bottom three grades?"
+  },
+  {
+    "topic": "org-shape",
+    "question": "What percentage of headcount sits at E7 and above?"
+  },
+  {
+    "topic": "org-shape",
+    "question": "Is the grade pyramid wider at the bottom in Bangalore than in Pune?"
+  },
+  {
+    "topic": "pay-equity",
+    "question": "Within grade E5, is median CTC similar across Bangalore and Chennai?"
+  },
+  {
+    "topic": "pay-equity",
+    "question": "Within QA, is median CTC similar for women and men?"
+  },
+  {
+    "topic": "pay-equity",
+    "question": "Within Informatica, which city has the higher median CTC?"
+  },
+  {
+    "topic": "experience-mix",
+    "question": "How much of total experience is prior experience rather than ETS tenure, at the median?"
+  },
+  {
+    "topic": "experience-mix",
+    "question": "Which department hired people with the most prior experience?"
+  },
+  {
+    "topic": "hiring-pattern",
+    "question": "Which city accounts for the most recent joiners?"
+  },
+  {
+    "topic": "hiring-pattern",
+    "question": "Which department added the most people with under one year of ETS tenure?"
+  },
+  {
+    "topic": "manager-load",
+    "question": "Which account has the highest average span of control?"
+  },
+  {
+    "topic": "manager-load",
+    "question": "Are Core managers carrying more reports than Infra managers?"
+  },
+  {
+    "topic": "skill-gap",
+    "question": "Which department has the fewest people with cloud skills such as AWS?"
+  },
+  {
+    "topic": "skill-gap",
+    "question": "Does the Claims module have any Kubernetes coverage?"
+  },
+  {
+    "topic": "skill-gap",
+    "question": "Is React present in the QA department at all?"
+  },
+  {
+    "topic": "leave-policy-shape",
+    "question": "Do senior grades take longer Privilege spells than junior grades?"
+  },
+  {
+    "topic": "leave-policy-shape",
+    "question": "Is Maternity leave concentrated in one or two departments?"
+  },
+  {
+    "topic": "leave-policy-shape",
+    "question": "Is Bereavement leave spread evenly across cities?"
+  },
+  {
+    "topic": "cost-concentration",
+    "question": "What share of total CTC sits in the top grade band?"
+  }
+]

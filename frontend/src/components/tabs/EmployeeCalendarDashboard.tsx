@@ -18,7 +18,6 @@ import {
   CheckCircle2,
   Circle,
   Calendar,
-  CalendarCheck,
   Layers,
   Sparkles,
   TrendingUp,
@@ -29,8 +28,6 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { 
-  PieChart, 
-  Pie, 
   Cell, 
   Tooltip, 
   ResponsiveContainer,
@@ -50,12 +47,16 @@ interface EmployeeCalendarDashboardProps {
   onOpenEmployeeProfile?: (empNumber: number) => void;
 }
 
+function rosterName(raw: string): string {
+  return raw.replace(/\s*\(\d+\)\s*$/, '').trim() || raw;
+}
+
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const LEAVE_CONFIG: { key: string; label: string; bg: string; activeBg: string; dot: string }[] = [
   { key: 'Casual / Sick', label: 'Casual / Sick', bg: 'bg-teal-50/80 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60 hover:bg-teal-100 dark:hover:bg-teal-900/60', activeBg: 'bg-teal-600 text-white border-teal-600 ring-1 ring-teal-400 font-bold', dot: 'bg-teal-500' },
-  { key: 'Privilege', label: 'Vacation / Priv', bg: 'bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60', activeBg: 'bg-indigo-600 text-white border-indigo-600 ring-1 ring-indigo-400 font-bold', dot: 'bg-indigo-500' },
+  { key: 'Privilege', label: 'Privilege', bg: 'bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60', activeBg: 'bg-indigo-600 text-white border-indigo-600 ring-1 ring-indigo-400 font-bold', dot: 'bg-indigo-500' },
   { key: 'LOP', label: 'Loss of Pay', bg: 'bg-rose-50/80 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/60', activeBg: 'bg-rose-600 text-white border-rose-600 ring-1 ring-rose-400 font-bold', dot: 'bg-rose-500' },
   { key: 'Maternity', label: 'Maternity', bg: 'bg-purple-50/80 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/60 hover:bg-purple-100 dark:hover:bg-purple-900/60', activeBg: 'bg-purple-600 text-white border-purple-600 ring-1 ring-purple-400 font-bold', dot: 'bg-purple-500' },
   { key: 'Paternity', label: 'Paternity', bg: 'bg-cyan-50/80 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/60 hover:bg-cyan-100 dark:hover:bg-cyan-900/60', activeBg: 'bg-cyan-600 text-white border-cyan-600 ring-1 ring-cyan-400 font-bold', dot: 'bg-cyan-500' },
@@ -145,6 +146,10 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
     }
     return data?.selected_year ?? data?.available_years?.[0] ?? 2023;
   }, [filters?.year, filters?.date, data?.selected_year, data?.available_years]);
+
+  const latestLeaveYear = data?.available_years && data.available_years.length > 0
+    ? Math.max(...data.available_years.map((year) => Number(year)))
+    : activeYear;
 
   // Active Month resolution: default to January (or month of date filter)
   const activeMonthIdx = useMemo(() => {
@@ -429,71 +434,9 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
   );
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row gap-2 select-none min-h-full">
-      {/* ========================================================================= */}
-      {/* Right Main Dashboard Workspace (Attendance Health, Heatmap, Roster, Matrix) */}
-      {/* ========================================================================= */}
-      <div className="flex-1 flex flex-col gap-2 min-w-0 min-h-full">
-        {/* Top Executive Attendance Banner */}
-        <div 
-          className="rounded-xl border p-1.5 shrink-0" 
-          style={{ 
-            background: 'linear-gradient(135deg, rgba(14,116,144,0.08), rgba(168,85,247,0.04), var(--panel), var(--surface))', 
-            borderColor: 'var(--border)', 
-            boxShadow: 'var(--shadow-soft)' 
-          }}
-        >
-          <div className="grid grid-cols-[1.8fr_0.8fr] gap-3 items-center">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs uppercase tracking-wider font-extrabold text-cyan-900 dark:text-cyan-300 flex items-center gap-1">
-                  <CalendarCheck className="w-3.5 h-3.5 text-cyan-600" />
-                  Attendance Health
-                </span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                  {selectedEmpNumber ? `Filtered: Employee #${selectedEmpNumber}` : `Year: ${activeYear} · ${MONTH_NAMES[activeMonthIdx]}`}
-                </span>
-                {selectedLeaveType !== 'All' && (
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                    Type: {selectedLeaveType}
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-1 grid grid-cols-3 gap-2 text-xs">
-                <div className="p-1 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-                  <span className="font-bold text-cyan-900 dark:text-cyan-300 block truncate text-[11px]">Monthly Leave Rate</span>
-                  <p className="text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5">{MONTH_NAMES[activeMonthIdx]} rate: {data.leave_rate_pct}%</p>
-                </div>
-                <div className="p-1 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-                  <span className="font-bold text-purple-900 dark:text-purple-300 block truncate text-[11px]">Volume Concentration</span>
-                  <p className="text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5">{primaryLeaveType} ({primaryLeavePct}%)</p>
-                </div>
-                <div className="p-1 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-                  <span className="font-bold text-rose-900 dark:text-rose-300 block truncate text-[11px]">Workforce Impact</span>
-                  <p className="text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5">{data.unique_employees_on_leave} staff · {data.total_leave_days}d total</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-500 dark:text-slate-400">Leave Metric Ratio</span>
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-semibold">Leave Rate</span>
-                  <span className="text-sm font-black text-cyan-800 dark:text-cyan-300 font-mono">{data.leave_rate_pct}%</span>
-                </div>
-                <div className="h-7 w-px bg-slate-200 dark:bg-slate-700" />
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-semibold">Total Days</span>
-                  <span className="text-sm font-black text-slate-900 dark:text-slate-100 font-mono">{data.total_leave_days}d</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 4 KPI Cards (Compact Height to Maximize Heatmap Space) */}
+    <div className="pane-fit flex flex-col lg:flex-row gap-2 select-none">
+      <div className="flex flex-col gap-2 min-w-0 flex-1 min-h-0">
+        {/* 4 KPI Cards. The repeated Attendance Health sentences are omitted so the charts get the pane. */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 shrink-0">
           <div className="p-1.5 rounded-xl glass-panel border border-cyan-300 dark:border-cyan-800/80 bg-gradient-to-br from-cyan-50/50 dark:from-cyan-950/20 to-transparent flex items-center justify-between shadow-2xs">
             <div>
@@ -525,7 +468,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
             <div>
               <span className="text-[9px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 block">Primary Leave Type</span>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-sm font-black text-slate-900 dark:text-slate-100 truncate max-w-[130px]">{primaryLeaveType}</span>
+                <span className="text-sm font-black text-slate-900 dark:text-slate-100 whitespace-normal break-words leading-tight">{primaryLeaveType}</span>
                 <span className="text-[9px] text-slate-400 font-mono">({primaryLeavePct}%)</span>
               </div>
             </div>
@@ -549,17 +492,17 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
         </div>
 
         {/* Middle Grid: Heatmap Calendar + Daily Roster + Leave Category Share (Balanced 4:4:4) */}
-        <div className="grid grid-cols-12 gap-1.5 flex-[1.15] min-h-0">
+        <div className="pane-share grid grid-cols-12 gap-1.5 items-stretch">
           {/* Heatmap Calendar (4 cols) */}
-          <div className="col-span-12 xl:col-span-4 glass-panel rounded-xl px-2.5 py-2 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
-              <div className="flex items-center gap-1.5">
-                <CalendarDays className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">
+          <div className="col-span-12 lg:col-span-4 glass-panel rounded-xl px-2.5 py-2 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
+            <div className="leave-heat-head flex items-center justify-between gap-1 border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <CalendarDays className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                <span className="leave-heat-title text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">
                   Leave Heatmap ({MONTH_SHORT[activeMonthIdx]} {activeYear})
                 </span>
               </div>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">Intensity: Heat Colored</span>
+              <span className="leave-heat-note text-[9px] text-slate-400 dark:text-slate-500 font-mono shrink-0">Intensity: Heat Colored</span>
             </div>
 
             <div className="flex-1 flex flex-col justify-center min-h-0 py-0.5">
@@ -619,13 +562,13 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
           </div>
 
           {/* Center 4 cols: Daily Roster / Filtered Leave Cohort */}
-          <div className="col-span-12 md:col-span-6 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
-              <div className="flex items-center gap-1">
+          <div className="col-span-12 md:col-span-6 lg:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
+            <div className="flex items-center justify-between gap-1 border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0 min-w-0">
+              <div className="flex items-center gap-1 min-w-0">
                 <button
                   type="button"
                   onClick={() => setRosterViewMode('date')}
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer whitespace-nowrap ${
                     rosterViewMode === 'date'
                       ? 'text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/70 border border-cyan-200 dark:border-cyan-800'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -637,7 +580,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                 <button
                   type="button"
                   onClick={() => setRosterViewMode('cohort')}
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer whitespace-nowrap ${
                     rosterViewMode === 'cohort'
                       ? 'text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/70 border border-cyan-200 dark:border-cyan-800'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -647,65 +590,36 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                   All Staff ({cohortList.length})
                 </button>
               </div>
-              <div className="flex items-center gap-1.5">
-                {(rosterViewMode === 'date' ? eventsOnSelectedDate.length : cohortList.length) > 0 && (
-                  <ExportButton
-                    data={rosterViewMode === 'date' ? eventsOnSelectedDate : cohortList}
-                    filename={`leave_${rosterViewMode}_${selectedDate}.csv`}
-                    label="CSV"
-                  />
-                )}
-                <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800 font-mono font-semibold">
-                  {rosterViewMode === 'date' ? `${eventsOnSelectedDate.length} Active` : `${cohortList.length} Total`}
-                </span>
-              </div>
+              {(rosterViewMode === 'date' ? eventsOnSelectedDate.length : cohortList.length) > 0 && (
+                <ExportButton
+                  data={rosterViewMode === 'date' ? eventsOnSelectedDate : cohortList}
+                  filename={`leave_${rosterViewMode}_${selectedDate}.csv`}
+                  label="CSV"
+                />
+              )}
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar my-1 flex flex-col gap-1.5">
+            <div className="leave-roster">
               {rosterViewMode === 'date' ? (
                 eventsOnSelectedDate.length > 0 ? (
                   eventsOnSelectedDate.map((ev) => (
-                    <div
+                    <button
                       key={ev.id}
-                      tabIndex={0}
-                      role="button"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          if (onOpenEmployeeProfile) {
-                            onOpenEmployeeProfile(ev.employee_number);
-                          } else {
-                            onSelectEmployee(ev.employee_number);
-                          }
-                        }
-                      }}
+                      type="button"
                       onClick={() => {
-                        if (onOpenEmployeeProfile) {
-                          onOpenEmployeeProfile(ev.employee_number);
-                        } else {
-                          onSelectEmployee(ev.employee_number);
-                        }
+                        if (onOpenEmployeeProfile) onOpenEmployeeProfile(ev.employee_number);
+                        else onSelectEmployee(ev.employee_number);
                       }}
-                      className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-cyan-400 dark:hover:border-cyan-500 cursor-pointer transition-all flex items-center justify-between gap-2 shadow-2xs group focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                      className="leave-roster-row"
+                      title={`${ev.employee_name} #${ev.employee_number} · ${ev.department} · ${ev.location} · ${ev.leave_type} · ${ev.days}d`}
                     >
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-cyan-700 dark:group-hover:text-cyan-400">{ev.employee_name}</p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">#{ev.employee_number} · {ev.department} · {ev.location}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span 
-                          className="text-[9px] font-bold px-1.5 py-0.2 rounded border"
-                          style={{ 
-                            color: LEAVE_COLORS[ev.leave_type] || '#0284c7',
-                            borderColor: `${LEAVE_COLORS[ev.leave_type] || '#0284c7'}50`,
-                            backgroundColor: `${LEAVE_COLORS[ev.leave_type] || '#0284c7'}15`
-                          }}
-                        >
-                          {ev.leave_type}
-                        </span>
-                        <p className="text-[9px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">{ev.days} Day(s)</p>
-                      </div>
-                    </div>
+                      <span className="leave-roster-name">{rosterName(ev.employee_name)}</span>
+                      <b className="leave-roster-days">{ev.days}d</b>
+                      <span className="leave-roster-meta">
+                        <span className="leave-roster-type" style={{ color: LEAVE_COLORS[ev.leave_type] || '#0284c7' }}>{ev.leave_type}</span>
+                        <span className="leave-roster-sub">#{ev.employee_number} · {ev.department} · {ev.location}</span>
+                      </span>
+                    </button>
                   ))
                 ) : (
                   <div className="flex-1 flex flex-col items-center justify-center text-center p-3">
@@ -728,49 +642,23 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
               ) : (
                 cohortList.length > 0 ? (
                   cohortList.map((emp) => (
-                    <div
+                    <button
                       key={`cohort-${emp.employee_number}`}
-                      tabIndex={0}
-                      role="button"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          if (onOpenEmployeeProfile) {
-                            onOpenEmployeeProfile(emp.employee_number);
-                          } else {
-                            onSelectEmployee(emp.employee_number);
-                          }
-                        }
-                      }}
+                      type="button"
                       onClick={() => {
-                        if (onOpenEmployeeProfile) {
-                          onOpenEmployeeProfile(emp.employee_number);
-                        } else {
-                          onSelectEmployee(emp.employee_number);
-                        }
+                        if (onOpenEmployeeProfile) onOpenEmployeeProfile(emp.employee_number);
+                        else onSelectEmployee(emp.employee_number);
                       }}
-                      className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-cyan-400 dark:hover:border-cyan-500 cursor-pointer transition-all flex items-center justify-between gap-2 shadow-2xs group focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                      className="leave-roster-row"
+                      title={`${emp.name} #${emp.employee_number} · ${emp.department} · ${emp.location} · ${emp.leave_type} · ${emp.days}d · ${emp.start} to ${emp.end} · ${emp.records_count} records`}
                     >
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-cyan-700 dark:group-hover:text-cyan-400">{emp.name}</p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">#{emp.employee_number} · {emp.department} · {emp.location}</p>
-                        <p className="text-[9px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">{emp.start} → {emp.end}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span 
-                          className="text-[9px] font-bold px-1.5 py-0.2 rounded border"
-                          style={{ 
-                            color: LEAVE_COLORS[emp.leave_type] || '#0284c7',
-                            borderColor: `${LEAVE_COLORS[emp.leave_type] || '#0284c7'}50`,
-                            backgroundColor: `${LEAVE_COLORS[emp.leave_type] || '#0284c7'}15`
-                          }}
-                        >
-                          {emp.leave_type}
-                        </span>
-                        <p className="text-[10px] text-slate-700 dark:text-slate-300 font-mono font-bold mt-0.5">{emp.days} Day(s)</p>
-                        <p className="text-[8.5px] text-slate-400 font-mono">{emp.records_count} record(s)</p>
-                      </div>
-                    </div>
+                      <span className="leave-roster-name">{rosterName(emp.name)}</span>
+                      <b className="leave-roster-days">{emp.days}d</b>
+                      <span className="leave-roster-meta">
+                        <span className="leave-roster-type" style={{ color: LEAVE_COLORS[emp.leave_type] || '#0284c7' }}>{emp.leave_type}</span>
+                        <span className="leave-roster-sub">#{emp.employee_number} · {emp.department} · {emp.start} → {emp.end}</span>
+                      </span>
+                    </button>
                   ))
                 ) : (
                   <EmptyState
@@ -783,8 +671,8 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
             </div>
           </div>
 
-          {/* Right 4 cols: Leave Category Share (Rebalanced 4:4:4 Grid with Side-by-Side Donut & Ranked Legend) */}
-          <div className="col-span-12 md:col-span-6 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
+          {/* Right 4 cols: Leave Category Share as ranked bars */}
+          <div className="leave-mix-card col-span-12 md:col-span-6 lg:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
               <div className="flex items-center gap-1.5">
@@ -811,149 +699,34 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
               </div>
             </div>
 
-            {/* Side-by-Side: Donut on Left (40%), Interactive Ranked Legend on Right (60%) */}
-            <div className="flex-1 min-h-0 flex items-center gap-2 py-0.5">
-              {/* Left: Donut Chart with Center Metric */}
-              <div className="w-[40%] h-full relative flex items-center justify-center shrink-0 min-h-[120px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={formattedLeaveCategories}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius="52%"
-                      outerRadius="80%"
-                      paddingAngle={3}
-                      dataKey="days"
-                      nameKey="name"
-                      isAnimationActive={false}
-                      onClick={(entry: any) => {
-                        if (entry && entry.name) {
-                          handleSelectLeaveType(entry.name);
-                        }
-                      }}
-                      className="cursor-pointer"
-                    >
-                      {formattedLeaveCategories.map((entry) => {
-                        const isSelected = selectedLeaveType === entry.name;
-                        const isAnySelected = selectedLeaveType !== 'All';
-                        return (
-                          <Cell
-                            key={`cell-${entry.name}`}
-                            fill={entry.color}
-                            fillOpacity={isAnySelected && !isSelected ? 0.35 : 1}
-                            stroke={isSelected ? '#06b6d4' : 'transparent'}
-                            strokeWidth={isSelected ? 2.5 : 1}
-                          />
-                        );
-                      })}
-                    </Pie>
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload || !payload.length) return null;
-                        const item = payload[0].payload;
-                        return (
-                          <div className="p-2 rounded-lg border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-md text-[11px] min-w-[130px] z-50">
-                            <p className="font-bold flex items-center gap-1.5" style={{ color: item.color }}>
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                              {item.name}
-                            </p>
-                            <div className="text-slate-600 dark:text-slate-300 space-y-0.5 mt-1 font-mono text-[10px]">
-                              <div className="flex justify-between">
-                                <span>Volume:</span>
-                                <span className="font-bold">{item.days}d</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Share:</span>
-                                <span className="font-bold">{item.percentage}%</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Incidents:</span>
-                                <span className="font-bold">{item.records}</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-
-                {/* Center Callout Metric */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                  <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 font-mono leading-none">
-                    {data.total_leave_days}d
-                  </span>
-                  <span className="text-[7.5px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5 leading-none">
-                    Total
-                  </span>
-                </div>
-              </div>
-
-              {/* Right: Interactive Ranked Category Legend (All 6 categories fit cleanly) */}
-              <div className="flex-1 min-w-0 h-full overflow-y-auto custom-scrollbar flex flex-col justify-start gap-1 py-0.5 pr-0.5">
-                {formattedLeaveCategories.map((cat) => {
-                  const isSelected = selectedLeaveType === cat.name;
-                  return (
-                    <button
-                      key={cat.name}
-                      type="button"
-                      onClick={() => handleSelectLeaveType(cat.name)}
-                      className={`w-full text-left px-2 py-0.5 rounded-md border transition-all cursor-pointer group ${
-                        isSelected
-                          ? 'bg-cyan-50/90 dark:bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500 shadow-2xs font-bold'
-                          : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-700/60 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 hover:border-slate-300 dark:hover:border-slate-600'
-                      }`}
-                      title={`Click to filter by ${cat.name}`}
-                    >
-                      <div className="flex items-center justify-between text-[11px] mb-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0 pr-1">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0 shadow-2xs"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                          <span className={`truncate text-[10px] ${
-                            isSelected ? 'text-cyan-900 dark:text-cyan-200 font-bold' : 'text-slate-800 dark:text-slate-200'
-                          }`}>
-                            {cat.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0 font-mono text-[9.5px]">
-                          <span className="font-bold text-slate-900 dark:text-slate-100">
-                            {cat.days}d
-                          </span>
-                          <span className="text-slate-400 dark:text-slate-500">
-                            ({cat.percentage}%)
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Mini Bar Underneath */}
-                      <div className="w-full bg-slate-200/60 dark:bg-slate-700/60 h-1 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{
-                            width: `${Math.min(100, Math.max(cat.percentage, 1))}%`,
-                            backgroundColor: cat.color,
-                          }}
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="leave-mix flex-1 min-h-0">
+              {formattedLeaveCategories.map((cat) => {
+                const isSelected = selectedLeaveType === cat.name;
+                const dim = selectedLeaveType !== 'All' && !isSelected;
+                return (
+                  <button
+                    key={cat.name}
+                    type="button"
+                    onClick={() => handleSelectLeaveType(cat.name)}
+                    className={`leave-mix-row${isSelected ? ' is-on' : ''}${dim ? ' is-dim' : ''}`}
+                    title={`${cat.name}: ${cat.days} days, ${cat.percentage}% share, ${cat.records} records. Click to filter.`}
+                  >
+                    <i className="leave-mix-swatch" style={{ backgroundColor: cat.color }} />
+                    <span className="leave-mix-name">{cat.name}</span>
+                    <b>{cat.days}d</b>
+                    <span>{cat.percentage}%</span>
+                    <span className="leave-mix-track" aria-hidden>
+                      <span style={{ width: `${Math.min(100, Math.max(cat.percentage, 2))}%`, backgroundColor: cat.color }} />
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Footer Summary */}
-            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-              <span>Categories: <b className="text-slate-800 dark:text-slate-200">{formattedLeaveCategories.length}</b></span>
-              <span>Total Volume: <b className="text-cyan-600 dark:text-cyan-400 font-bold">{data.total_leave_days}d</b></span>
-            </div>
           </div>
         </div>
 
-        {/* Bottom Section: Executive Attendance Intelligence with Master/Details Toggle */}
-        <div className="glass-panel rounded-xl p-2 shrink-0 min-h-[170px] h-auto flex-1 flex flex-col justify-between overflow-hidden">
+        <div className="pane-share glass-panel rounded-xl p-2 flex flex-col overflow-hidden min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-2">
               <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
@@ -1010,7 +783,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
           </div>
 
           {bottomTab === 'seasonality' ? (
-            <div className="flex-1 grid grid-cols-12 gap-3 min-h-0 pt-1 items-center">
+            <div className="flex-1 grid grid-cols-12 gap-3 min-h-0 pt-1 items-stretch">
               {/* Left 7 cols: 12-Month Leave Seasonality Bar Chart */}
               <div className="col-span-7 flex flex-col h-full justify-between overflow-hidden">
                 <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 shrink-0">
@@ -1022,7 +795,8 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                     Click bar to switch month
                   </span>
                 </div>
-                <div className="flex-1 min-h-0">
+                <div className="pane-plot flex-1">
+                  <div className="pane-plot-fill">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlySeasonality} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="2 2" stroke="var(--border)" vertical={false} opacity={0.5} />
@@ -1042,6 +816,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                         }}
                       />
                       <Bar 
+                        isAnimationActive={false}
                         dataKey="days" 
                         radius={[3, 3, 0, 0]}
                         onClick={(entry: any) => {
@@ -1060,6 +835,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
 
@@ -1070,13 +846,15 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                     <Building2 className="w-3 h-3 text-indigo-600" />
                     Department Absence Volume
                   </span>
-                  <span className="font-mono text-[9px] text-slate-400">Total Days · % Share</span>
+                  <span className="font-mono text-[9px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950 px-1.5 py-0.2 rounded border border-cyan-200 dark:border-cyan-800 font-semibold">
+                    {departmentLeaveStats.length}
+                  </span>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1">
                   {departmentLeaveStats.map((dept) => (
                     <div key={dept.department} className="flex flex-col gap-0.5">
                       <div className="flex items-center justify-between text-[10px]">
-                        <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{dept.department}</span>
+                        <span className="home-legend-name text-slate-800 dark:text-slate-200">{dept.department}</span>
                         <div className="flex items-center gap-1.5 font-mono">
                           <span className="font-bold text-slate-900 dark:text-slate-100">{dept.days}d</span>
                           <span className="text-[9px] text-slate-500">({dept.percentage}%)</span>
@@ -1084,7 +862,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                       </div>
                       <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                         <div 
-                          className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-indigo-500" 
+                          className="h-full rounded-full bg-indigo-500 transition-all duration-300" 
                           style={{ width: `${Math.min(dept.percentage, 100)}%` }} 
                         />
                       </div>
@@ -1155,7 +933,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
       {/* Dedicated Right Slicer Sidebar (Power BI Style Docked Filter Pane) */}
       {/* ========================================================================= */}
       {slicersExpanded ? (
-        <div className="w-64 xl:w-72 shrink-0 flex flex-col glass-panel rounded-xl p-2.5 gap-1.5 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="w-64 xl:w-72 shrink-0 flex flex-col glass-panel rounded-xl p-2.5 gap-1.5 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm min-h-0 lg:max-h-full">
         {/* Slicer Title & Always Accessible Reset Option */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
           <div className="flex items-center gap-1.5">
@@ -1340,7 +1118,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                       <Circle className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
                     )}
                     <div className="min-w-0">
-                      <p className="truncate text-[11px] leading-tight">{emp.name}</p>
+                      <p className="text-[11px] leading-tight whitespace-normal break-words">{emp.name}</p>
                       <p className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">#{emp.employee_number}</p>
                     </div>
                   </div>
@@ -1389,7 +1167,7 @@ export const EmployeeCalendarDashboard: React.FC<EmployeeCalendarDashboardProps>
                 >
                   <div className="flex items-center gap-1 min-w-0">
                     <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : btn.dot} shrink-0`} />
-                    <span className="truncate font-sans">{btn.label}</span>
+                    <span className="font-sans whitespace-normal break-words leading-tight">{btn.label}</span>
                   </div>
                   <span className={`text-[9px] font-mono font-black ml-1 px-1 py-0.2 rounded shrink-0 ${isSelected ? 'bg-black/20 text-white' : 'bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
                     {btn.count}

@@ -38,6 +38,8 @@ class HomeKPIs(BaseModel):
     emp_type_distribution: Optional[Dict[str, Any]] = None
     module_distribution: Optional[List[Dict[str, Any]]] = None
     project_manager_hierarchy: Optional[List[Dict[str, Any]]] = None
+    work_model_mix: Optional[List[Dict[str, Any]]] = None
+    training_summary: Optional[Dict[str, Any]] = None
 
 class StatewiseKPIs(BaseModel):
     selected_sdm: str
@@ -96,6 +98,9 @@ class EmployeeDetails(BaseModel):
     emergency_contact_relation: Optional[str] = None
     mediclaim_insurance_no: Optional[str] = None
     last_promotion_date: Optional[str] = None
+    work_model: Optional[str] = None
+    office: Optional[str] = None
+    trainings: Optional[List[Dict[str, Any]]] = None
 
 class TechwiseKPIs(BaseModel):
     total_headcount: Optional[int] = None

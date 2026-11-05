@@ -131,7 +131,7 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-1.5 overflow-hidden select-none">
+    <div className="pane-fit flex flex-col gap-1.5 select-none h-full min-h-0">
       {/* Leadership Brief Banner */}
       <div 
         className="rounded-xl border p-2 shrink-0" 
@@ -227,10 +227,9 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
         </div>
       </div>
 
-      {/* Row 1: Team Average Salary & 5-Year Trend */}
-      <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
+      <div className="pane-charts grid grid-cols-12 gap-1.5 items-stretch min-h-0">
         {/* Left: Average Salary by Team (7 Cols) */}
-        <div className="col-span-12 xl:col-span-7 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden">
+        <div className="col-span-12 lg:col-span-7 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Average Salary by Team</span>
@@ -245,7 +244,9 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
               <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950 px-1.5 py-0.2 rounded border border-cyan-200 dark:border-cyan-800 font-semibold">Base vs Total CTC</span>
             </div>
           </div>
-          <div className="flex-1 min-h-0 pt-1">
+          <div className="flex-1 min-h-0 pt-1 flex flex-col">
+            <div className="pane-plot flex-1">
+            <div className="pane-plot-fill">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.team_avg_salary} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -259,7 +260,7 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
                   ]}
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
-                <Bar 
+                <Bar isAnimationActive={false}
                   dataKey="avg_salary" 
                   fill="#0284c7" 
                   name="Avg Base" 
@@ -273,7 +274,7 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
                     }
                   }}
                 />
-                <Bar 
+                <Bar isAnimationActive={false}
                   dataKey="avg_ctc" 
                   fill="#10b981" 
                   name="Avg Total CTC" 
@@ -289,11 +290,13 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
                 />
               </BarChart>
             </ResponsiveContainer>
+            </div>
+          </div>
           </div>
         </div>
 
         {/* Right: 5-Year Salary Trend (5 Cols) */}
-        <div className="col-span-12 xl:col-span-5 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden">
+        <div className="col-span-12 lg:col-span-5 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">5-Year Salary Progression</span>
@@ -302,7 +305,9 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
               2020 – 2024
             </span>
           </div>
-          <div className="flex-1 min-h-0 pt-1">
+          <div className="flex-1 min-h-0 pt-1 flex flex-col">
+            <div className="pane-plot flex-1">
+            <div className="pane-plot-fill">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.salary_trend_years} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -316,18 +321,20 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
                   ]}
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
-                <Line type="monotone" dataKey="avg_ctc" stroke="#10b981" strokeWidth={3} name="Avg Total CTC" dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="avg_salary" stroke="#0284c7" strokeWidth={2.5} strokeDasharray="4 4" name="Avg Base Pay" dot={{ r: 3, fill: '#0284c7' }} />
+                <Line isAnimationActive={false} type="monotone" dataKey="avg_ctc" stroke="#10b981" strokeWidth={3} name="Avg Total CTC" dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+                <Line isAnimationActive={false} type="monotone" dataKey="avg_salary" stroke="#0284c7" strokeWidth={2.5} strokeDasharray="4 4" name="Avg Base Pay" dot={{ r: 3, fill: '#0284c7' }} />
               </LineChart>
             </ResponsiveContainer>
+            </div>
+          </div>
           </div>
         </div>
       </div>
 
       {/* Row 2: Component Breakdown & Interactive Roster */}
-      <div className="grid grid-cols-12 gap-1.5 flex-1 min-h-0">
+      <div className="pane-share grid grid-cols-12 gap-1.5 items-stretch min-h-0">
         {/* Left: Component-wise Compensation per Band (7 Cols) */}
-        <div className="col-span-12 xl:col-span-7 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden">
+        <div className="col-span-12 lg:col-span-7 glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Compensation Mix per Band</span>
@@ -342,7 +349,8 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
               <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 px-1.5 py-0.2 rounded border border-amber-200 dark:border-amber-800 font-semibold">Base + Bonus + Perks</span>
             </div>
           </div>
-          <div className="flex-1 min-h-0 pt-1">
+          <div className="pane-plot flex-1">
+            <div className="pane-plot-fill">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 data={data.compensation_by_band} 
@@ -367,17 +375,18 @@ export const Salarywise2Dashboard: React.FC<Salarywise2DashboardProps> = ({
                   ]}
                 />
                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
-                <Bar dataKey="avg_base" stackId="comp" fill="#0284c7" name="Base Salary" />
-                <Bar dataKey="avg_bonus" stackId="comp" fill="#10b981" name="Annual Bonus" />
-                <Bar dataKey="avg_perks" stackId="comp" fill="#f59e0b" name="Perks & Allowances" />
-                <Bar dataKey="avg_other" stackId="comp" fill="#8b5cf6" name="Other Comp" radius={[3, 3, 0, 0]} />
+                <Bar isAnimationActive={false} dataKey="avg_base" stackId="comp" fill="#0284c7" name="Base Salary" />
+                <Bar isAnimationActive={false} dataKey="avg_bonus" stackId="comp" fill="#10b981" name="Annual Bonus" />
+                <Bar isAnimationActive={false} dataKey="avg_perks" stackId="comp" fill="#f59e0b" name="Perks & Allowances" />
+                <Bar isAnimationActive={false} dataKey="avg_other" stackId="comp" fill="#8b5cf6" name="Other Comp" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
         {/* Right: Interactive Compensation Roster (5 Cols) */}
-        <div className="col-span-12 xl:col-span-5 glass-panel rounded-xl p-2.5 flex flex-col gap-1 overflow-hidden min-h-0">
+        <div className="col-span-12 lg:col-span-5 glass-panel rounded-xl p-2.5 flex flex-col gap-1 overflow-hidden min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Compensation Roster</span>

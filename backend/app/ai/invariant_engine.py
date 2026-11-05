@@ -11,6 +11,83 @@ class InvariantResult:
     details: str
     diagnostic_data: Dict[str, Any] = field(default_factory=dict)
 
+def _sql_literal(value: Any) -> str:
+    return str(value).replace("'", "''")
+
+
+_EMPLOYEE_FILTER_COLUMNS = {
+    "department": "department",
+    "location": "location",
+    "state": "state",
+    "project": "project",
+    "job_level": "job_level",
+    "status": "current_status",
+    "module": "module",
+    "gender": "gender",
+    "salary_band": "salary_bin",
+    "job_title": "job_title",
+    "manager": "manager",
+    "primary_skill": "primary_skill",
+}
+
+
+def _cohort_predicates(p, skip: Optional[set] = None) -> List[str]:
+    """Predicates for the same filtered cohort the question asked for."""
+    skip = skip or set()
+    preds: List[str] = []
+    if p.current_status and "status" not in skip:
+        preds.append(f"current_status = '{_sql_literal(p.current_status)}'")
+    if p.department and "department" not in skip:
+        preds.append(f"LOWER(department) = '{_sql_literal(p.department).lower()}'")
+    if p.physical_location and "location" not in skip:
+        preds.append(f"location = '{_sql_literal(p.physical_location)}'")
+    if p.project_state and "state" not in skip:
+        preds.append(f"state = '{_sql_literal(p.project_state)}'")
+    if p.job_level and "job_level" not in skip:
+        preds.append(f"job_level = '{_sql_literal(p.job_level)}'")
+    if p.project and "project" not in skip:
+        preds.append(f"project = '{_sql_literal(p.project)}'")
+    return preds
+
+
+def _cohort_count_sql(contract, p, skip_field: str, not_null_column: str) -> str:
+    """Count the request cohort, excluding the dimension being partitioned."""
+    cohort = contract.meta.get("cohort")
+    if cohort is None:
+        preds = _cohort_predicates(p, skip={skip_field})
+        preds.append(f"{not_null_column} IS NOT NULL AND {not_null_column} != ''")
+        return f"SELECT COUNT(*) FROM employees WHERE {' AND '.join(preds)}"
+
+    preds: List[str] = []
+    skill_value = None
+    for field, value in cohort.items():
+        if field == skip_field or value is None:
+            continue
+        if field == "skill":
+            skill_value = value
+            continue
+        column = _EMPLOYEE_FILTER_COLUMNS.get(field)
+        if not column:
+            continue
+        if field == "department":
+            preds.append(f"LOWER(e.{column}) = '{_sql_literal(value).lower()}'")
+        else:
+            preds.append(f"e.{column} = '{_sql_literal(value)}'")
+    preds.append(f"e.{not_null_column} IS NOT NULL AND e.{not_null_column} != ''")
+    if skill_value is not None:
+        preds.append(f"s.skill_name = '{_sql_literal(skill_value)}'")
+        source = "employees e JOIN skills s ON e.employee_number = s.employee_number"
+        return f"SELECT COUNT(DISTINCT e.employee_number) FROM {source} WHERE {' AND '.join(preds)}"
+    return f"SELECT COUNT(*) FROM employees e WHERE {' AND '.join(preds)}"
+
+
+def _headcount_partition(measures: List[str]) -> bool:
+    """A headcount or share split is checked. A compensation question is not."""
+    if not measures:
+        return True
+    return any(m in ("headcount", "concentration", "attrition") for m in measures)
+
+
 class InvariantEngine:
     """
     Reusable runtime invariant assertion engine.
@@ -81,12 +158,13 @@ class InvariantEngine:
                     diagnostic_data={"total": total, "active": active, "exited": exited}
                 )
 
+        measures = list(contract.meta.get("measures") or [])
+
         # 3. State Breakdown Partition Invariant
-        if cap == CapabilityEnum.STATE_BREAKDOWN and not contract.meta.get("ranking") and contract.meta.get("mode") not in ("most", "least", "top_n", "bottom_n"):
+        if cap == CapabilityEnum.STATE_BREAKDOWN and not contract.meta.get("ranking") and contract.meta.get("mode") not in ("most", "least", "top_n", "bottom_n") and _headcount_partition(measures):
             sum_states = sum(r.get("count") or r.get("count_headcount") or 0 for r in rows)
             cursor = db_conn.cursor()
-            where_status = f"WHERE current_status = '{p.current_status}'" if p.current_status else ""
-            non_null_cnt = cursor.execute(f"SELECT COUNT(*) FROM employees {where_status} AND state IS NOT NULL AND state != ''" if where_status else "SELECT COUNT(*) FROM employees WHERE state IS NOT NULL AND state != ''").fetchone()[0]
+            non_null_cnt = cursor.execute(_cohort_count_sql(contract, p, "state", "state")).fetchone()[0]
             if sum_states != non_null_cnt:
                 return InvariantResult(
                     passed=False,
@@ -96,11 +174,10 @@ class InvariantEngine:
                 )
 
         # 4. Location Breakdown Partition Invariant
-        if cap == CapabilityEnum.LOCATION_BREAKDOWN and not contract.meta.get("ranking") and contract.meta.get("mode") not in ("most", "least", "top_n", "bottom_n"):
+        if cap == CapabilityEnum.LOCATION_BREAKDOWN and not contract.meta.get("ranking") and contract.meta.get("mode") not in ("most", "least", "top_n", "bottom_n") and _headcount_partition(measures):
             sum_locs = sum(r.get("count") or r.get("count_headcount") or 0 for r in rows)
             cursor = db_conn.cursor()
-            where_status = f"WHERE current_status = '{p.current_status}'" if p.current_status else ""
-            non_null_cnt = cursor.execute(f"SELECT COUNT(*) FROM employees {where_status} AND location IS NOT NULL AND location != ''" if where_status else "SELECT COUNT(*) FROM employees WHERE location IS NOT NULL AND location != ''").fetchone()[0]
+            non_null_cnt = cursor.execute(_cohort_count_sql(contract, p, "location", "location")).fetchone()[0]
             if sum_locs != non_null_cnt:
                 return InvariantResult(
                     passed=False,
@@ -149,14 +226,17 @@ class InvariantEngine:
                     )
 
         # 6. Ranking Ties Representation Invariant
-        if cap == CapabilityEnum.RANKING:
+        # Compensation checks apply only when the request's measure is compensation.
+        compensation_request = (not measures) or any(m in ("ctc", "monthly_salary", "bonus") for m in measures)
+        if cap == CapabilityEnum.RANKING and compensation_request:
             if rows and len(rows) > 0 and rows[0].get("annual_ctc") is not None:
                 top_ctc = rows[0].get("annual_ctc")
                 cursor = db_conn.cursor()
                 direction = contract.parameters.direction or "DESC"
                 op = "MAX" if direction == "DESC" else "MIN"
-                actual_top = cursor.execute(f"SELECT {op}(annual_ctc) FROM employees WHERE annual_ctc > 0").fetchone()[0]
-                if abs(top_ctc - actual_top) > 0.01:
+                preds = ["annual_ctc > 0"] + _cohort_predicates(p)
+                actual_top = cursor.execute(f"SELECT {op}(annual_ctc) FROM employees WHERE {' AND '.join(preds)}").fetchone()[0]
+                if actual_top is not None and abs(top_ctc - actual_top) > 0.01:
                     return InvariantResult(
                         passed=False,
                         invariant_name="RANKING_TIES_INVARIANT",

@@ -163,6 +163,7 @@ class QueryPlanner:
         """Builds the primary aggregate, multi-dimensional breakdown, or ranked statement."""
         select_cols: List[str] = []
         group_cols: List[str] = []
+        share_params: List[Any] = []
 
         # Row-level ranking without grouping (e.g., "Lowest annual CTC", "Highest salary", "Who has the longest tenure")
         if ir.intent == Intent.RANKING and not ir.grouping:
@@ -192,9 +193,15 @@ class QueryPlanner:
                 select_cols.append(f"{field_def.sql} AS {dim_key}")
                 group_cols.append(field_def.sql)
 
-            # 2. Measures
+            # 2. Measures. A median is compiled as its own statement so the
+            # aggregation stored on the metric is not rewritten as an average.
+            median_metric = next((m for m in ir.metrics if m.agg == "MEDIAN"), None)
+            if median_metric is not None:
+                return self._plan_median_statement(ir, median_metric)
+
+            share_params.clear()
             for m in ir.metrics:
-                select_cols.append(self._sql_select_metric(m, ir.grouping or ir.dimensions))
+                select_cols.append(self._sql_select_metric(m, ir.grouping or ir.dimensions, ir.filters, share_params))
 
         # Default columns for LIST / row queries or when select_cols is empty
         if not select_cols:
@@ -238,7 +245,7 @@ class QueryPlanner:
         return PlannedStatement(
             statement_id="core_query",
             sql=sql.strip(),
-            params=params,
+            params=share_params + params,
             purpose="Core analytical query execution",
             expected_type="BREAKDOWN" if group_cols else ("LIST" if ir.intent == Intent.LIST else "AGGREGATE"),
         )
@@ -253,25 +260,131 @@ class QueryPlanner:
             select_cols.append(f"{field_def.sql} AS {dim_key}")
             group_cols.append(field_def.sql)
 
-        for m in ir.metrics:
-            select_cols.append(self._sql_select_metric(m))
+        median_metric = next((m for m in ir.metrics if m.agg == "MEDIAN"), None)
+        if median_metric is not None:
+            combined_filters = FilterGroup(items=list(ir.filters.items) + list(cohort_filters.items))
+            joins = self._resolve_joins(ir.metrics, combined_filters, stratify_by)
+            where_clause, params = self._build_where_clause(combined_filters)
+            sql = self._median_sql(median_metric, joins, where_clause, group_cols)
+            return sql, params
 
-        # Combine cohort-specific filters with shared global filters
+        share_params: List[Any] = []
         combined_filters = FilterGroup(items=list(ir.filters.items) + list(cohort_filters.items))
+        for m in ir.metrics:
+            select_cols.append(self._sql_select_metric(m, stratify_by, combined_filters, share_params))
+
         joins = self._resolve_joins(ir.metrics, combined_filters, stratify_by)
         where_clause, params = self._build_where_clause(combined_filters)
         group_clause = f" GROUP BY {', '.join(group_cols)}" if group_cols else ""
 
         sql = f"SELECT {', '.join(select_cols)} FROM employees e {joins} {where_clause}{group_clause}".strip()
-        return sql, params
+        return sql, share_params + params
 
     # -------------------------------------------------------------------------
     # SQL Expression Helpers
     # -------------------------------------------------------------------------
 
-    def _sql_select_metric(self, metric: MetricSpec, dimensions: Optional[List[str]] = None) -> str:
+    def _value_column(self, metric: MetricSpec, dimensions: Optional[List[str]] = None) -> Optional[str]:
+        """Column compiled for the aggregation stored on the metric."""
+        if metric.measure == "hike":
+            return "CASE WHEN f.is_synthetic = 0 THEN f.hike_percent * 100.0 END"
+        if metric.measure == "bonus":
+            return "CASE WHEN f.is_synthetic = 0 THEN f.bonus END"
+        if metric.measure == "leave_utilization":
+            return "COALESCE(lv.leave_days, 0)"
+        if metric.measure == "skill_coverage":
+            return "COALESCE(sk.skill_cnt, 0)"
         m_def = MEASURES[metric.measure]
+        row_field = m_def.row_field
+        if not row_field or row_field not in FIELDS:
+            return None
+        col_sql = FIELDS[row_field].sql
+        if dimensions and "year" in dimensions:
+            if row_field == "ctc":
+                return "f.total_ctc"
+            if row_field == "monthly_salary":
+                return "f.monthly_salary"
+        return col_sql
+
+    def _agg_expr(self, agg: str, col: str, key: str) -> str:
+        """Compile the aggregation the catalog stored. MEDIAN is handled by _median_sql."""
+        if agg == "SUM":
+            return f"ROUND(SUM({col}), 2) AS {key}"
+        if agg == "MIN":
+            return f"MIN({col}) AS {key}"
+        if agg == "MAX":
+            return f"MAX({col}) AS {key}"
+        if agg == "COUNT":
+            return f"COUNT(DISTINCT e.employee_number) AS {key}"
+        return f"ROUND(AVG({col}), 2) AS {key}"
+
+    def _median_sql(self, metric: MetricSpec, joins: str, where_clause: str, group_cols: List[str]) -> str:
+        """Middle value of the metric column, over the same joins and filters."""
+        col = self._value_column(metric, group_cols) or "e.annual_ctc"
         key = metric.key
+        part = ", ".join(group_cols) if group_cols else "1"
+        dim_select = "".join(f"{expr} AS dim_{i}, " for i, expr in enumerate(group_cols))
+        outer_dims = ", ".join(f"dim_{i}" for i in range(len(group_cols)))
+        null_guard = f"{col} IS NOT NULL"
+        inner_where = f"{where_clause} AND {null_guard}" if where_clause else f"WHERE {null_guard}"
+        outer_select = f"{outer_dims}, " if outer_dims else ""
+        group_tail = f" GROUP BY {outer_dims}" if outer_dims else ""
+        return (
+            f"SELECT {outer_select}ROUND(AVG(val), 2) AS {key} FROM ("
+            f"SELECT {dim_select}{col} AS val, "
+            f"ROW_NUMBER() OVER (PARTITION BY {part} ORDER BY {col}) AS rn, "
+            f"COUNT(*) OVER (PARTITION BY {part}) AS cnt "
+            f"FROM employees e {joins} {inner_where}) "
+            f"WHERE rn IN ((cnt + 1) / 2, (cnt + 2) / 2){group_tail}"
+        )
+
+    def _plan_median_statement(self, ir: QueryIR, metric: MetricSpec) -> PlannedStatement:
+        if any(f.field == "manages" and f.op == "EXISTS" for f in ir.filters.flat()) and metric.agg == "MEDIAN":
+            return self._plan_span_median(ir, metric)
+        group_cols = [FIELDS[dim].sql for dim in ir.grouping if dim in FIELDS]
+        joins = self._resolve_joins(ir.metrics, ir.filters, ir.grouping or ir.dimensions)
+        where_clause, params = self._build_where_clause(ir.filters)
+        sql = self._median_sql(metric, joins, where_clause, group_cols)
+        return PlannedStatement(
+            statement_id="core_query",
+            sql=sql.strip(),
+            params=params,
+            purpose="Median of the catalog measure over the requested cohort",
+            expected_type="BREAKDOWN" if group_cols else "AGGREGATE",
+        )
+
+    def _plan_span_median(self, ir: QueryIR, metric: MetricSpec) -> PlannedStatement:
+        """Median number of people who report to each manager, over the same cohort."""
+        manager_filters = FilterGroup(items=[f for f in ir.filters.flat() if not (f.field == "manages" and f.op == "EXISTS")])
+        where_clause, params = self._build_where_clause(manager_filters)
+        link = "report_row.manager LIKE '%' || e.employee_number || '%'"
+        inner_where = f"{where_clause} AND {link}" if where_clause else f"WHERE {link}"
+        key = metric.key
+        sql = (
+            f"SELECT ROUND(AVG(val), 2) AS {key} FROM ("
+            f"SELECT val, ROW_NUMBER() OVER (ORDER BY val) AS rn, COUNT(*) OVER () AS cnt FROM ("
+            f"SELECT COUNT(*) AS val FROM employees e "
+            f"JOIN employees report_row ON {link} {inner_where} "
+            f"GROUP BY e.employee_number)) "
+            f"WHERE rn IN ((cnt + 1) / 2, (cnt + 2) / 2)"
+        )
+        return PlannedStatement(
+            statement_id="core_query",
+            sql=sql.strip(),
+            params=params,
+            purpose="Median span of the manages relation",
+            expected_type="AGGREGATE",
+        )
+
+    def _sql_select_metric(
+        self,
+        metric: MetricSpec,
+        dimensions: Optional[List[str]] = None,
+        filters: Optional[FilterGroup] = None,
+        share_params: Optional[List[Any]] = None,
+    ) -> str:
+        key = metric.key
+        flat = filters.flat() if filters else []
 
         if metric.measure == "headcount":
             return "COUNT(DISTINCT e.employee_number) AS count_headcount"
@@ -283,40 +396,39 @@ class QueryPlanner:
             )
 
         if metric.measure == "concentration":
+            status_filters = [f for f in flat if f.field == "status" and f.op == "="]
+            cohort_filters = [f for f in flat if f.field != "status" and f.op == "=" and f.field in FIELDS]
+            if status_filters and cohort_filters:
+                clauses = []
+                for f in cohort_filters:
+                    clauses.append(FIELDS[f.field].sql.replace("e.", "e2.", 1) + " = ?")
+                    if share_params is not None:
+                        share_params.append(f.value)
+                denom = (
+                    "(SELECT COUNT(DISTINCT e2.employee_number) FROM employees e2 WHERE "
+                    + " AND ".join(clauses)
+                    + ")"
+                )
+                return (
+                    "ROUND(CAST(COUNT(DISTINCT e.employee_number) AS FLOAT) * 100.0 / "
+                    f"NULLIF({denom}, 0), 2) AS share_concentration"
+                )
             tot = self.catalog.population_total or 590
             return f"ROUND(CAST(COUNT(DISTINCT e.employee_number) AS FLOAT) * 100.0 / {tot}, 2) AS share_concentration"
 
-        if metric.measure == "skill_coverage":
-            return "ROUND(AVG(COALESCE(sk.skill_cnt, 0)), 2) AS avg_skill_coverage"
+        if metric.measure == "promotions":
+            return (
+                f"COUNT(CASE WHEN f.is_synthetic = 0 AND f.is_promotion = 'Yes' THEN 1 END) AS {key}"
+            )
 
-        if metric.measure == "leave_utilization":
-            return "ROUND(AVG(COALESCE(lv.leave_days, 0)), 2) AS avg_leave_utilization"
+        if metric.measure == "leave_utilization" and metric.agg == "SUM":
+            return f"ROUND(SUM(l.day_value), 2) AS {key}"
+        if metric.measure == "leave_utilization" and dimensions and "leave_type" in dimensions:
+            return f"ROUND(SUM(l.day_value), 2) AS {key}"
 
-        if metric.measure == "hike":
-            return f"ROUND(AVG(f.hike_percent * 100.0), 2) AS {key}"
-
-        if metric.measure == "bonus":
-            return f"ROUND(AVG(f.bonus), 2) AS {key}"
-
-        # Standard numeric fields aggregated over employees table
-        row_field = m_def.row_field
-        if row_field and row_field in FIELDS:
-            col_sql = FIELDS[row_field].sql
-            dim_set = set(dimensions or [])
-            if "year" in dim_set:
-                if row_field == "ctc":
-                    col_sql = "f.total_ctc"
-                elif row_field == "monthly_salary":
-                    col_sql = "f.monthly_salary"
-
-            if metric.agg in ("AVG", "MEDIAN"):
-                return f"ROUND(AVG({col_sql}), 2) AS {key}"
-            elif metric.agg == "SUM":
-                return f"ROUND(SUM({col_sql}), 2) AS {key}"
-            elif metric.agg == "MIN":
-                return f"MIN({col_sql}) AS {key}"
-            elif metric.agg == "MAX":
-                return f"MAX({col_sql}) AS {key}"
+        col = self._value_column(metric, dimensions)
+        if col:
+            return self._agg_expr(metric.agg, col, key)
 
         return f"COUNT(*) AS {key}"
 
@@ -336,15 +448,17 @@ class QueryPlanner:
         if "skill" in filter_fields or "skill" in dim_fields:
             joins.append("JOIN (SELECT DISTINCT employee_number, skill_name FROM skills) s ON e.employee_number = s.employee_number")
 
-        if "leave_type" in filter_fields or "leave_type" in dim_fields:
+        if "leave_type" in dim_fields or any(m.measure == "leave_utilization" and m.agg == "SUM" for m in metrics):
+            joins.append("JOIN leaves l ON e.employee_number = l.employee_number")
+        elif "leave_type" in filter_fields:
             joins.append("JOIN (SELECT DISTINCT employee_number, leave_type FROM leaves) l ON e.employee_number = l.employee_number")
 
         if "year" in filter_fields or "year" in dim_fields:
-            if any(m.measure in ("ctc", "monthly_salary", "hike", "bonus") for m in metrics):
+            if any(m.measure in ("ctc", "monthly_salary", "hike", "bonus", "promotions") for m in metrics) or "is_promotion" in filter_fields or "is_promotion" in dim_fields:
                 joins.append("JOIN finance_history f ON e.employee_number = f.employee_number")
             else:
                 joins.append("JOIN (SELECT DISTINCT employee_number, year FROM finance_history) f ON e.employee_number = f.employee_number")
-        elif any(m.measure in ("hike", "bonus") for m in metrics) or "is_promotion" in filter_fields or "is_promotion" in dim_fields:
+        elif any(m.measure in ("hike", "bonus", "promotions") for m in metrics) or "is_promotion" in filter_fields or "is_promotion" in dim_fields:
             joins.append("JOIN finance_history f ON e.employee_number = f.employee_number")
 
         if "skill_agg" in needs or "skill_count" in filter_fields:
@@ -354,7 +468,7 @@ class QueryPlanner:
                 "FROM skills GROUP BY employee_number) sk ON e.employee_number = sk.employee_number"
             )
 
-        if "leave_agg" in needs or "leave_days" in filter_fields:
+        if ("leave_agg" in needs or "leave_days" in filter_fields) and "leave_type" not in dim_fields:
             # Pre-aggregate leave days
             joins.append(
                 "LEFT JOIN (SELECT employee_number, SUM(day_value) AS leave_days "
@@ -371,6 +485,12 @@ class QueryPlanner:
             if f.field == "is_promotion":
                 clauses.append("f.is_promotion = ?")
                 params.append(f.value)
+                continue
+            if f.field == "manages" and f.op == "EXISTS":
+                clauses.append(
+                    "EXISTS (SELECT 1 FROM employees report_row "
+                    "WHERE report_row.manager LIKE '%' || e.employee_number || '%')"
+                )
                 continue
 
             f_def = FIELDS.get(f.field)

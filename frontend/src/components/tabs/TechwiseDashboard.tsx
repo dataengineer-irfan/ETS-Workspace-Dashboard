@@ -28,7 +28,6 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 
-  Legend,
   Cell,
   LabelList
 } from 'recharts';
@@ -148,6 +147,11 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
     return <DashboardSkeleton variant="tech" title="Loading Technical Capability & Skills Analytics..." />;
   }
 
+  const dominantSkill = (data.skill_distribution || []).reduce(
+    (max, cur) => ((cur.employee_count || 0) > (max?.employee_count || 0) ? cur : max),
+    data.skill_distribution?.[0]
+  );
+
   if ((data.total_headcount ?? data.skill_roster?.length ?? 0) === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 min-h-[400px]">
@@ -252,7 +256,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-2 select-none h-full min-h-0">
+    <div className="dash-fit flex flex-col gap-2 select-none">
       {/* Top 4 KPI Cards (Mathematically Reconciled 1:1 Headcount) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
         <KPICard
@@ -295,11 +299,12 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
       </div>
 
       {/* Middle Visuals: Left Primary Skill Bar Chart + Right Context Panel */}
-      <div className="grid grid-cols-12 gap-2 min-h-0 flex-[1.15]">
+      <div className="pane-charts grid grid-cols-12 gap-2 min-h-0 items-stretch">
         {/* Left: Headcount by Primary Technical Skill (1:1 Allocation) */}
-        <div className="col-span-12 xl:col-span-8 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
+        <div className="col-span-12 lg:col-span-8 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
-            <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
                 Headcount by Primary Technical Skill
               </span>
@@ -307,19 +312,32 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 1:1 Allocated · Σ = {data.total_headcount || 590}
               </span>
+              </div>
+              {dominantSkill?.skill_name && (
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-normal break-words">
+                  {dominantSkill.skill_name} leads with {dominantSkill.employee_count} people.
+                </p>
+              )}
             </div>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">
-              Click bar to filter workforce
-            </span>
+            <div className="flex items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+              <span className="flex items-center gap-1 font-semibold">
+                <span className="w-2 h-2 rounded-sm bg-emerald-500 inline-block" /> Advanced
+              </span>
+              <span className="flex items-center gap-1 font-semibold">
+                <span className="w-2 h-2 rounded-sm bg-sky-600 inline-block" /> Intermediate
+              </span>
+              <span className="italic hidden xl:inline">Click bar to filter workforce</span>
+            </div>
           </div>
 
-          <div className="flex-1 min-h-0 pt-1 relative">
+          <div className="flex-1 min-h-0 w-full pt-0.5 flex flex-col xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(14rem,0.9fr)] xl:grid-rows-1 gap-2">
+            <div className="pane-plot hidden xl:block h-full min-h-0">
+            <div className="pane-plot-fill">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={data.skill_distribution}
-                layout="horizontal"
-                barCategoryGap="4%"
-                margin={{ top: 12, right: 16, left: 6, bottom: 40 }}
+                barCategoryGap="8%"
+                margin={{ top: 16, right: 8, left: 16, bottom: 4 }}
                 onClick={(e: any) => {
                   if (e && e.activePayload && e.activePayload.length) {
                     handleSkillSelect(e.activePayload[0].payload.skill_name);
@@ -331,17 +349,14 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
                 <XAxis 
                   dataKey="skill_name" 
                   stroke="var(--muted)" 
-                  tick={{ fontSize: 9.5, fill: 'var(--muted)' }} 
-                  interval={0}
-                  angle={-30}
-                  textAnchor="end"
-                  height={44}
+                  tick={false}
+                  height={8}
                 />
                 <YAxis 
                   stroke="var(--muted)" 
                   tick={{ fontSize: 9.5, fill: 'var(--muted)' }} 
                   width={28}
-                  domain={[0, 'auto']}
+                  domain={[0, 'dataMax']}
                   allowDataOverflow={false}
                 />
                 <Tooltip
@@ -383,8 +398,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
                     );
                   }}
                 />
-                <Legend verticalAlign="top" align="right" wrapperStyle={{ top: -4, right: 8, fontSize: '10px', color: 'var(--text)' }} />
-                <Bar 
+                <Bar isAnimationActive={false}
                   dataKey="advanced_count" 
                   fill="#10b981" 
                   name="Advanced" 
@@ -405,7 +419,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
                     );
                   })}
                 </Bar>
-                <Bar 
+                <Bar isAnimationActive={false}
                   dataKey="intermediate_count" 
                   fill="#0284c7" 
                   name="Intermediate" 
@@ -428,11 +442,49 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            </div>
+            </div>
+            <div className="min-h-0 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1 flex-1 xl:h-full">
+              {data.skill_distribution.map((skill) => {
+                const maxCount = Math.max(...data.skill_distribution.map((s) => Number(s.employee_count) || 0), 1);
+                const advanced = Number(skill.advanced_count) || 0;
+                const intermediate = Number(skill.intermediate_count) || 0;
+                const isSelected = activeSkills.includes(skill.skill_name);
+                return (
+                  <button
+                    key={skill.skill_name}
+                    type="button"
+                    onClick={() => handleSkillSelect(skill.skill_name)}
+                    className={`home-meter rounded px-1 py-0.5 transition-colors ${isSelected ? 'bg-cyan-50 dark:bg-cyan-950/40' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}
+                    style={{ flexShrink: 0, minHeight: 'min-content' }}
+                    title={`${skill.skill_name}: ${skill.employee_count} people`}
+                  >
+                    <span className="flex items-start justify-between gap-2 w-full">
+                      <span className="home-legend-name text-slate-800 dark:text-slate-100">{skill.skill_name}</span>
+                      <span className="home-meter-count"><b>{skill.employee_count}</b></span>
+                    </span>
+                    <span
+                      className="home-meter-track"
+                      style={{ display: 'flex', flexShrink: 0, height: 6, minHeight: 6 }}
+                    >
+                      <span
+                        className="home-meter-fill"
+                        style={{ width: `${(advanced / maxCount) * 100}%`, height: 6, flex: 'none', backgroundColor: '#10b981' }}
+                      />
+                      <span
+                        className="home-meter-fill"
+                        style={{ width: `${(intermediate / maxCount) * 100}%`, height: 6, flex: 'none', backgroundColor: '#0284c7' }}
+                      />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {/* Right: Dynamic Context Panel (Experience Depth OR Manager Matrix OR Bench Targets) */}
-        <div className="col-span-12 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
+        <div className="col-span-12 lg:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs min-h-0">
           {rightPanelMode === 'depth' && (
             <div className="flex-1 flex flex-col justify-between min-h-0">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
@@ -460,7 +512,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
               </div>
 
               {/* Seniority Depth Progress Bars (Interactive Click-to-Filter) */}
-              <div className="flex flex-col gap-2 py-1.5 flex-1 justify-center">
+              <div className="flex flex-col gap-1 py-1 flex-1 justify-evenly min-h-0 overflow-hidden">
                 {(data.skill_depth_distribution || [
                   { band: '< 2 Yrs (Junior)', count: 153, percentage: 25.9 },
                   { band: '2 - 5 Yrs (Mid)', count: 81, percentage: 13.7 },
@@ -480,13 +532,13 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
                       type="button"
                       onClick={() => handleExpBandClick(b.band)}
                       title={`Click to filter roster by ${b.band} depth`}
-                      className={`w-full text-left p-2 rounded-lg border transition-all cursor-pointer ${
+                      className={`w-full text-left px-2 py-0.5 rounded-lg border transition-all cursor-pointer flex-1 flex flex-col justify-center ${
                         isSelected
                           ? 'border-cyan-500 bg-cyan-50/90 dark:bg-cyan-950/50 shadow-xs ring-1 ring-cyan-500'
                           : 'bg-slate-50/80 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/60 hover:border-cyan-300 dark:hover:border-cyan-700 hover:bg-slate-100/70 dark:hover:bg-slate-800'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-[11px] mb-1">
+                      <div className="flex items-center justify-between text-[11px] mb-0.5">
                         <div className="flex items-center gap-1.5">
                           <span className={`font-semibold ${isSelected ? 'text-cyan-900 dark:text-cyan-200 font-bold' : 'text-slate-800 dark:text-slate-200'}`}>
                             {b.band}
@@ -671,7 +723,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
                       className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50/60 dark:bg-slate-800/60 flex items-center justify-between text-[11px]"
                     >
                       <div className="min-w-0 flex-1 pr-2">
-                        <p className="font-semibold text-slate-900 dark:text-slate-100 truncate" title={sName}>
+                        <p className="home-legend-name text-slate-900 dark:text-slate-100" title={sName}>
                           {sName}
                         </p>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
@@ -744,7 +796,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <span className={`text-[10px] font-bold truncate ${isActive ? 'text-indigo-800 dark:text-indigo-200' : 'text-slate-900 dark:text-slate-100'}`}>
+                            <span className={`home-legend-name ${isActive ? 'text-indigo-800 dark:text-indigo-200' : 'text-slate-900 dark:text-slate-100'}`}>
                               {mod.module_name}
                             </span>
                             {isActive && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />}
@@ -780,7 +832,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
       </div>
 
       {/* Bottom: Interactive Capability Roster */}
-      <div className="glass-panel rounded-xl p-2.5 min-h-0 flex-1 flex flex-col justify-between overflow-hidden shadow-2xs">
+      <div className="pane-roster glass-panel rounded-xl p-2.5 flex flex-col overflow-hidden shadow-2xs min-h-[130px] lg:min-h-0">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
@@ -893,7 +945,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto custom-scrollbar my-1">
+        <div className="flex-1 min-h-0 overflow-auto custom-scrollbar my-1">
           <table className="w-full min-w-[800px] text-left text-[11px] text-slate-700 dark:text-slate-300">
             <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700 z-10">
               <tr>
@@ -1080,7 +1132,7 @@ export const TechwiseDashboard: React.FC<TechwiseDashboardProps> = ({
                                 e.stopPropagation();
                                 handleSkillSelect(s);
                               }}
-                              className="text-[9px] px-1 py-0.2 rounded bg-slate-100 hover:bg-cyan-50 dark:bg-slate-800 dark:hover:bg-cyan-950/60 text-slate-600 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-300 border border-slate-200 dark:border-slate-700 truncate max-w-[90px] transition-colors cursor-pointer"
+                              className="text-[9px] px-1 py-0.2 rounded bg-slate-100 hover:bg-cyan-50 dark:bg-slate-800 dark:hover:bg-cyan-950/60 text-slate-600 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-300 border border-slate-200 dark:border-slate-700 whitespace-normal break-words leading-tight transition-colors cursor-pointer"
                               title={`Filter by ${s}`}
                             >
                               {s}

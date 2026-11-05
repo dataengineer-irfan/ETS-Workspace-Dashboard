@@ -19,6 +19,7 @@ import {
   Sparkles,
   Building2,
   Compass,
+  GraduationCap,
   Filter,
   BadgeIndianRupee,
   Database,
@@ -54,6 +55,7 @@ export interface HomeDashboardProps {
   filters?: FilterParams;
   setFilters?: React.Dispatch<React.SetStateAction<FilterParams>>;
   onOpenDatasetModal?: () => void;
+  onOpenTraining?: () => void;
 }
 
 /* ─── Color tokens ────────────────────────────────────────────── */
@@ -68,6 +70,22 @@ const MODULE_COLORS: Record<string, string> = {
   'Benefit Plan': '#14b8a6',
   TMSIS: '#f97316',
   'Data Management': '#0ea5e9',
+};
+
+const WORK_MODEL_FALLBACK = [
+  { model: 'Office', count: 0, percentage: 0 },
+  { model: 'Hybrid', count: 0, percentage: 0 },
+  { model: 'Remote', count: 0, percentage: 0 },
+  { model: 'Client site', count: 0, percentage: 0 },
+  { model: 'Not recorded yet', count: 0, percentage: 0 },
+];
+
+const WORK_MODEL_COLOR: Record<string, string> = {
+  Office: '#0284c7',
+  Hybrid: '#0d9488',
+  Remote: '#7c3aed',
+  'Client site': '#d97706',
+  'Not recorded yet': '#94a3b8',
 };
 
 const LOCATION_COLORS: Record<string, string> = {
@@ -193,6 +211,7 @@ interface KPISlotProps {
   onClick?: () => void;
   microBar?: React.ReactNode;
   actionNode?: React.ReactNode;
+  compact?: boolean;
 }
 
 const RING_R = 20;
@@ -212,13 +231,62 @@ const KPISlot: React.FC<KPISlotProps> = ({
   onClick,
   microBar,
   actionNode,
+  compact = true,
 }) => {
   const a = ACCENT[accent];
-  const hasRing = pct !== undefined;
+  const hasRing = pct !== undefined && !compact;
+
+  if (compact) {
+    return (
+      <div
+        data-hero="kpi"
+        className={`glass-panel rounded-xl flex flex-col justify-between h-full transition-all relative overflow-hidden py-1.5 px-3 ${
+          dominant ? 'border-l-4 border-l-cyan-600 shadow-sm' : ''
+        } ${onClick ? 'cursor-pointer hover:border-cyan-400 hover:shadow-sm' : ''}`}
+        onClick={onClick}
+        style={{
+          background: dominant
+            ? 'linear-gradient(180deg, var(--pill-bg), var(--surface))'
+            : 'linear-gradient(180deg, var(--panel), var(--surface))',
+        }}
+      >
+        <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: 'linear-gradient(90deg, rgba(14,165,233,0.9), rgba(59,130,246,0.3), transparent)' }} />
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className={`text-[9.5px] font-bold tracking-[0.08em] uppercase truncate ${dominant ? 'text-cyan-900 dark:text-cyan-300' : ''}`} style={{ color: dominant ? undefined : 'var(--muted)' }}>
+              {title}
+            </span>
+            {actionNode}
+          </div>
+          <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${a.icon}`}>
+            {iconNode ? iconNode : Icon ? <Icon className="w-3 h-3" /> : null}
+          </div>
+        </div>
+        <div className="my-0.5 flex items-baseline justify-between gap-1 min-w-0">
+          <span className={`font-black tracking-tight truncate ${
+            dominant
+              ? 'text-xl text-cyan-950 dark:text-cyan-200 font-mono'
+              : typeof value === 'string' && value.length > 16
+              ? 'text-xs font-sans font-bold'
+              : 'text-base font-mono'
+          }`} style={{ color: dominant ? undefined : 'var(--text)' }}>
+            {value}
+          </span>
+          <span className={`text-[8.5px] px-1.5 py-0.2 font-semibold rounded-full border font-mono shrink-0 ${a.badge}`}>
+            {badge}
+          </span>
+        </div>
+        <div className="flex items-center justify-between font-medium border-t pt-0.5 text-[9px]" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
+          <span className="truncate">{subtitle}</span>
+          {trend && <span className="text-emerald-600 dark:text-emerald-400 font-bold font-mono shrink-0">{trend}</span>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
-      className={`glass-panel rounded-xl p-2.5 flex flex-col justify-between h-full transition-all group ${
+      className={`glass-panel rounded-xl flex flex-col justify-between h-full transition-all group p-2.5 ${
         dominant ? 'border-l-4 border-l-cyan-600 shadow-xs ring-1 ring-cyan-500/20' : ''
       } ${onClick ? 'cursor-pointer hover:-translate-y-0.5 hover:border-cyan-400 hover:shadow-md active:scale-[0.99]' : ''}`}
       onClick={onClick}
@@ -278,8 +346,8 @@ const KPISlot: React.FC<KPISlotProps> = ({
           </div>
         </div>
       ) : (
-        <div className="my-1 flex items-baseline justify-between gap-1 shrink-0">
-          <span className={`font-black tracking-tight leading-none font-mono ${dominant ? 'text-2xl text-cyan-950 dark:text-cyan-200' : 'text-xl text-slate-900 dark:text-slate-100'}`}>
+        <div className={`${compact ? 'my-0.5' : 'my-1'} flex items-baseline justify-between gap-1 shrink-0`}>
+          <span className={`font-black tracking-tight leading-none font-mono ${compact ? (dominant ? 'text-xl' : 'text-base') : dominant ? 'text-2xl' : 'text-xl'} ${dominant ? 'text-cyan-950 dark:text-cyan-200' : 'text-slate-900 dark:text-slate-100'}`}>
             {value}
           </span>
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border font-mono shrink-0 ${a.badge}`}>
@@ -289,10 +357,10 @@ const KPISlot: React.FC<KPISlotProps> = ({
       )}
 
       {/* Optional microBar */}
-      {microBar && <div className="my-0.5 shrink-0">{microBar}</div>}
+      {microBar && <div className="shrink-0">{microBar}</div>}
 
       {/* Row 3: divider + bottom info */}
-      <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] shrink-0">
+      <div className={`flex items-center justify-between gap-1 border-t border-slate-100 dark:border-slate-800 text-[10px] shrink-0 ${compact ? 'pt-0.5' : 'pt-1'}`}>
         <span className="truncate text-slate-500 dark:text-slate-400 font-medium">{subtitle}</span>
         {dominant && <span className="text-[10px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/50 px-1.5 py-0.5 rounded font-mono shrink-0">100% Active</span>}
         {trend && <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono shrink-0">{trend}</span>}
@@ -300,6 +368,139 @@ const KPISlot: React.FC<KPISlotProps> = ({
     </div>
   );
 };
+
+/* ─── Bottom-row meter + donut (name, thin bar, quiet count) ─── */
+function MeterRow({
+  name,
+  count,
+  percentage,
+  color,
+  active = false,
+  emphasis = false,
+  meta,
+  onEnter,
+  onLeave,
+  onClick,
+  hint,
+}: {
+  name: string;
+  count: number;
+  percentage: number;
+  color: string;
+  active?: boolean;
+  emphasis?: boolean;
+  meta?: React.ReactNode;
+  onEnter?: () => void;
+  onLeave?: () => void;
+  onClick?: () => void;
+  hint?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+      onClick={onClick}
+      title={hint}
+      className={`home-meter group ${active ? 'bg-slate-100/80 dark:bg-slate-800/70 rounded-md' : ''}`}
+    >
+      <span className="flex items-baseline justify-between gap-2 min-w-0 w-full">
+        <span className="flex items-center gap-1.5 min-w-0 flex-1">
+          <span className="w-1.5 h-1.5 rounded-full shrink-0 self-center" style={{ backgroundColor: color }} aria-hidden />
+          <span className="home-legend-name text-slate-800 dark:text-slate-100" data-legend-name={name}>
+            {name}
+          </span>
+          {meta}
+        </span>
+        <span className="home-meter-count">
+          <b>{count}</b>
+          <span className="ml-1">{percentage}%</span>
+        </span>
+      </span>
+      <span className={`home-meter-track ${emphasis ? 'is-emphasis' : ''}`} aria-hidden>
+        <span
+          className="home-meter-fill"
+          style={{ width: `${Math.max(3, Math.min(100, percentage))}%`, backgroundColor: color }}
+        />
+      </span>
+    </button>
+  );
+}
+
+function SplitDonut({
+  data,
+  dataKey,
+  nameKey,
+  centerValue,
+  centerLabel,
+  activeIndex,
+  unit,
+  onHover,
+  onLeave,
+  onPick,
+}: {
+  data: Array<Record<string, any>>;
+  dataKey: string;
+  nameKey: string;
+  centerValue: React.ReactNode;
+  centerLabel: string;
+  activeIndex: number | null;
+  unit: string;
+  onHover: (index: number) => void;
+  onLeave: () => void;
+  onPick: (name: string) => void;
+}) {
+  return (
+    <div className="home-pie">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey={dataKey}
+            nameKey={nameKey}
+            cx="50%"
+            cy="50%"
+            innerRadius="64%"
+            outerRadius="88%"
+            paddingAngle={2}
+            isAnimationActive={false}
+            stroke="var(--surface)"
+            onMouseEnter={(_, i) => onHover(i)}
+            onMouseLeave={onLeave}
+            onClick={(e: any) => {
+              const picked = e?.[nameKey] || e?.payload?.[nameKey];
+              if (picked) onPick(String(picked));
+            }}
+          >
+            {data.map((entry, i) => (
+              <Cell
+                key={entry[nameKey] ?? i}
+                fill={entry.color}
+                stroke={activeIndex === i ? 'var(--text)' : 'var(--surface)'}
+                strokeWidth={activeIndex === i ? 2 : 1.5}
+                className="cursor-pointer"
+              />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'var(--surface)',
+              borderColor: 'var(--border)',
+              borderRadius: '8px',
+              fontSize: '11px',
+              boxShadow: 'var(--shadow-soft)',
+            }}
+            formatter={(v: any, _: any, p: any) => [`${v} ${unit} (${p.payload.percentage}%)`, p.payload[nameKey]]}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="home-donut-center" data-donut-center>
+        <span className="home-donut-value" data-donut-value>{centerValue}</span>
+        <span className="home-donut-label" data-donut-label>{centerLabel}</span>
+      </div>
+    </div>
+  );
+}
 
 /* ─── Drilldown Modal Types ───────────────────────────────────── */
 interface DrilldownItem {
@@ -339,6 +540,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   filters,
   setFilters,
   onOpenDatasetModal,
+  onOpenTraining,
 }) => {
   const [hoveredLocIndex, setHoveredLocIndex] = useState<number | null>(null);
   const [footprintView, setFootprintView] = useState<'map' | 'donut'>('map');
@@ -387,8 +589,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       color: Object.values(MODULE_COLORS)[idx % Object.values(MODULE_COLORS).length],
     }));
   }, [mmisModules]);
-
-  const activeHoveredModule = hoveredModuleIndex !== null ? top5Modules[hoveredModuleIndex] : null;
 
   // Convert employeeList to DrilldownItem format (memoized once for all drilldowns)
   const allDrilldownItems: DrilldownItem[] = useMemo(() => {
@@ -504,6 +704,27 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     return targetGroup ? targetGroup.managers : [];
   }, [projectManagerHierarchy, selectedHierarchyProj, data?.total_employees]);
 
+  const leadListRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = leadListRef.current;
+    if (!el || hierarchyView !== 'hierarchy') return;
+    const fit = () => {
+      const n = el.querySelectorAll('[data-lead-row]').length;
+      const gap = 6;
+      const minRow = 46;
+      const h = el.clientHeight;
+      if (!n || h < minRow) return;
+      const fitCount = Math.max(1, Math.floor((h + gap) / (minRow + gap)));
+      const count = Math.min(n, fitCount);
+      const each = (h - gap * Math.max(0, count - 1)) / count;
+      el.style.setProperty('--lead-row', `${Math.floor(each * 100) / 100}px`);
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hierarchyView, displayedHierarchyManagers.length, selectedHierarchyProj]);
+
   // Authoritative Compensation Outlay from employeeList or verified baseline (₹32.45 Cr annual / ₹2.70 Cr/mo)
   const totalAnnualCTC = useMemo(() => {
     if (!employeeList || employeeList.length === 0) return 324478088;
@@ -603,20 +824,23 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         { department: 'Informatica', count: 6, percentage: 1.0 },
       ];
 
-  // Client Project distribution (New Hampshire, North Dakota, Alaska)
+  // Client Project distribution (New Hampshire, North Dakota, Alaska, Maven)
   let nhCount = 0;
   let ndCount = 0;
   let akCount = 0;
+  let mavenCount = 0;
   (employeeList || []).forEach((e: any) => {
     const p = (e['Project Working'] || (e as any).project || '').toString().trim().toUpperCase();
     if (p === 'NH' || p === 'NH PROJECTS') nhCount++;
     else if (p === 'ND') ndCount++;
     else if (p === 'AK') akCount++;
+    else if (p === 'MAVEN') mavenCount++;
   });
-  if (nhCount === 0 && ndCount === 0 && akCount === 0 && (!employeeList || employeeList.length === 0)) {
-    nhCount = 364;
+  if (nhCount === 0 && ndCount === 0 && akCount === 0 && mavenCount === 0 && (!employeeList || employeeList.length === 0)) {
+    nhCount = 292;
     ndCount = 118;
     akCount = 108;
+    mavenCount = 72;
   }
   const totalEmployees = data.total_employees || 590;
   const blrCount = rankedLocs.find(l => l.location.toLowerCase() === 'bangalore')?.count || 0;
@@ -647,7 +871,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       color: '#8b5cf6',
       subtext: 'State MMIS Program',
     },
-  ];
+    {
+      name: 'Maven',
+      code: 'Maven',
+      count: mavenCount,
+      percentage: Number(((mavenCount / totalEmployees) * 100).toFixed(1)),
+      color: '#ea580c',
+      subtext: 'Maven delivery line',
+    },
+  ].filter((p) => p.count > 0);
 
   const currentYearExits = data.attrition_by_year && data.attrition_by_year.length > 0
     ? data.attrition_by_year[data.attrition_by_year.length - 1]?.exits ?? 4
@@ -674,6 +906,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const computedAttrRate = Number(((currentYearExits / (data.total_employees || 590)) * 100).toFixed(2));
   const currentAttrRate = data.attrition_rate_current !== undefined ? data.attrition_rate_current : computedAttrRate;
   const retentionRate = (100 - currentAttrRate).toFixed(1);
+
+  const empTypes = data.emp_type_distribution?.types ?? [];
+  const largestEmpType = empTypes.reduce<typeof empTypes[number] | undefined>(
+    (max, cur) => (cur.count > (max?.count ?? -1) ? cur : max),
+    undefined
+  );
 
   // Dynamic label for stability band footer (1 to 3 Yrs)
   const coreTenureBand = stabilityBands.find((b: any) => b.band.includes('1 to 3')) || stabilityBands[1];
@@ -856,8 +1094,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-2 select-none h-full min-h-0">
-      
+    <div className="dash-home flex flex-col gap-2 select-none min-h-0">
       {/* ══ ROW 1: 5-Card Executive KPI Band (Interactive Drilldowns & Authoritative Financials) ══ */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 shrink-0">
         <KPISlot
@@ -873,7 +1110,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 }}
                 title="Manage Dataset: Download, Upload or Cloud Sync"
                 aria-label="Manage dataset"
-                className="px-1.5 py-0.5 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 hover:border-cyan-400/40 transition-all cursor-pointer flex items-center gap-1 text-[9px] font-bold shrink-0"
+                className="h-4 px-1.5 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 hover:border-cyan-400/40 transition-all cursor-pointer flex items-center gap-1 text-[9px] leading-none font-bold shrink-0"
               >
                 <Database className="w-2.5 h-2.5" />
                 <span className="hidden sm:inline">Data</span>
@@ -982,11 +1219,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         />
       </div>
 
-      {/* ══ ROW 2: WORKFORCE DYNAMICS & COMPOSITION (Growth + Diversity + Pyramid) ══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-2 flex-1 min-h-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:flex-1 lg:min-h-0 lg:grid-rows-1 dash-home-row">
         
         {/* Module 1: Headcount & Hiring Growth (100% Dedicated 5-Year Trajectory) */}
-        <div className="col-span-1 lg:col-span-1 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
+        <div className="col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between lg:h-full min-h-0 min-w-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
             <div>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
@@ -994,7 +1230,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 Headcount & Hiring Growth
               </span>
               <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                Annual hiring volume & active workforce trajectory
+                Hiring peaked at {peakYear.joiners} in {peakYear.year}, with {retentionRate}% retained.
               </p>
             </div>
 
@@ -1003,7 +1239,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </span>
           </div>
 
-          <div className="flex-1 min-h-[140px] pt-0.5">
+          <div className="home-plot pt-0.5">
+            <div className="home-plot-fill">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={growthHistory}
@@ -1056,10 +1293,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 <Line yAxisId="right" type="monotone" dataKey="headcount" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: '#10b981' }} name="Active Headcount" />
               </ComposedChart>
             </ResponsiveContainer>
+            </div>
           </div>
 
           {/* Dynamic metric summary badges (Never clipped with compact padding & responsive fonts) */}
-          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
+          <div className="home-foot grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
             <div className="py-0.5 px-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 leading-tight">
               <span className="text-[9.5px] text-slate-500 dark:text-slate-400 block truncate">Peak Expansion</span>
               <span className="text-[11.5px] font-bold text-sky-600 dark:text-sky-400 font-mono block leading-tight">{peakYear.joiners} ({peakYear.year})</span>
@@ -1076,104 +1314,117 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* Module 2: Workforce Composition (Permanent vs Contractor vs Intern FTEs) */}
-        <div className="col-span-1 lg:col-span-1 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
+        <div className="col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between lg:h-full min-h-0 min-w-0">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <UserCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-                Workforce Composition
-              </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+                  Workforce Composition
+                </span>
+              </div>
+              {largestEmpType && (
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                  {largestEmpType.label} is {largestEmpType.count} ({largestEmpType.percentage}% of {data.total_employees}).
+                </p>
+              )}
             </div>
             <span className="text-[10px] text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 font-semibold font-mono">
               {data.total_employees} Staff
             </span>
           </div>
 
-          <div className="flex-1 min-h-0 flex flex-col pt-0.5">
+          <div className="home-plot pt-0.5">
+            <div className="home-plot-fill">
             <EmpTypeBreakdown
               data={data.emp_type_distribution}
               onSelectType={handleSelectEmpType}
             />
+            </div>
           </div>
         </div>
 
         {/* Module 3: Operational Project -> Manager Hierarchy / Grades / Age Curve */}
-        <div className="col-span-1 lg:col-span-2 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
-            <div>
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
+        <div data-card="hierarchy" className="col-span-1 md:col-span-2 lg:col-span-1 glass-panel rounded-xl p-2.5 flex flex-col justify-between lg:h-full min-h-0 min-w-0">
+          <div className="flex flex-col gap-1 border-b border-slate-100 dark:border-slate-800 pb-1 shrink-0">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5 min-w-0">
                 {hierarchyView === 'hierarchy' ? (
-                  <Building2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  <Building2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
                 ) : hierarchyView === 'pyramid' ? (
-                  <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
                 ) : (
-                  <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
                 )}
-                {hierarchyView === 'hierarchy'
-                  ? 'Project & Manager Hierarchy'
-                  : hierarchyView === 'pyramid'
-                  ? 'Job Level Hierarchy'
-                  : 'No. Of Employee By Age'}
+                <span className="truncate">
+                  {hierarchyView === 'hierarchy'
+                    ? 'Project & Manager Hierarchy'
+                    : hierarchyView === 'pyramid'
+                    ? 'Job Level Hierarchy'
+                    : 'No. Of Employee By Age'}
+                </span>
               </span>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                {hierarchyView === 'hierarchy'
-                  ? 'Project account to delivery manager span of control'
-                  : hierarchyView === 'pyramid'
-                  ? 'Structural grade pyramid distribution'
-                  : 'Demographic age bell curve with density gradient'}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => setHierarchyView('hierarchy')}
-                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    hierarchyView === 'hierarchy'
-                      ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Project -> Delivery Manager Hierarchy"
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setHierarchyView('hierarchy')}
+                    className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                      hierarchyView === 'hierarchy'
+                        ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                    title="Project -> Delivery Manager Hierarchy"
+                  >
+                    <Building2 className="w-2.5 h-2.5" />
+                    Delivery
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHierarchyView('pyramid')}
+                    className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                      hierarchyView === 'pyramid'
+                        ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                    title="Grade Pyramid View"
+                  >
+                    <Layers className="w-2.5 h-2.5" />
+                    Grades
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHierarchyView('age')}
+                    className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                      hierarchyView === 'age'
+                        ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                    title="Age Distribution Histogram"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    Age
+                  </button>
+                </div>
+                <span
+                  data-lead-badge={hierarchyView === 'hierarchy' ? displayedHierarchyManagers.length : undefined}
+                  className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800 font-bold font-mono shrink-0"
                 >
-                  <Building2 className="w-2.5 h-2.5" />
-                  Delivery
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHierarchyView('pyramid')}
-                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    hierarchyView === 'pyramid'
-                      ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Grade Pyramid View"
-                >
-                  <Layers className="w-2.5 h-2.5" />
-                  Grades
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHierarchyView('age')}
-                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    hierarchyView === 'age'
-                      ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Age Distribution Histogram"
-                >
-                  <Sparkles className="w-2.5 h-2.5" />
-                  Age
-                </button>
+                  {hierarchyView === 'hierarchy'
+                    ? `${displayedHierarchyManagers.length} Leads`
+                    : hierarchyView === 'pyramid'
+                    ? `${data.total_employees} Staff · 4 Tiers`
+                    : `${data.age_distribution?.stats?.median || 29.5}y Med`}
+                </span>
               </div>
-              <span className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800 font-bold font-mono">
-                {hierarchyView === 'hierarchy'
-                  ? `${displayedHierarchyManagers.length} Leads`
-                  : hierarchyView === 'pyramid'
-                  ? `${data.total_employees} Staff · 4 Tiers`
-                  : `${data.age_distribution?.stats?.median || 29.5}y Med`}
-              </span>
             </div>
+            <p className="home-sub text-[10px] text-slate-500 dark:text-slate-400 truncate">
+              {hierarchyView === 'hierarchy'
+                ? 'Project account to delivery manager span of control'
+                : hierarchyView === 'pyramid'
+                ? 'Structural grade pyramid distribution'
+                : 'Demographic age bell curve with density gradient'}
+            </p>
           </div>
 
           {hierarchyView === 'hierarchy' ? (
@@ -1185,7 +1436,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     type="button"
                     onClick={() => setSelectedHierarchyProj('ALL')}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                      selectedHierarchyProj === 'ALL'
+                      selectedHierarchyProj.toUpperCase() === 'ALL'
                         ? 'bg-purple-600 text-white shadow-2xs font-extrabold'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
@@ -1196,9 +1447,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     <button
                       key={pGroup.project}
                       type="button"
+                      data-account={pGroup.project}
                       onClick={() => setSelectedHierarchyProj(pGroup.project)}
                       className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                        selectedHierarchyProj === pGroup.project
+                        selectedHierarchyProj.toUpperCase() === pGroup.project.toUpperCase()
                           ? 'bg-purple-600 text-white shadow-2xs font-extrabold'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
@@ -1209,57 +1461,58 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </div>
               )}
 
-              {/* Scrollable List of Delivery Managers */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 my-1 space-y-1 min-h-0 max-h-[160px]">
+              <div ref={leadListRef} className="home-lead-list custom-scrollbar" data-lead-list>
                 {displayedHierarchyManagers.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-slate-400 text-xs py-4">
                     No manager data available for active cohort
                   </div>
                 ) : (
-                  displayedHierarchyManagers.map((mgr: any) => (
-                    <div
-                      key={mgr.manager}
-                      onClick={() => handleSelectHierarchyManager(mgr.name, mgr.manager, selectedHierarchyProj)}
-                      className="flex flex-col gap-0.5 cursor-pointer group p-1.5 rounded-lg hover:bg-purple-50/70 dark:hover:bg-purple-950/40 border border-slate-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all shadow-2xs"
-                      title={`Click to view engineers reporting to ${mgr.name}`}
-                    >
-                      <div className="flex items-center justify-between text-[10.5px]">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
-                          <span className="font-semibold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors truncate">
-                            {mgr.name}
-                          </span>
-                          {mgr.projectsSummary && (
-                            <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500 truncate max-w-[80px]">
-                              [{mgr.projectsSummary}]
+                  displayedHierarchyManagers.map((mgr: any) => {
+                    const accounts = mgr.projectsSummary
+                      ? String(mgr.projectsSummary).split(',').map((code: string) => code.trim()).filter(Boolean)
+                      : selectedHierarchyProj.toUpperCase() === 'ALL'
+                      ? []
+                      : [selectedHierarchyProj];
+                    return (
+                      <div
+                        key={mgr.manager}
+                        data-lead-row
+                        onClick={() => handleSelectHierarchyManager(mgr.name, mgr.manager, selectedHierarchyProj)}
+                        className="home-lead-row cursor-pointer group px-2 py-0.5 rounded-lg hover:bg-purple-50/70 dark:hover:bg-purple-950/40 border border-slate-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
+                        title={`Click to view engineers reporting to ${mgr.name}`}
+                      >
+                        <span data-lead-name className="home-lead-name text-[11px] font-semibold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">
+                          {mgr.name}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1 min-w-0">
+                          {accounts.map((code: string) => (
+                            <span key={code} className="text-[9px] leading-none font-mono font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 px-1 py-0.5 rounded whitespace-nowrap">
+                              {code}
                             </span>
-                          )}
+                          ))}
+                          <span className="ml-auto font-mono text-[10px] font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                            {mgr.count} staff
+                            <span className="font-medium text-slate-400 dark:text-slate-500"> ({mgr.percentage}%)</span>
+                          </span>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
-                          <span className="font-bold text-slate-900 dark:text-slate-100">{mgr.count} staff</span>
-                          <span className="text-slate-400 dark:text-slate-500">({mgr.percentage}%)</span>
+                        <div className="home-lead-track" aria-hidden="true">
+                          <div className="home-lead-fill" style={{ width: `${Math.max(4, Math.min(100, mgr.percentage))}%` }} />
                         </div>
                       </div>
-                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                        <div
-                          className="bg-purple-600 dark:bg-purple-400 h-full rounded-full transition-all duration-300 group-hover:brightness-110"
-                          style={{ width: `${Math.max(4, mgr.percentage)}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 
-              <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+              <div className="home-foot pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
                 <span>Account: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{selectedHierarchyProj === 'ALL' ? 'Multi-Project Delivery' : `${selectedHierarchyProj} Project`}</strong></span>
                 <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">{displayedHierarchyManagers.length} Delivery Leads</span>
               </div>
             </>
           ) : hierarchyView === 'pyramid' ? (
-            <div className="flex-1 flex flex-col justify-around py-2 min-h-0 gap-1.5">
+            <div className="grade-stack flex-1 min-h-0 flex flex-col justify-evenly overflow-hidden py-0.5 gap-1">
               {pyramidTiers.map((tier: any, idx: number) => {
-                const widths = ['w-[65%]', 'w-[78%]', 'w-[88%]', 'w-full'];
+                const widths = [68, 80, 90, 100];
                 const bgColors = [
                   'bg-purple-50/80 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 hover:border-purple-400',
                   'bg-cyan-50/80 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 hover:border-cyan-400',
@@ -1281,11 +1534,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                         tier.grades
                       );
                     }}
-                    className={`${widths[idx]} mx-auto px-3 py-1.5 rounded-xl border flex items-center justify-between shadow-2xs transition-all cursor-pointer hover:scale-[1.02] hover:shadow-sm active:scale-[0.99] ${bgColors[idx]}`}
+                    className={`grade-tier mx-auto px-2 py-0.5 rounded-lg border flex items-center justify-between shadow-2xs transition-all cursor-pointer hover:shadow-sm min-h-0 ${bgColors[idx]}`}
+                    style={{ width: `${widths[idx]}%`, maxWidth: '100%' }}
                     title={`Click to view roster for ${tier.tier}`}
                   >
                     <div className="min-w-0 flex items-center gap-1.5 flex-1 pr-1">
-                      <span className="text-[11.5px] font-bold truncate">{tier.tier}</span>
+                      <span className="text-[11px] font-bold leading-tight whitespace-nowrap">{tier.tier}</span>
                       <span className="text-[10px] font-mono font-bold px-2 py-0.2 rounded bg-white/70 dark:bg-slate-900/70 border border-black/10 dark:border-white/10 shrink-0">
                         {tier.grades?.join(', ') || ''}
                       </span>
@@ -1299,33 +1553,38 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               })}
             </div>
           ) : (
-            <div className="flex-1 min-h-0 flex flex-col pt-0.5">
+            <div className="home-plot pt-0.5">
+              <div className="home-plot-fill">
               <AgeDistributionChart
                 data={data.age_distribution}
                 onSelectAgeBin={handleSelectAgeBin}
               />
+              </div>
             </div>
           )}
         </div>
       </div>
 
       {/* ══ ROW 3: STABILITY, FOOTPRINT & DEPARTMENTS (Interactive Slicers) ══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-2 flex-1 min-h-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-2 lg:flex-1 lg:min-h-0 lg:grid-rows-1 dash-home-row">
         
-        {/* Module 4: Stability & Tenure Bands (Clickable Horizontal Bars) */}
-        <div className="col-span-1 lg:col-span-1 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+        {/* Module 4: Stability & Tenure Bands */}
+        <div data-card="tenure" className="home-card col-span-1 md:col-span-1 lg:col-span-3 glass-panel rounded-xl p-2.5 flex flex-col lg:h-full min-h-0 min-w-0">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Tenure Distribution Bands</span>
             </div>
-            <span className="text-[10px] text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 px-1.5 py-0.5 rounded border border-teal-200 dark:border-teal-800 font-mono font-bold">
+            <span className="text-[10px] text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 px-1.5 py-0.5 rounded border border-teal-200 dark:border-teal-800 font-mono font-bold shrink-0">
               Avg {data.avg_infinite_exp} Yrs
             </span>
           </div>
 
-          {/* Horizontal Progress Bars */}
-          <div className="flex-1 flex flex-col justify-around py-1.5 min-h-0">
+          <div
+            className="home-meter-stack flex-1 py-1"
+            data-legend="tenure"
+            style={{ gridTemplateRows: `repeat(${Math.max(stabilityBands.length, 1)}, minmax(0, 1fr))` }}
+          >
             {stabilityBands.map((band: any) => {
               const bandFilters: Record<string, (exp: number) => boolean> = {
                 '< 1 Yr': (exp) => exp < 1,
@@ -1340,8 +1599,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 : allDrilldownItems;
 
               return (
-                <div
+                <MeterRow
                   key={band.band}
+                  name={band.band}
+                  count={band.count}
+                  percentage={band.percentage}
+                  color="#0d9488"
+                  emphasis
+                  hint={`Click to view ${bandItems.length} employees in ${band.band} tenure band`}
                   onClick={() => {
                     openDrilldown(
                       `Tenure Band: ${band.band} (${band.label})`,
@@ -1354,29 +1619,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       true
                     );
                   }}
-                  className="flex flex-col gap-0.5 cursor-pointer group p-0.5 rounded hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
-                  title={`Click to view ${bandItems.length} employees in ${band.band} tenure band`}
-                >
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors">
-                    {band.band}
-                  </span>
-                  <span className="font-mono text-slate-500 dark:text-slate-400 text-[10px]">
-                    <b className="text-slate-800 dark:text-slate-200 font-bold">{band.count}</b> ({band.percentage}%)
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-teal-500 to-cyan-500 h-full rounded-full transition-all duration-500 group-hover:brightness-110"
-                    style={{ width: `${Math.max(4, band.percentage)}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
+                />
+              );
+            })}
           </div>
 
-          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
+          <div className="home-foot pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
             <span>{stabilityFooterText}</span>
             <span className="text-teal-600 dark:text-teal-400 font-bold">
               {data.avg_infinite_exp >= 2.5 ? 'High Stability' : 'Active Ramp-up'}
@@ -1384,16 +1632,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
 
-        {/* Module 5: Regional Delivery Footprint Hubs (Interactive India Geo Map & Donut Switcher) */}
-        <div className="col-span-1 lg:col-span-1 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+        {/* Module 5: Regional Delivery Footprint */}
+        <div data-card="footprint" className="home-card col-span-1 md:col-span-1 lg:col-span-5 glass-panel rounded-xl p-2.5 flex flex-col lg:h-full min-h-0 min-w-0">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Compass className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Delivery Footprint</span>
             </div>
 
-            {/* View Switcher & Badge */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
                 <button
                   type="button"
@@ -1423,204 +1670,86 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </button>
               </div>
               <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 font-semibold font-mono">
-                4 Hubs
+                {rankedLocs.length} Hubs
               </span>
             </div>
           </div>
 
-          <div className="flex-1 grid grid-cols-12 gap-2 items-center min-h-0 py-1">
-            {/* Left: Interactive India Map or Big Hero Donut (7 cols) */}
-            <div className="col-span-7 h-full relative flex items-center justify-center min-h-[140px]">
+          <div className="home-plot">
+            <div className="home-plot-fill home-visual">
               {footprintView === 'map' ? (
-                <IndiaDeliveryMap
-                  locations={rankedLocs}
-                  hoveredLocation={hoveredLocName}
-                  onHoverLocation={setHoveredLocByName}
-                  onSelectLocation={handleSelectLocation}
-                />
+                <div className="home-pie home-pie-map">
+                  <IndiaDeliveryMap
+                    locations={rankedLocs}
+                    hoveredLocation={hoveredLocName}
+                    onHoverLocation={setHoveredLocByName}
+                    onSelectLocation={handleSelectLocation}
+                  />
+                </div>
               ) : (
-                <>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={rankedLocs}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius="50%"
-                        outerRadius="80%"
-                        paddingAngle={3}
-                        dataKey="count"
-                        onMouseEnter={(_, i) => setHoveredLocIndex(i)}
-                        onMouseLeave={() => setHoveredLocIndex(null)}
-                        onClick={(e: any) => {
-                          const locName = e?.location || e?.payload?.location;
-                          if (locName) handleSelectLocation(locName);
-                        }}
-                      >
-                        {rankedLocs.map((e, i) => (
-                          <Cell
-                            key={i}
-                            fill={e.color}
-                            stroke={hoveredLocIndex === i ? 'var(--text)' : 'var(--surface)'}
-                            strokeWidth={hoveredLocIndex === i ? 2.5 : 1.5}
-                            className="cursor-pointer"
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--surface)',
-                          borderColor: 'var(--border)',
-                          borderRadius: '8px',
-                          fontSize: '11px',
-                          boxShadow: 'var(--shadow-soft)',
-                        }}
-                        formatter={(v: any, _: any, p: any) => [`${v} Staff (${p.payload.percentage}%)`, p.payload.location]}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    {activeHovered ? (
-                      <>
-                        <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHovered.color }}>
-                          {activeHovered.location}
-                        </span>
-                        <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                          {activeHovered.count}
-                        </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
-                          {activeHovered.percentage}%
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                          {rankedLocs.length}
-                        </span>
-                        <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                          Hub Cities
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </>
+                <SplitDonut
+                  data={rankedLocs}
+                  dataKey="count"
+                  nameKey="location"
+                  centerValue={activeHovered ? activeHovered.count : rankedLocs.length}
+                  centerLabel={activeHovered ? `${activeHovered.percentage}%` : 'Hubs'}
+                  activeIndex={hoveredLocIndex}
+                  unit="Staff"
+                  onHover={setHoveredLocIndex}
+                  onLeave={() => setHoveredLocIndex(null)}
+                  onPick={handleSelectLocation}
+                />
               )}
-            </div>
-
-            {/* Right: Slim, High-Density Legend (5 cols) */}
-            <div className="col-span-5 flex flex-col justify-center gap-1.5 h-full pl-1 border-l border-slate-100 dark:border-slate-800/80">
-              {rankedLocs.slice(0, 4).map((loc, i) => {
-                const hov = hoveredLocIndex === i;
-                return (
-                  <div
+              <div
+                className="home-legend"
+                data-legend="footprint"
+                style={{ gridTemplateRows: `repeat(${Math.max(rankedLocs.length, 1)}, minmax(0, 1fr))` }}
+              >
+                {rankedLocs.map((loc, i) => (
+                  <MeterRow
                     key={loc.location}
-                    onMouseEnter={() => setHoveredLocIndex(i)}
-                    onMouseLeave={() => setHoveredLocIndex(null)}
+                    name={loc.location}
+                    count={loc.count}
+                    percentage={loc.percentage}
+                    color={loc.color}
+                    active={hoveredLocIndex === i}
+                    hint={`Click to view employees in ${loc.location}`}
+                    onEnter={() => setHoveredLocIndex(i)}
+                    onLeave={() => setHoveredLocIndex(null)}
                     onClick={() => handleSelectLocation(loc.location)}
-                    className={`px-1.5 py-1 rounded-md transition-all cursor-pointer flex flex-col gap-0.5 ${
-                      hov
-                        ? 'bg-slate-100 dark:bg-slate-800 shadow-2xs'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                    }`}
-                    title={`Click to view employees in ${loc.location}`}
-                  >
-                    <div className="flex items-center justify-between gap-1 text-[11px]">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: loc.color }}
-                        />
-                        <span className={`font-semibold truncate text-[11px] ${hov ? 'text-cyan-600 dark:text-cyan-400 font-bold' : 'text-slate-700 dark:text-slate-200'}`}>
-                          {loc.location}
-                        </span>
-                      </div>
-                      <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-                        <b className="text-slate-800 dark:text-slate-100 font-bold">{loc.count}</b> ({loc.percentage}%)
-                      </span>
-                    </div>
-                    {/* Slim progress bar */}
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{ width: `${Math.max(3, loc.percentage)}%`, backgroundColor: loc.color }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Sub-footer insight */}
-          <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
-            <span>Geographic Concentration:</span>
-            <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{southPct}% South Corridor (BLR + HYD)</span>
+          <div className="home-foot pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 shrink-0 min-w-0">
+            <span className="shrink-0">South corridor</span>
+            <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold text-right">{southPct}% Bangalore + Hyderabad</span>
           </div>
         </div>
 
-        {/* Module 6: Operational Allocation (Client Accounts, MMIS Squads, Functional Units) */}
-        <div className="col-span-1 lg:col-span-2 xl:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col justify-between min-h-0 flex-1">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 shrink-0">
-            <div className="flex items-center gap-1.5">
-              {allocationView === 'projects' ? (
-                <Briefcase className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              ) : allocationView === 'mmis' ? (
-                <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              ) : (
-                <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              )}
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-                {allocationView === 'projects'
-                  ? 'Client Account Allocation'
-                  : allocationView === 'mmis'
-                  ? 'MMIS Delivery Squads'
-                  : 'Department Allocation'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => setAllocationView('projects')}
-                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    allocationView === 'projects'
-                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="External Client State Accounts (New Hampshire, North Dakota, Alaska)"
-                >
-                  <Briefcase className="w-2.5 h-2.5" />
-                  Projects
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAllocationView('mmis')}
-                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    allocationView === 'mmis'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title={`MMIS Delivery Modules (${totalMmisEmployees} Engineers across ${totalMmisModulesCount} Modules)`}
-                >
-                  <Layers className="w-2.5 h-2.5" />
-                  MMIS Squads
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAllocationView('departments')}
-                  className={`px-1.5 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-                    allocationView === 'departments'
-                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Internal Functional Units (IT, Core, QA, Infra, Cognos, Informatica)"
-                >
-                  <Building2 className="w-2.5 h-2.5" />
-                  Units
-                </button>
+        {/* Module 6: Client accounts, MMIS squads, functional units */}
+        <div data-card="allocation" className="home-card col-span-1 md:col-span-2 lg:col-span-4 glass-panel rounded-xl p-2.5 flex flex-col lg:h-full min-h-0 min-w-0">
+          <div className="shrink-0 border-b border-slate-100 dark:border-slate-800 pb-1.5 space-y-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                {allocationView === 'projects' ? (
+                  <Briefcase className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                ) : allocationView === 'mmis' ? (
+                  <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                ) : (
+                  <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                )}
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight whitespace-normal">
+                  {allocationView === 'projects'
+                    ? 'Client Account Allocation'
+                    : allocationView === 'mmis'
+                    ? 'MMIS Delivery Squads'
+                    : 'Department Allocation'}
+                </span>
               </div>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold font-mono ${
+              <span className={`home-head-badge text-[10px] px-1.5 py-0.5 rounded border font-semibold font-mono shrink-0 ${
                 allocationView === 'mmis'
                   ? 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800'
                   : 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800'
@@ -1632,60 +1761,88 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   : `${deptList.length} Units`}
               </span>
             </div>
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 text-[10px] min-w-0">
+              <button
+                type="button"
+                onClick={() => setAllocationView('projects')}
+                className={`flex-1 min-w-0 px-1.5 py-0.5 rounded font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap ${
+                  allocationView === 'projects'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="External Client State Accounts (New Hampshire, North Dakota, Alaska)"
+              >
+                <Briefcase className="w-2.5 h-2.5 shrink-0" />
+                Projects
+              </button>
+              <button
+                type="button"
+                onClick={() => setAllocationView('mmis')}
+                className={`flex-1 min-w-0 px-1.5 py-0.5 rounded font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap ${
+                  allocationView === 'mmis'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title={`MMIS Delivery Modules (${totalMmisEmployees} Engineers across ${totalMmisModulesCount} Modules)`}
+              >
+                <Layers className="w-2.5 h-2.5 shrink-0" />
+                MMIS Squads
+              </button>
+              <button
+                type="button"
+                onClick={() => setAllocationView('departments')}
+                className={`flex-1 min-w-0 px-1.5 py-0.5 rounded font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap ${
+                  allocationView === 'departments'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Internal Functional Units (IT, Core, QA, Infra, Cognos, Informatica)"
+              >
+                <Building2 className="w-2.5 h-2.5 shrink-0" />
+                Units
+              </button>
+            </div>
           </div>
 
           {allocationView === 'projects' ? (
             <>
-              {/* Client Accounts View (NH, ND, AK) with high visual polish */}
-              <div className="flex-1 min-h-0 flex flex-col justify-around py-1 overflow-hidden">
+              <div
+                className="home-meter-stack flex-1 py-1"
+                data-legend="projects"
+                style={{ gridTemplateRows: `repeat(${Math.max(clientProjects.length, 1)}, minmax(0, 1fr))` }}
+              >
                 {clientProjects.map((p: any) => (
-                  <div
-                    key={p.code}
-                    onClick={() => handleSelectProject(p.name, p.code)}
-                    className="flex flex-col gap-0.5 cursor-pointer group p-1.5 rounded-lg hover:bg-slate-50/70 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800/60 transition-all hover:scale-[1.01]"
-                    title={`Click to view ${p.count} team members in ${p.name}`}
-                  >
-                    <div className="flex items-center justify-between text-[10.5px] leading-tight">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                        <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors truncate">
-                          {p.name}
-                        </span>
-                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
+                  <div key={p.code} className="min-w-0 min-h-0 flex flex-col justify-center">
+                    <MeterRow
+                      name={p.name}
+                      count={p.count}
+                      percentage={p.percentage}
+                      color={p.color}
+                      emphasis
+                      meta={
+                        <span className="text-[9px] font-mono font-bold px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0">
                           {p.code}
                         </span>
-                      </div>
-                      <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-                        <b className="text-slate-900 dark:text-slate-100 font-bold">{p.count}</b> ({p.percentage}%)
-                      </span>
-                    </div>
-
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500 group-hover:brightness-110"
-                        style={{ width: `${Math.max(4, p.percentage)}%`, backgroundColor: p.color }}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between text-[9.5px] text-slate-400 dark:text-slate-500 leading-none">
-                      <span>{p.subtext}</span>
-                      <span className="font-medium text-slate-600 dark:text-slate-400 font-mono">
-                        {p.count} of {data?.total_employees || 590} FTE
-                      </span>
+                      }
+                      hint={`Click to view ${p.count} team members in ${p.name}`}
+                      onClick={() => handleSelectProject(p.name, p.code)}
+                    />
+                    <div className="home-sub px-1 text-[10px] text-slate-400 dark:text-slate-500 leading-tight">
+                      {p.subtext}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="pt-1 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 shrink-0 leading-tight">
-                <span>Dominant Account:</span>
-                <span className="font-bold text-sky-600 dark:text-sky-400 font-mono">
+              <div className="home-foot pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[10.5px] text-slate-500 dark:text-slate-400 shrink-0 min-w-0">
+                <span className="shrink-0">Lead account</span>
+                <span className="font-bold text-sky-600 dark:text-sky-400 font-mono text-right whitespace-normal">
                   {clientProjects[0]?.name} ({clientProjects[0]?.percentage}%)
                 </span>
               </div>
             </>
           ) : allocationView === 'mmis' ? (
-            <>
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               {/* MMIS Squads View with Top 5 Donut & All Toggle */}
               <div className="flex items-center justify-between py-0.5 text-[10.5px]">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">
@@ -1719,164 +1876,89 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
               {moduleView === 'donut' ? (
                 <>
-                  <div className="flex-1 grid grid-cols-12 gap-2 items-center min-h-0 py-0.5">
-                    {/* Left: Donut Chart (7 cols) */}
-                    <div className="col-span-7 h-full relative flex items-center justify-center min-h-[135px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={top5Modules}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius="50%"
-                            outerRadius="80%"
-                            paddingAngle={3}
-                            dataKey="employee_count"
-                            onMouseEnter={(_, i) => setHoveredModuleIndex(i)}
-                            onMouseLeave={() => setHoveredModuleIndex(null)}
-                            onClick={(e: any) => {
-                              const modName = e?.module_name || e?.payload?.module_name;
-                              if (modName) handleSelectModule(modName);
-                            }}
-                          >
-                            {top5Modules.map((e, i) => (
-                              <Cell
-                                key={i}
-                                fill={e.color}
-                                stroke={hoveredModuleIndex === i ? 'var(--text)' : 'var(--surface)'}
-                                strokeWidth={hoveredModuleIndex === i ? 2.5 : 1.5}
-                                className="cursor-pointer"
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'var(--surface)',
-                              borderColor: 'var(--border)',
-                              borderRadius: '8px',
-                              fontSize: '11px',
-                              boxShadow: 'var(--shadow-soft)',
-                            }}
-                            formatter={(v: any, _: any, p: any) => [`${v} Engineers (${p.payload.percentage}%)`, p.payload.module_name]}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        {activeHoveredModule ? (
-                          <>
-                            <span className="text-[10px] font-bold truncate max-w-[65px]" style={{ color: activeHoveredModule.color }}>
-                              {activeHoveredModule.module_name}
-                            </span>
-                            <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                              {activeHoveredModule.employee_count}
-                            </span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold font-mono mt-0.5">
-                              {activeHoveredModule.percentage}%
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono leading-none">
-                              {totalMmisModulesCount}
-                            </span>
-                            <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                              MODULES
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right: Slim Top 5 Legend (5 cols) */}
-                    <div className="col-span-5 flex flex-col justify-center gap-1 h-full pl-1 border-l border-slate-100 dark:border-slate-800/80">
-                      {top5Modules.map((mod, i) => {
-                        const hov = hoveredModuleIndex === i;
-                        return (
-                          <div
+                  <div className="home-plot">
+                    <div className="home-plot-fill home-visual">
+                      <SplitDonut
+                        data={top5Modules}
+                        dataKey="employee_count"
+                        nameKey="module_name"
+                        centerValue={totalMmisModulesCount}
+                        centerLabel="MODULES"
+                        activeIndex={hoveredModuleIndex}
+                        unit="Engineers"
+                        onHover={setHoveredModuleIndex}
+                        onLeave={() => setHoveredModuleIndex(null)}
+                        onPick={handleSelectModule}
+                      />
+                      <div
+                        className="home-legend"
+                        data-legend="mmis"
+                        style={{ gridTemplateRows: `repeat(${Math.max(top5Modules.length, 1)}, minmax(0, 1fr))` }}
+                      >
+                        {top5Modules.map((mod, i) => (
+                          <MeterRow
                             key={mod.module_name}
-                            onMouseEnter={() => setHoveredModuleIndex(i)}
-                            onMouseLeave={() => setHoveredModuleIndex(null)}
+                            name={mod.module_name}
+                            count={mod.employee_count}
+                            percentage={mod.percentage}
+                            color={mod.color}
+                            active={hoveredModuleIndex === i}
+                            hint={`Click to view ${mod.employee_count} Java developers in ${mod.module_name}`}
+                            onEnter={() => setHoveredModuleIndex(i)}
+                            onLeave={() => setHoveredModuleIndex(null)}
                             onClick={() => handleSelectModule(mod.module_name)}
-                            className={`px-1.5 py-0.5 rounded-md transition-all cursor-pointer flex flex-col gap-0.5 ${
-                              hov
-                                ? 'bg-slate-100 dark:bg-slate-800 shadow-2xs'
-                                : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                            }`}
-                            title={`Click to view ${mod.employee_count} Java developers in ${mod.module_name}`}
-                          >
-                            <div className="flex items-center justify-between text-[10.5px]">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: mod.color }} />
-                                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[65px]">
-                                  {mod.module_name}
-                                </span>
-                              </div>
-                              <span className="font-mono text-slate-500 dark:text-slate-400 text-[10px] shrink-0">
-                                <b className="text-slate-900 dark:text-slate-100">{mod.employee_count}</b>
-                              </span>
-                            </div>
-                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all duration-300"
-                                style={{ width: `${Math.max(4, mod.percentage)}%`, backgroundColor: mod.color }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-                    <span>Primary Focus: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{top5Modules[0]?.module_name} ({top5Modules[0]?.employee_count} Devs · {top5Modules[0]?.percentage}%)</strong></span>
-                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{totalMmisModulesCount} Delivery Modules</span>
+                  <div className="home-foot pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400 shrink-0 min-w-0">
+                    <span className="min-w-0 whitespace-normal leading-tight">
+                      Lead module <strong className="text-slate-800 dark:text-slate-200 font-semibold">{top5Modules[0]?.module_name}</strong>
+                    </span>
+                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold shrink-0">{totalMmisModulesCount} modules</span>
                   </div>
                 </>
               ) : (
                 <>
-                  {/* All Modules: High-Density Scrollable List */}
-                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 my-1 space-y-1 min-h-0 max-h-[170px]">
+                  <div className="home-meter-scroll custom-scrollbar flex-1 my-1 pr-1" data-legend="mmis-all">
                     {mmisModules.map((mod: any) => (
-                      <div
+                      <MeterRow
                         key={mod.module_name}
+                        name={mod.module_name}
+                        count={mod.employee_count}
+                        percentage={mod.percentage}
+                        color={MODULE_COLORS[mod.module_name] || '#6366f1'}
+                        hint={`Click to view ${mod.employee_count} engineers in ${mod.module_name}`}
                         onClick={() => handleSelectModule(mod.module_name)}
-                        className="flex flex-col gap-0.5 cursor-pointer group p-1 rounded hover:bg-slate-50/60 dark:hover:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 transition-colors"
-                        title={`Click to view ${mod.employee_count} engineers in ${mod.module_name}`}
-                      >
-                        <div className="flex items-center justify-between text-[10.5px]">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                            <span className="font-semibold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
-                              {mod.module_name}
-                            </span>
-                          </div>
-                          <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-                            <b className="text-slate-900 dark:text-slate-100 font-bold">{mod.employee_count}</b> ({mod.percentage}%)
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-indigo-500 dark:bg-indigo-400 h-full rounded-full transition-all duration-300 group-hover:brightness-110"
-                            style={{ width: `${Math.max(4, mod.percentage * 4)}%` }}
-                          />
-                        </div>
-                      </div>
+                      />
                     ))}
                   </div>
 
-                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-                    <span>Workforce Scope: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{totalMmisEmployees} Engineers</strong></span>
-                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{totalMmisModulesCount} MMIS Modules</span>
+                  <div className="home-foot pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+                    <span>{totalMmisEmployees} engineers</span>
+                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{totalMmisModulesCount} modules</span>
                   </div>
                 </>
               )}
-            </>
+            </div>
           ) : (
             <>
-              <div className="flex-1 min-h-0 flex flex-col justify-between py-1 overflow-hidden">
+              <div
+                className="home-meter-stack flex-1 py-1"
+                data-legend="units"
+                style={{ gridTemplateRows: `repeat(${Math.max(deptList.length, 1)}, minmax(0, 1fr))` }}
+              >
                 {deptList.map((d: any) => (
-                  <div
+                  <MeterRow
                     key={d.department}
+                    name={d.department}
+                    count={d.count}
+                    percentage={d.percentage}
+                    color="#3b82f6"
+                    emphasis
+                    hint={`Click to view team members in ${d.department}`}
                     onClick={() => {
                       const items = allDrilldownItems.filter(
                         (item) => item.department.toLowerCase() === d.department.toLowerCase()
@@ -1890,34 +1972,83 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                         [d.department]
                       );
                     }}
-                    className="flex flex-col gap-0.5 cursor-pointer group px-1 py-0.5 rounded hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-colors"
-                    title={`Click to view team members in ${d.department}`}
-                  >
-                    <div className="flex items-center justify-between text-[10.5px] leading-none">
-                      <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors truncate">
-                        {d.department}
-                      </span>
-                      <span className="font-mono text-[9.5px] text-slate-500 dark:text-slate-400 shrink-0">
-                        <b className="text-slate-900 dark:text-slate-100 font-bold">{d.count}</b> ({d.percentage}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                      <div
-                        className="bg-blue-500 dark:bg-blue-400 h-full rounded-full transition-all duration-500 group-hover:brightness-110"
-                        style={{ width: `${Math.max(3, d.percentage)}%` }}
-                      />
-                    </div>
-                  </div>
+                  />
                 ))}
               </div>
 
-              <div className="pt-1 mt-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 shrink-0 leading-tight">
-                <span>Core Delivery Load:</span>
-                <span className="font-bold text-blue-600 dark:text-blue-400 font-mono">{top2Names} ({top2Pct.toFixed(1)}%)</span>
+              <div className="home-foot pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[10.5px] text-slate-500 dark:text-slate-400 shrink-0 min-w-0">
+                <span className="shrink-0">Core load</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400 font-mono text-right whitespace-normal">{top2Names} ({top2Pct.toFixed(1)}%)</span>
               </div>
             </>
           )}
         </div>
+      </div>
+
+      <div className="dash-home-insight grid grid-cols-1 lg:grid-cols-2 gap-2 shrink-0 min-w-0">
+        <button
+          type="button"
+          data-band="work-model"
+          onClick={() => onNavigateTab('work_model')}
+          className="glass-panel rounded-xl px-2.5 py-1.5 text-left cursor-pointer hover:border-cyan-300 dark:hover:border-cyan-700 transition-colors w-full min-w-0"
+        >
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5 min-w-0">
+              <Building2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <span className="truncate">Work model</span>
+            </span>
+            <span className="text-[10px] text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 font-semibold shrink-0">Open</span>
+          </div>
+          <div className="home-insight-meters mt-1">
+            {(data.work_model_mix && data.work_model_mix.length > 0 ? data.work_model_mix : WORK_MODEL_FALLBACK).map((item) => (
+              <div key={item.model} className="min-w-0" title={`${item.model}: ${item.count}`}>
+                <div className="flex items-baseline justify-between gap-1 min-w-0">
+                  <span className="text-[9px] text-slate-600 dark:text-slate-300 truncate">{item.model}</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-200 shrink-0">{item.count}</span>
+                </div>
+                <span className="mt-0.5 block h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <span
+                    className="block h-full rounded-full"
+                    style={{
+                      width: `${Math.max(item.percentage, item.count > 0 ? 4 : 0)}%`,
+                      backgroundColor: WORK_MODEL_COLOR[item.model] || '#0284c7',
+                    }}
+                  />
+                </span>
+              </div>
+            ))}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          data-band="training"
+          onClick={() => (onOpenTraining ? onOpenTraining() : onNavigateTab('employee_details'))}
+          className="glass-panel rounded-xl px-2.5 py-1.5 text-left cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 transition-colors w-full min-w-0"
+        >
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-1.5 min-w-0">
+              <GraduationCap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="truncate">Training</span>
+            </span>
+            <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 font-semibold truncate min-w-0">
+              {data.training_summary?.not_recorded !== false ? 'Not recorded yet' : `${data.training_summary?.total || 0} records`}
+            </span>
+          </div>
+          <div className="home-insight-counts mt-1">
+            {[
+              ['Planned', data.training_summary?.planned || 0],
+              ['In progress', data.training_summary?.in_progress || 0],
+              ['Completed', data.training_summary?.completed || 0],
+              ['Cancelled', data.training_summary?.cancelled || 0],
+            ].map(([label, count]) => (
+              <div key={String(label)} className="min-w-0 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 px-1 py-0.5 text-center">
+                <div className="text-[13px] font-bold font-mono leading-none text-slate-800 dark:text-slate-100">{count}</div>
+                <div className="text-[9px] text-slate-500 leading-tight truncate">{label}</div>
+              </div>
+            ))}
+          </div>
+        </button>
       </div>
 
       {/* ══ Unified Interactive Drill-Down Modal ══ */}

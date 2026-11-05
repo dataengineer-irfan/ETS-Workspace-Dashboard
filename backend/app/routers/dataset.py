@@ -22,13 +22,25 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 BACKUP_DIR = os.path.join(BASE_DIR, "dump", "backups")
 CONFIG_PATH = os.path.join(BASE_DIR, "dump", "dataset_config.json")
 
+# Legacy four-sheet workbook. Kept so an upload of that file still validates.
 REQUIRED_SHEETS = ["EMPLOYEES", "SKILL", "Finance_History", "LEAVE"]
+FRIENDLY_SHEETS = ["People", "Skills", "Leave"]
+COMPENSATION_SHEETS = ["Current pay", "Pay history"]
 
 REQUIRED_COLUMNS = {
     "EMPLOYEES": ["EMPLOYEE NUMBER", "START DATE", "EMP_CTC1", "GENDER", "LOCATION", "State"],
     "SKILL": ["EMPLOYEE NUMBER", "Skill Name"],
     "Finance_History": ["EMPLOYEE NUMBER", "Year", "Base_Salary"],
     "LEAVE": ["EMPLOYEE", "START DATE", "END DATE", "DAY VALUE"],
+}
+FRIENDLY_COLUMNS = {
+    "People": ["Employee number", "First name", "Last name", "City", "Account", "Start date"],
+    "Skills": ["Employee number", "Skill"],
+    "Leave": ["Employee number", "Start date", "End date", "Leave type", "Days"],
+}
+COMPENSATION_COLUMNS = {
+    "Current pay": ["Employee number", "Annual CTC (INR)"],
+    "Pay history": ["Employee number", "Year", "Base salary (INR)", "Promotion"],
 }
 
 
@@ -58,14 +70,25 @@ def _save_active_config(config: Dict[str, Any]):
         json.dump(config, f, indent=2)
 
 
+def _classify_workbook(sheets_found: List[str]) -> Optional[str]:
+    names = set(sheets_found)
+    if set(FRIENDLY_SHEETS).issubset(names):
+        return "friendly"
+    if set(REQUIRED_SHEETS).issubset(names):
+        return "legacy"
+    if set(COMPENSATION_SHEETS).issubset(names):
+        return "compensation"
+    return None
+
+
 def _validate_workbook_bytes(content: bytes) -> Dict[str, Any]:
     """
     Validates workbook bytes in memory without touching disk.
-    Checks:
-    1. Valid zip / xlsx signature.
-    2. Presence of all 4 required sheets.
-    3. Required columns in each sheet.
-    4. Non-zero row counts.
+
+    Accepted workbooks:
+    - India workforce file: People, Skills, Leave (pay stays in the compensation file).
+    - Legacy four sheets: EMPLOYEES, SKILL, Finance_History, LEAVE.
+    - Compensation file: Current pay, Pay history.
     """
     if not content or len(content) < 500:
         return {"valid": False, "errors": ["File is empty or too small to be a valid Excel workbook."]}
@@ -84,17 +107,23 @@ def _validate_workbook_bytes(content: bytes) -> Dict[str, Any]:
     except Exception as e:
         return {"valid": False, "errors": [f"Failed to parse Excel workbook: {str(e)}"]}
 
-    for req_sheet in REQUIRED_SHEETS:
-        if req_sheet not in sheets_found:
-            errors.append(f"Missing mandatory sheet '{req_sheet}'. Found sheets: {', '.join(sheets_found)}")
+    kind = _classify_workbook(sheets_found)
+    if kind is None:
+        errors.append(
+            "Workbook was not recognized. Upload Infinite_ETS_India_Workforce.xlsx "
+            "(People, Skills, Leave), the compensation file (Current pay, Pay history), "
+            f"or the legacy workbook ({', '.join(REQUIRED_SHEETS)}). Found sheets: {', '.join(sheets_found)}"
+        )
+        return {"valid": False, "errors": errors, "sheets_found": sheets_found, "workbook_kind": None}
 
-    if errors:
-        return {"valid": False, "errors": errors, "sheets_found": sheets_found}
-
-    # Validate columns in each sheet
-    for sheet_name, req_cols in REQUIRED_COLUMNS.items():
+    column_map = {
+        "friendly": FRIENDLY_COLUMNS,
+        "legacy": REQUIRED_COLUMNS,
+        "compensation": COMPENSATION_COLUMNS,
+    }[kind]
+    for sheet_name, req_cols in column_map.items():
         try:
-            skip = 2 if sheet_name in ("EMPLOYEES", "LEAVE") else 0
+            skip = 2 if kind == "legacy" and sheet_name in ("EMPLOYEES", "LEAVE") else 0
             df_sample = pd.read_excel(io.BytesIO(content), sheet_name=sheet_name, skiprows=skip, nrows=5)
             cols = [str(c).strip() for c in df_sample.columns if not str(c).startswith("Unnamed:")]
             missing = [c for c in req_cols if c not in cols]
@@ -104,26 +133,46 @@ def _validate_workbook_bytes(content: bytes) -> Dict[str, Any]:
             errors.append(f"Error inspecting sheet '{sheet_name}': {str(e)}")
 
     if not errors:
-        # Get row counts
         try:
-            for s in REQUIRED_SHEETS:
-                skip = 2 if s in ("EMPLOYEES", "LEAVE") else 0
-                df_all = pd.read_excel(io.BytesIO(content), sheet_name=s, skiprows=skip)
-                # Count non-empty rows
-                if s == "EMPLOYEES":
-                    df_emp_num = pd.to_numeric(df_all["EMPLOYEE NUMBER"], errors="coerce").fillna(0)
-                    counts["employees"] = int((df_emp_num > 0).sum())
-                elif s == "SKILL":
-                    counts["skills"] = len(df_all.dropna(subset=["Skill Name"]))
-                elif s == "Finance_History":
-                    counts["finance"] = len(df_all)
-                elif s == "LEAVE":
-                    counts["leaves"] = len(df_all)
+            if kind == "legacy":
+                for s in REQUIRED_SHEETS:
+                    skip = 2 if s in ("EMPLOYEES", "LEAVE") else 0
+                    df_all = pd.read_excel(io.BytesIO(content), sheet_name=s, skiprows=skip)
+                    if s == "EMPLOYEES":
+                        df_emp_num = pd.to_numeric(df_all["EMPLOYEE NUMBER"], errors="coerce").fillna(0)
+                        counts["employees"] = int((df_emp_num > 0).sum())
+                    elif s == "SKILL":
+                        counts["skills"] = len(df_all.dropna(subset=["Skill Name"]))
+                    elif s == "Finance_History":
+                        counts["finance"] = len(df_all)
+                    elif s == "LEAVE":
+                        counts["leaves"] = len(df_all)
+            elif kind == "friendly":
+                people = pd.read_excel(io.BytesIO(content), sheet_name="People")
+                skills = pd.read_excel(io.BytesIO(content), sheet_name="Skills")
+                leave = pd.read_excel(io.BytesIO(content), sheet_name="Leave")
+                people_ids = pd.to_numeric(people["Employee number"], errors="coerce").fillna(0)
+                counts["employees"] = int((people_ids > 0).sum())
+                counts["skills"] = int(skills["Skill"].notna().sum()) if "Skill" in skills.columns else len(skills)
+                leave_ids = pd.to_numeric(leave["Employee number"], errors="coerce").fillna(0)
+                counts["leaves"] = int((leave_ids > 0).sum())
+                if not os.path.exists(data_loader.compensation_path):
+                    warnings.append(
+                        "Pay is not in this workbook. Infinite_ETS_India_Compensation.xlsx was not found beside the app, so compensation will fall back to the existing synthesis."
+                    )
+            else:
+                current = pd.read_excel(io.BytesIO(content), sheet_name="Current pay")
+                history = pd.read_excel(io.BytesIO(content), sheet_name="Pay history")
+                current_ids = pd.to_numeric(current["Employee number"], errors="coerce").fillna(0)
+                counts["employees"] = int((current_ids > 0).sum())
+                history_ids = pd.to_numeric(history["Employee number"], errors="coerce").fillna(0)
+                counts["finance"] = int((history_ids > 0).sum())
         except Exception as e:
             warnings.append(f"Could not compute exact record counts: {str(e)}")
 
     return {
         "valid": len(errors) == 0,
+        "workbook_kind": kind,
         "sheets_found": sheets_found,
         "counts": counts,
         "errors": errors,
@@ -132,13 +181,22 @@ def _validate_workbook_bytes(content: bytes) -> Dict[str, Any]:
     }
 
 
+def _destination_for_kind(kind: str) -> str:
+    if kind == "compensation":
+        path = data_loader.compensation_path
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        return path
+    return data_loader.file_path
+
+
 def _create_timestamped_backup(master_path: str) -> Optional[str]:
     """Creates a timestamped backup of the current master file."""
     if not os.path.exists(master_path):
         return None
     _ensure_backup_dir()
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_filename = f"ETS_Dasboard_DS_backup_{ts}.xlsx"
+    stem = os.path.splitext(os.path.basename(master_path))[0]
+    backup_filename = f"{stem}_backup_{ts}.xlsx"
     backup_path = os.path.join(BACKUP_DIR, backup_filename)
     shutil.copy2(master_path, backup_path)
     logger.info(f"Created dataset backup at {backup_path}")
@@ -211,6 +269,8 @@ def get_dataset_status():
         "total_skills": len(data_loader.df_skills),
         "total_leaves": len(data_loader.df_leave),
         "total_finance_records": len(data_loader.df_finance),
+        "workbook_kind": data_loader.workbook_kind,
+        "compensation_file": os.path.basename(data_loader.compensation_path) if getattr(data_loader, "compensation_path", None) else None,
         "backup_count": len(backups),
         "recent_backups": backups[:5],
     }
@@ -223,7 +283,8 @@ def download_master_dataset():
         raise HTTPException(status_code=404, detail="Master dataset file not found on server.")
 
     today_str = datetime.date.today().strftime("%Y%m%d")
-    download_filename = f"ETS_Dasboard_DS_export_{today_str}.xlsx"
+    stem = os.path.splitext(os.path.basename(master_path))[0]
+    download_filename = f"{stem}_export_{today_str}.xlsx"
 
     return FileResponse(
         path=master_path,
@@ -261,7 +322,7 @@ async def upload_master_dataset(file: UploadFile = File(...)):
             },
         )
 
-    master_path = data_loader.file_path
+    master_path = _destination_for_kind(val_report.get("workbook_kind"))
     backup_path = _create_timestamped_backup(master_path)
 
     # Perform Atomic Swap
@@ -387,7 +448,7 @@ def sync_dataset_from_cloud(payload: Dict[str, Any]):
                 },
             )
 
-        master_path = data_loader.file_path
+        master_path = _destination_for_kind(val_report.get("workbook_kind"))
         backup_path = _create_timestamped_backup(master_path)
 
         temp_path = master_path + ".cloud_tmp"

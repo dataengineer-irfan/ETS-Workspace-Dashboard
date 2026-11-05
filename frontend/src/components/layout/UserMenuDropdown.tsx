@@ -7,7 +7,8 @@ import {
   Copy, 
   Check, 
   X,
-  Send
+  Send,
+  Database,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleBadgeStyle } from '../../utils/rbac';
@@ -15,9 +16,10 @@ import { getRoleBadgeStyle } from '../../utils/rbac';
 interface UserMenuDropdownProps {
   theme?: 'light' | 'dark';
   setTheme?: (theme: 'light' | 'dark') => void;
+  onOpenDatasetModal?: () => void;
 }
 
-export const UserMenuDropdown: React.FC<UserMenuDropdownProps> = ({ theme, setTheme }) => {
+export const UserMenuDropdown: React.FC<UserMenuDropdownProps> = ({ theme, setTheme, onOpenDatasetModal }) => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -191,6 +193,23 @@ export const UserMenuDropdown: React.FC<UserMenuDropdownProps> = ({ theme, setTh
 
           {/* Action Menu Items (Databricks items: Settings, Privacy policy, Send feedback) */}
           <div className="py-1">
+            {onOpenDatasetModal && (
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  onOpenDatasetModal();
+                }}
+                title="Dataset Operations: Download, Upload & Cloud Sync"
+                aria-label="Dataset operations and cloud sync"
+                className="w-full px-4 py-2 text-left text-[11px] text-slate-700 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 flex items-center justify-between transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Database className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                  <span>Database / Data source</span>
+                </div>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 setActiveModal('settings');

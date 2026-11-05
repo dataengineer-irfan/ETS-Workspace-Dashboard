@@ -8,13 +8,126 @@ from fastapi import HTTPException, status
 from backend.app.data_loader import data_loader
 
 GRADE_ORDER = ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10']
+WORK_MODEL_ORDER = ['Office', 'Hybrid', 'Remote', 'Client site', 'Not recorded yet']
+
+
+def work_model_series(df: pd.DataFrame) -> pd.Series:
+    if df is None or len(df) == 0:
+        return pd.Series(dtype=str)
+    if 'Work_Model' not in df.columns:
+        return pd.Series(['Not recorded yet'] * len(df), index=df.index)
+    values = df['Work_Model'].map(lambda value: str(value).strip() if pd.notna(value) else '')
+    return values.replace({
+        '': 'Not recorded yet',
+        'nan': 'Not recorded yet',
+        'None': 'Not recorded yet',
+        'NaT': 'Not recorded yet',
+    })
+
+
+def work_model_mix(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    series = work_model_series(df)
+    total = len(df) if df is not None else 0
+    counts = series.value_counts() if len(series) else pd.Series(dtype=int)
+    rows = []
+    seen = set()
+    for name in WORK_MODEL_ORDER:
+        count = int(counts.get(name, 0))
+        seen.add(name)
+        rows.append({
+            'model': name,
+            'count': count,
+            'percentage': round((count / total) * 100, 1) if total else 0.0,
+        })
+    for name, count in counts.items():
+        if str(name) not in seen:
+            rows.append({
+                'model': str(name),
+                'count': int(count),
+                'percentage': round((int(count) / total) * 100, 1) if total else 0.0,
+            })
+    return rows
+
+
+def training_summary(employee_ids) -> Dict[str, Any]:
+    frame = getattr(data_loader, 'df_training', None)
+    summary = {
+        'total': 0,
+        'planned': 0,
+        'in_progress': 0,
+        'completed': 0,
+        'cancelled': 0,
+        'not_recorded': True,
+    }
+    if frame is None or frame.empty:
+        return summary
+    scoped = frame
+    if employee_ids is not None:
+        scoped = frame[frame['EMPLOYEE NUMBER'].isin(set(int(v) for v in employee_ids))]
+    aliases = {
+        'planned': 'planned',
+        'in progress': 'in_progress',
+        'completed': 'completed',
+        'cancelled': 'cancelled',
+        'canceled': 'cancelled',
+    }
+    for status in scoped['Status'].fillna(''):
+        key = aliases.get(str(status).strip().lower())
+        if key:
+            summary[key] += 1
+            summary['total'] += 1
+    summary['not_recorded'] = summary['total'] == 0
+    return summary
+
+
+def _iso_date(value):
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    if hasattr(value, 'strftime'):
+        return value.strftime('%Y-%m-%d')
+    text = str(value).strip()
+    if not text or text.lower() in ('nan', 'nat', 'none'):
+        return None
+    return text[:10]
+
+
+def employee_training_rows(emp_number: int) -> List[Dict[str, Any]]:
+    frame = getattr(data_loader, 'df_training', None)
+    if frame is None or frame.empty:
+        return []
+    rows = frame[frame['EMPLOYEE NUMBER'] == int(emp_number)]
+    records = []
+    for _, row in rows.iterrows():
+        records.append({
+            'name': str(row.get('Training') or ''),
+            'provider': str(row.get('Provider') or ''),
+            'status': str(row.get('Status') or ''),
+            'start_date': _iso_date(row.get('Start_Date')),
+            'end_date': _iso_date(row.get('End_Date')),
+            'hours': sanitize_val(row.get('Hours')) or 0,
+            'mandatory': str(row.get('Mandatory') or ''),
+            'skill': str(row.get('Skill') or ''),
+        })
+    return records
 
 def sort_grades(grades: List[str]) -> List[str]:
     return sorted(grades, key=lambda g: GRADE_ORDER.index(g) if g in GRADE_ORDER else 99)
 
 def sanitize_val(v):
-    if v is None or (isinstance(v, float) and (math.isnan(v) or math.isinf(v))):
+    if v is None or v is pd.NaT or (isinstance(v, float) and (math.isnan(v) or math.isinf(v))):
         return None
+    if isinstance(v, str) and v.strip().lower() in ('nat', 'nan', 'none', 'null'):
+        return None
+    try:
+        if pd.isna(v):
+            return None
+    except (TypeError, ValueError):
+        pass
     if isinstance(v, (pd.Timestamp, pd.Timedelta)):
         return v.isoformat()
     if isinstance(v, (np.int64, np.int32, np.int16, np.int8)):
@@ -182,6 +295,1802 @@ def apply_employee_filters(df: pd.DataFrame, filters: Dict[str, Any]) -> pd.Data
 
     return res
 
+
+# ---------------------------------------------------------------------------
+# AI use tab - Page 1 Executive Command Center (docs/AI_UTILIZATION_DASHBOARD_DESIGN.md
+# Sections 3, 4, 8, 10). Additive payload for GET /api/ai-utilization/kpis.
+# ---------------------------------------------------------------------------
+# Decision Intelligence Health (VP brief). N/A components drop out and remaining
+# weights renormalise. Tile colour uses _ai_health_band; badge uses _ai_health_label.
+AI_HEALTH_WEIGHTS = [
+    ('c1', 'Adoption %', 30),
+    ('c2', 'Business Value', 25),
+    ('c3', 'Release Coverage %', 20),
+    ('c4', 'QA Adoption %', 15),
+    ('c5', 'Documentation Usage', 10),
+]
+
+
+def _ai_num(value, default=None):
+    try:
+        if value is None:
+            return default
+        out = float(value)
+        if math.isnan(out) or math.isinf(out):
+            return default
+        return out
+    except (TypeError, ValueError):
+        return default
+
+
+def _ai_round(value, digits=1):
+    value = _ai_num(value)
+    return None if value is None else round(value, digits)
+
+
+def _ai_ratio(numerator, denominator, scale=1.0):
+    """numerator / denominator * scale, or None when the denominator is missing or zero (never 0 for n/a)."""
+    numerator = _ai_num(numerator)
+    denominator = _ai_num(denominator)
+    if numerator is None or denominator is None or denominator == 0:
+        return None
+    return numerator / denominator * scale
+
+
+def _ai_band(actual, target, tolerance=0.10, lower_is_better=False):
+    """Target & tolerance rule (design Section 3.1): green / amber / red / neutral."""
+    actual = _ai_num(actual)
+    target = _ai_num(target)
+    if actual is None or target is None:
+        return 'neutral'
+    tolerance = _ai_num(tolerance, 0.10) or 0.0
+    if lower_is_better:
+        if actual <= target:
+            return 'green'
+        if actual <= target * (1 + tolerance):
+            return 'amber'
+        return 'red'
+    if actual >= target:
+        return 'green'
+    if actual >= target * (1 - tolerance):
+        return 'amber'
+    return 'red'
+
+
+def _ai_health_band(score):
+    """Tile colour: Green Health>80 | Amber 60-80 | Red <60."""
+    score = _ai_num(score)
+    if score is None:
+        return 'neutral'
+    if score > 80:
+        return 'green'
+    if score >= 60:
+        return 'amber'
+    return 'red'
+
+
+def _ai_health_label(score):
+    """Leadership band: 90-100 Elite | 80-89 Strong | 70-79 Average | <70 Attention Required."""
+    score = _ai_num(score)
+    if score is None:
+        return None
+    if score >= 90:
+        return 'Elite'
+    if score >= 80:
+        return 'Strong'
+    if score >= 70:
+        return 'Average'
+    return 'Attention Required'
+
+
+def _ai_confidence_band(pct):
+    pct = _ai_num(pct)
+    if pct is None:
+        return 'neutral'
+    if pct >= 80:
+        return 'High'
+    if pct >= 50:
+        return 'Medium'
+    return 'Low'
+
+
+def _ai_component_score(actual, target):
+    """MIN(100, actual / target * 100); None when either side is missing."""
+    ratio = _ai_ratio(actual, target, 100.0)
+    return None if ratio is None else max(0.0, min(100.0, ratio))
+
+
+def _ai_release_natural_key(label):
+    """Fallback ordering when the AI targets sheet has no Release order row: numeric parts, then text."""
+    parts = re.findall(r'\d+', str(label))
+    return tuple(int(part) for part in parts) + (str(label),)
+
+
+def _ai_executive_view(usage, outcomes, billing, targets, release_order, total_hours, total_tokens, total_spend):
+    """Health tiles, attention zone, ranking, project x domain rows and summary extensions for Page 1."""
+    def target_of(metric, default=None):
+        entry = (targets or {}).get(metric) or {}
+        return _ai_num(entry.get('target'), default)
+
+    def tolerance_of(metric):
+        entry = (targets or {}).get(metric) or {}
+        return _ai_num(entry.get('tolerance'), 0.10)
+
+    def lower_of(metric):
+        entry = (targets or {}).get(metric) or {}
+        return bool(entry.get('lower_is_better', False))
+
+    t_adopt = target_of('Adoption_Pct', 80.0)
+    t_dev = target_of('Dev_Adoption_Pct', t_adopt)
+    t_qa = target_of('QA_Adoption_Pct', 50.0)
+    t_hours_user = target_of('Hours_per_User', 8.0)
+    t_eff_usd = target_of('Hours_per_100USD', 30.0)
+    t_eff_tok = target_of('Hours_per_100kTokens', 20.0)
+    t_cover = target_of('Release_Coverage_Pct', 100.0)
+    t_roi = target_of('ROI_Index', 5.0)
+    rate_usd = target_of('Loaded_Rate_USD', 40.0) or 40.0
+    rate_inr = target_of('Loaded_Rate_INR', 3000.0)
+    t_attention = target_of('Attention_Adoption_Pct', 60.0)
+    t_decline = target_of('Trend_Decline_Pts', 5.0)
+    flat_targets = {metric: _ai_num((entry or {}).get('target')) for metric, entry in (targets or {}).items()}
+
+    def clean(series, default=''):
+        return series.fillna(default).astype(str).str.strip() if series is not None else pd.Series(dtype=object)
+
+    # --- normalise activity rows ------------------------------------------------
+    if usage is None or usage.empty:
+        act = pd.DataFrame(columns=['_project', '_release', '_domain', '_team', '_person', '_name', '_hours', '_tokens', '_source', '_emp', '_use', '_manager'])
+    else:
+        act = pd.DataFrame(index=usage.index)
+        act['_project'] = clean(usage.get('Project')).replace('', 'Unspecified')
+        act['_release'] = clean(usage.get('Release'))
+        act['_domain'] = clean(usage.get('Domain'))
+        act['_team'] = clean(usage.get('Team'))
+        act['_name'] = clean(usage.get('Employee_Name'))
+        act['_manager'] = clean(usage.get('Manager'))
+        act['_use'] = clean(usage.get('Use_Case')).map(_ai_canonical_use_case)
+        emp = pd.to_numeric(usage.get('EMPLOYEE NUMBER'), errors='coerce')
+        act['_emp'] = emp
+        act['_person'] = [
+            f'emp:{int(number)}' if pd.notna(number) else f'name:{name.casefold()}'
+            for number, name in zip(emp, act['_name'])
+        ]
+        act['_hours'] = pd.to_numeric(usage.get('Hours_Saved'), errors='coerce').fillna(0.0)
+        act['_tokens'] = pd.to_numeric(usage.get('Total_Tokens'), errors='coerce').fillna(0.0)
+        act['_source'] = clean(usage.get('Source')).str.casefold()
+        act = act[act['_name'] != ''] if len(act) else act
+    act['_evidence'] = (act['_hours'] > 0) | (act['_tokens'] > 0) if len(act) else pd.Series(dtype=bool)
+
+    if outcomes is None or outcomes.empty:
+        outc = pd.DataFrame(columns=['_release', '_domain', '_team', '_headcount', '_using'])
+    else:
+        outc = pd.DataFrame(index=outcomes.index)
+        outc['_release'] = clean(outcomes.get('Release'))
+        outc['_domain'] = clean(outcomes.get('Domain'))
+        outc['_team'] = clean(outcomes.get('Team'))
+        outc['_headcount'] = pd.to_numeric(outcomes.get('Headcount'), errors='coerce')
+        outc['_using'] = pd.to_numeric(outcomes.get('People_Using'), errors='coerce')
+        outc = outc[outc['_release'] != '']
+
+    if billing is None or billing.empty:
+        bill = pd.DataFrame(columns=['_project', '_name', '_cost', '_emp', '_person'])
+    else:
+        bill = pd.DataFrame(index=billing.index)
+        bill['_project'] = clean(billing.get('Project'))
+        bill['_name'] = clean(billing.get('Name'))
+        bill['_cost'] = pd.to_numeric(billing.get('Cost_USD'), errors='coerce').fillna(0.0)
+        emp_b = pd.to_numeric(billing.get('EMPLOYEE NUMBER'), errors='coerce')
+        bill['_emp'] = emp_b
+        bill['_person'] = [
+            f'emp:{int(number)}' if pd.notna(number) else f'name:{name.casefold()}'
+            for number, name in zip(emp_b, bill['_name'])
+        ]
+
+    # --- release sequence -------------------------------------------------------
+    all_releases = {r for r in act['_release'].tolist() if r} | {r for r in outc['_release'].tolist() if r}
+    # Explicit order first (by sequence), then natural order for anything the sheet does not list.
+    explicit = sorted([r for r in all_releases if r in (release_order or {})], key=lambda r: int(release_order[r]))
+    implicit = sorted([r for r in all_releases if r not in (release_order or {})], key=_ai_release_natural_key)
+    sequence = {label: index + 1 for index, label in enumerate(explicit + implicit)}
+
+    projects = sorted({p for p in act['_project'].tolist() if p})
+    # Team -> dominant project (outcome rows carry Team, not Project).
+    team_project = {}
+    if len(act):
+        counts = act.groupby(['_team', '_project']).size().reset_index(name='n')
+        for team, chunk in counts.groupby('_team'):
+            if team:
+                team_project[team] = chunk.sort_values('n', ascending=False)['_project'].iloc[0]
+    if len(outc):
+        declared = clean(outcomes.get('Project')) if outcomes is not None and 'Project' in outcomes.columns else pd.Series('', index=outc.index)
+        inferred_project = outc['_team'].map(team_project)
+        outc['_project'] = declared.where(declared.astype(str).str.strip() != '', inferred_project)
+    else:
+        outc['_project'] = pd.Series(dtype=object)
+
+    # Billing allocation: Project column first, then the person's dominant project.
+    person_project = {}
+    if len(act):
+        counts = act.groupby(['_person', '_project']).size().reset_index(name='n')
+        for person, chunk in counts.groupby('_person'):
+            person_project[person] = chunk.sort_values('n', ascending=False)['_project'].iloc[0]
+    name_person = {}
+    if len(act):
+        for person, name in zip(act['_person'], act['_name']):
+            name_person.setdefault(name.casefold(), person)
+
+    def bill_project(row):
+        if row['_project']:
+            return row['_project']
+        person = row['_person'] if row['_person'] in person_project else name_person.get(row['_name'].casefold())
+        return person_project.get(person, '') if person else ''
+
+    bill['_alloc'] = [bill_project(row) for _, row in bill.iterrows()] if len(bill) else []
+
+    def headcount_for(release, domain, direct_rows, team_rows):
+        """(headcount, inferred) for a release (+ optional domain). None when no outcome row exists."""
+        for inferred, rows in ((False, direct_rows), (True, team_rows)):
+            if rows is None or not len(rows):
+                continue
+            sel = rows[rows['_release'] == release]
+            if domain:
+                sel = sel[sel['_domain'].str.casefold() == domain.casefold()]
+            values = sel.dropna(subset=['_headcount'])
+            values = values[values['_headcount'] > 0]
+            if len(values):
+                keys = [col for col in ('_team', '_domain') if col in values.columns]
+                if keys:
+                    return float(values.groupby(keys)['_headcount'].max().sum()), inferred
+                return float(values['_headcount'].max()), inferred
+        return None, True
+
+    health_rows = []
+    attention = []
+    domain_rows = []
+    portfolio_active = set()
+    portfolio_export_users = set()
+    export_users_all = set(act.loc[(act['_source'] == 'export') & (act['_tokens'] > 0), '_person']) if len(act) else set()
+
+    for project in projects:
+        rows = act[act['_project'] == project]
+        teams = {t for t in rows['_team'].tolist() if t}
+        people_tagged = set(rows['_person'])
+        releases_with_rows = {r for r in rows['_release'].tolist() if r}
+        if not releases_with_rows:
+            continue
+        current = max(releases_with_rows, key=lambda r: sequence.get(r, 0))
+        direct = outc[outc['_project'] == project] if len(outc) else outc
+        # by_team remains headcount fallback only — shared teams (IT/Core/Cognos) span
+        # multiple projects and must not inflate this project's release set (R15↔R24 leak).
+        by_team = outc[outc['_team'].isin(teams)] if len(outc) else outc
+        releases_in_scope = set(releases_with_rows)
+        if len(direct):
+            releases_in_scope |= {r for r in direct['_release'].tolist() if r}
+        if not releases_in_scope:
+            releases_in_scope = set(releases_with_rows)
+
+        def release_slice(release, domain=None):
+            sel = rows[rows['_release'] == release]
+            if domain:
+                sel = sel[sel['_domain'].str.casefold() == domain.casefold()]
+            return sel
+
+        def active_users(release, domain=None):
+            sel = release_slice(release, domain)
+            return set(sel.loc[sel['_evidence'], '_person'])
+
+        def head(release, domain=None):
+            headcount, inferred = headcount_for(release, domain, direct, by_team)
+            if headcount is None and domain is None:
+                fallback = set(release_slice(release)['_person']) or people_tagged
+                return (float(len(fallback)) if fallback else None), True
+            return headcount, inferred
+
+        def adoption(release, domain=None):
+            headcount, _ = head(release, domain)
+            return _ai_ratio(len(active_users(release, domain)), headcount, 100.0)
+
+        cur_rows = release_slice(current)
+        cur_active = active_users(current)
+        cur_headcount, inferred = head(current)
+        cur_adoption = _ai_ratio(len(cur_active), cur_headcount, 100.0)
+        cur_hours = float(cur_rows['_hours'].sum())
+        cur_tokens = float(cur_rows['_tokens'].sum())
+        hours_total = float(rows['_hours'].sum())
+        tokens_total = float(rows['_tokens'].sum())
+        spend = float(bill.loc[bill['_alloc'] == project, '_cost'].sum()) if len(bill) else 0.0
+        portfolio_active |= cur_active
+        portfolio_export_users |= (cur_active & export_users_all)
+
+        dev_head, _ = head(current, 'Development')
+        qa_head, _ = head(current, 'QA')
+        dev_adoption = _ai_ratio(len(active_users(current, 'Development')), dev_head, 100.0)
+        qa_adoption = _ai_ratio(len(active_users(current, 'QA')), qa_head, 100.0)
+
+        covered = {r for r in releases_in_scope if bool(release_slice(r)['_evidence'].any())}
+        coverage_pct = _ai_ratio(len(covered), len(releases_in_scope), 100.0)
+
+        previous_candidates = [r for r in releases_with_rows if sequence.get(r, 0) < sequence.get(current, 0)]
+        previous = max(previous_candidates, key=lambda r: sequence.get(r, 0)) if previous_candidates else None
+        prev_adoption = adoption(previous) if previous else None
+        trend_pts = (cur_adoption - prev_adoption) if (cur_adoption is not None and prev_adoption is not None) else None
+
+        hours_per_user = _ai_ratio(cur_hours, len(cur_active))
+        if spend > 0:
+            efficiency_actual, efficiency_target, efficiency_label = _ai_ratio(cur_hours, spend, 100.0), t_eff_usd, 'Hours saved per $100 spend'
+        elif cur_tokens > 0:
+            efficiency_actual, efficiency_target, efficiency_label = _ai_ratio(cur_hours, cur_tokens, 100000.0), t_eff_tok, 'Hours saved per 100k tokens'
+        else:
+            efficiency_actual, efficiency_target, efficiency_label = None, None, 'Cost / token efficiency'
+        if trend_pts is None:
+            trend_score = None
+        else:
+            trend_score = 100.0 if trend_pts >= 0 else max(0.0, 100.0 + trend_pts * 10.0)
+
+        docs_mask = rows['_use'].isin(['Docs', 'Documentation']) if len(rows) and '_use' in rows.columns else pd.Series(False, index=rows.index)
+        docs_hours = float(rows.loc[docs_mask, '_hours'].sum()) if len(rows) else 0.0
+        docs_users = set(rows.loc[docs_mask & rows['_evidence'], '_person']) if len(rows) else set()
+        potential_hours = (cur_headcount * t_hours_user) if (cur_headcount and t_hours_user) else None
+        potential_value = (potential_hours * rate_usd) if potential_hours is not None else None
+        value_usd = hours_total * rate_usd
+        unrealized_value = max(0.0, (potential_value or 0.0) - value_usd) if potential_value is not None else None
+        business_score = _ai_component_score(value_usd, potential_value)
+        docs_target_hours = (potential_hours * 0.10) if potential_hours else None
+        if docs_target_hours:
+            docs_usage_actual, docs_usage_target, docs_score = docs_hours, docs_target_hours, _ai_component_score(docs_hours, docs_target_hours)
+        elif cur_headcount:
+            docs_usage_actual = _ai_ratio(len(docs_users), cur_headcount, 100.0)
+            docs_usage_target = target_of('Docs_Usage_Pct', 25.0)
+            docs_score = _ai_component_score(docs_usage_actual, docs_usage_target)
+        else:
+            docs_usage_actual, docs_usage_target, docs_score = None, None, None
+        token_efficiency = _ai_ratio(value_usd, tokens_total / 1000.0) if tokens_total > 0 else None
+
+        raw_components = {
+            'c1': (cur_adoption, t_adopt, _ai_component_score(cur_adoption, t_adopt), 'Adoption %'),
+            'c2': (value_usd, potential_value, business_score, 'Business Value'),
+            'c3': (coverage_pct, t_cover, _ai_component_score(coverage_pct, t_cover), 'Release Coverage %'),
+            'c4': (qa_adoption, t_qa, _ai_component_score(qa_adoption, t_qa), 'QA Adoption %'),
+            'c5': (docs_usage_actual, docs_usage_target, docs_score, 'Documentation Usage'),
+        }
+        components = []
+        weighted = 0.0
+        weight_sum = 0.0
+        for key, _label, weight in AI_HEALTH_WEIGHTS:
+            actual, target, score, label = raw_components[key]
+            na = score is None
+            if not na:
+                weighted += weight * score
+                weight_sum += weight
+            components.append({
+                'key': key,
+                'label': label,
+                'actual': _ai_round(actual, 2),
+                'target': _ai_round(target, 2),
+                'score': _ai_round(score, 1),
+                'weight': weight,
+                'na': na,
+            })
+        has_evidence = bool(len(cur_active)) or hours_total > 0
+        health_score = (weighted / weight_sum) if (weight_sum > 0 and has_evidence) else None
+
+        quantified_hours = float(rows.loc[rows['_source'].isin(['export', 'manual']), '_hours'].sum())
+        confidence_pct = _ai_ratio(quantified_hours, hours_total, 100.0)
+
+        series = []
+        for release in sorted(releases_in_scope, key=lambda r: sequence.get(r, 0)):
+            sel = release_slice(release)
+            r_head, _ = head(release)
+            r_active = active_users(release)
+            series.append({
+                'release': release,
+                'sequence': sequence.get(release, 0),
+                'adoption_pct': _ai_round(_ai_ratio(len(r_active), r_head, 100.0)),
+                'hours_saved': round(float(sel['_hours'].sum()), 1),
+                'tokens': round(float(sel['_tokens'].sum()), 0),
+                'active_users': len(r_active),
+                'headcount': int(r_head) if r_head is not None else None,
+                'has_evidence': bool(sel['_evidence'].any()),
+                'is_current': release == current,
+            })
+
+        est_savings = hours_total * rate_usd
+        roi = _ai_ratio(est_savings - spend, spend)
+        unquantified = int(((rows['_hours'] <= 0) & (rows['_tokens'] <= 0)).sum())
+        managers = [m for m in rows['_manager'].tolist() if m] if len(rows) and '_manager' in rows.columns else []
+        manager_name = managers[0] if managers else None
+        heavy_tokens = False
+        if len(cur_active):
+            per_tok = cur_rows.groupby('_person').agg(tokens=('_tokens', 'sum'), hours=('_hours', 'sum'))
+            per_tok = per_tok[per_tok.index.isin(cur_active)]
+            if len(cur_active) >= 10:
+                heavy_tokens = bool(len(per_tok[(per_tok['tokens'] > float(np.percentile(per_tok['tokens'], 75))) & (per_tok['hours'] < float(np.percentile(per_tok['hours'], 25)))]))
+            else:
+                heavy_tokens = bool(len(per_tok[(per_tok['tokens'] >= 100000) & (per_tok['hours'] < 6)]))
+        badges = []
+        if qa_head is None or (qa_adoption is not None and qa_adoption < t_qa):
+            badges.append('High QA Risk')
+        if cur_adoption is not None and cur_adoption < t_attention:
+            badges.append('Low Adoption')
+        if heavy_tokens or (tokens_total >= 100000 and value_usd < (potential_value or 0) * 0.25):
+            badges.append('Token Waste')
+        if health_score is not None and health_score > 80:
+            badges.append('High Performer')
+        if health_score is not None and health_score < 70:
+            badges.append('Attention')
+
+        health_rows.append({
+            'project': project,
+            'health_score': _ai_round(health_score),
+            'band': _ai_health_band(health_score),
+            'band_label': _ai_health_label(health_score),
+            'components': components,
+            'hours_saved': round(hours_total, 1),
+            'release_hours_saved': round(cur_hours, 1),
+            'tokens': round(tokens_total, 0),
+            'spend_usd': round(spend, 2),
+            'est_cost_savings_usd': round(est_savings, 2),
+            'ai_value_usd': round(est_savings - spend, 2),
+            'value_usd': round(value_usd, 2),
+            'potential_hours': _ai_round(potential_hours),
+            'potential_value_usd': _ai_round(potential_value, 2),
+            'unrealized_value_usd': _ai_round(unrealized_value, 2),
+            'token_efficiency_usd_per_1k': _ai_round(token_efficiency, 2),
+            'docs_hours': round(docs_hours, 1),
+            'roi_index': _ai_round(roi),
+            'active_users': len(cur_active),
+            'headcount_scope': int(cur_headcount) if cur_headcount is not None else None,
+            'denominator_inferred': bool(inferred),
+            'people_tagged': len(people_tagged),
+            'adoption_pct': _ai_round(cur_adoption),
+            'dev_adoption_pct': _ai_round(dev_adoption),
+            'qa_adoption_pct': _ai_round(qa_adoption),
+            'qa_headcount': int(qa_head) if qa_head is not None else None,
+            'trend_pts': _ai_round(trend_pts),
+            'current_release': current,
+            'previous_release': previous,
+            'releases_in_scope': len(releases_in_scope),
+            'releases_covered': len(covered),
+            'coverage_pct': _ai_round(coverage_pct),
+            'evidence_confidence_pct': _ai_round(confidence_pct),
+            'confidence_band': _ai_confidence_band(confidence_pct),
+            'release_series': series,
+            'rows': int(len(rows)),
+            'unquantified_rows': unquantified,
+            'manager': manager_name,
+            'badges': badges,
+        })
+
+        for domain in sorted({'Development', 'QA'} | {d for d in rows['_domain'].tolist() if d}):
+            d_rows = rows[rows['_domain'].str.casefold() == domain.casefold()]
+            d_head, _ = head(current, domain)
+            d_active = active_users(current, domain)
+            domain_rows.append({
+                'project': project,
+                'domain': domain,
+                'headcount': int(d_head) if d_head is not None else None,
+                'active_users': len(d_active),
+                'adoption_pct': _ai_round(_ai_ratio(len(d_active), d_head, 100.0)),
+                'hours_saved': round(float(d_rows['_hours'].sum()), 1),
+                'tokens': round(float(d_rows['_tokens'].sum()), 0),
+                'rows': int(len(d_rows)),
+            })
+
+        # --- Leadership Attention rules (Section 4.6) -----------------------------
+        drill = {'project': project, 'release': current, 'domain': None}
+        if cur_adoption is not None and cur_headcount and cur_adoption < t_attention:
+            attention.append({
+                'id': f'ATT-1:{project}', 'rule': 'ATT-1', 'severity': 'red', 'project': project,
+                'title': f'{project}: Adoption {cur_adoption:.1f}% is below {t_attention:.0f}%',
+                'detail': f'{len(cur_active)}/{int(cur_headcount)} people active in {current}',
+                'metric': 'adoption_pct', 'value': _ai_round(cur_adoption), 'threshold': _ai_round(t_attention), 'drill': drill,
+            })
+        if len(cur_active):
+            per_person = cur_rows.groupby('_person').agg(tokens=('_tokens', 'sum'), hours=('_hours', 'sum'), name=('_name', 'first'))
+            per_person = per_person[per_person.index.isin(cur_active)]
+            if len(cur_active) >= 10:
+                p75 = float(np.percentile(per_person['tokens'], 75))
+                p25 = float(np.percentile(per_person['hours'], 25))
+                heavy = per_person[(per_person['tokens'] > p75) & (per_person['hours'] < p25)]
+            else:
+                heavy = per_person[(per_person['tokens'] >= 100000) & (per_person['hours'] < 6)]
+            if len(heavy):
+                top = heavy.sort_values('tokens', ascending=False).iloc[0]
+                attention.append({
+                    'id': f'ATT-2:{project}', 'rule': 'ATT-2', 'severity': 'amber', 'project': project,
+                    'title': f'{project}: {len(heavy)} heavy token user{"s" if len(heavy) != 1 else ""} with low savings',
+                    'detail': f'e.g. {top["name"]} ({int(top["tokens"]):,} tokens, {top["hours"]:.1f} h)',
+                    'metric': 'tokens', 'value': float(top['tokens']), 'threshold': 100000.0, 'drill': drill,
+                })
+        if qa_head is None:
+            attention.append({
+                'id': f'ATT-3:{project}', 'rule': 'ATT-3', 'severity': 'amber', 'project': project,
+                'title': f'{project}: QA domain has no AI evidence row',
+                'detail': f'No QA row on AI release outcomes for {current}',
+                'metric': 'qa_adoption_pct', 'value': None, 'threshold': None, 'drill': {**drill, 'domain': 'QA'},
+            })
+        elif qa_adoption is not None and qa_adoption <= 0:
+            attention.append({
+                'id': f'ATT-3:{project}', 'rule': 'ATT-3', 'severity': 'red', 'project': project,
+                'title': f'{project}: QA has zero AI adoption this release',
+                'detail': f'0/{int(qa_head)} QA people active in {current}',
+                'metric': 'qa_adoption_pct', 'value': 0.0, 'threshold': _ai_round(t_qa), 'drill': {**drill, 'domain': 'QA'},
+            })
+        if trend_pts is not None and trend_pts < -t_decline:
+            attention.append({
+                'id': f'ATT-4:{project}', 'rule': 'ATT-4', 'severity': 'red', 'project': project,
+                'title': f'{project}: Adoption fell {abs(trend_pts):.0f} pts vs {previous}',
+                'detail': f'{prev_adoption:.1f}% in {previous} -> {cur_adoption:.1f}% in {current}',
+                'metric': 'trend_pts', 'value': _ai_round(trend_pts), 'threshold': _ai_round(-t_decline), 'drill': drill,
+            })
+        if unquantified >= 3:
+            who = rows[(rows['_hours'] <= 0) & (rows['_tokens'] <= 0)].groupby('_name').size().sort_values(ascending=False)
+            attention.append({
+                'id': f'ATT-5:{project}', 'rule': 'ATT-5', 'severity': 'amber', 'project': project,
+                'title': f'{project}: {unquantified} activity rows carry no hours or tokens',
+                'detail': f'{who.index[0]} ({int(who.iloc[0])} rows)' if len(who) else 'Add Hours saved or tokens to the rows',
+                'metric': 'unquantified_rows', 'value': float(unquantified), 'threshold': 3.0, 'drill': {**drill, 'release': None},
+            })
+        if len(bill):
+            billed = bill[(bill['_alloc'] == project) & (bill['_cost'] > 0)]
+            active_persons = set(act['_person']) | {f'name:{n.casefold()}' for n in act['_name']}
+            idle = billed[~billed['_person'].isin(active_persons) & ~billed['_name'].str.casefold().map(lambda n: f'name:{n}').isin(active_persons)]
+            if len(idle):
+                attention.append({
+                    'id': f'ATT-6:{project}', 'rule': 'ATT-6', 'severity': 'amber', 'project': project,
+                    'title': f'{project}: {len(idle)} billed Cursor seat{"s" if len(idle) != 1 else ""} have no activity rows',
+                    'detail': f'e.g. {idle.iloc[0]["_name"]} (${float(idle.iloc[0]["_cost"]):,.2f})',
+                    'metric': 'unused_licences', 'value': float(len(idle)), 'threshold': 0.0, 'drill': {**drill, 'release': None},
+                })
+        if qa_head is not None and qa_adoption is not None and 0 < qa_adoption < t_qa:
+            attention.append({
+                'id': f'ATT-7:{project}', 'rule': 'ATT-7', 'severity': 'amber', 'project': project,
+                'title': f'{project}: QA adoption {qa_adoption:.1f}% is below target {t_qa:.0f}%',
+                'detail': f'{len(active_users(current, "QA"))}/{int(qa_head)} QA people active in {current}',
+                'metric': 'qa_adoption_pct', 'value': _ai_round(qa_adoption), 'threshold': _ai_round(t_qa), 'drill': {**drill, 'domain': 'QA'},
+            })
+        if docs_hours <= 0:
+            attention.append({
+                'id': f'ATT-8:{project}', 'rule': 'ATT-8', 'severity': 'info', 'project': project,
+                'title': f'{project}: Zero AI documentation this release',
+                'detail': f'No Docs use-case hours in {current}',
+                'metric': 'docs_hours', 'value': 0.0, 'threshold': 0.1, 'drill': drill,
+            })
+        uncovered = sorted([r for r in releases_in_scope if r not in covered], key=lambda r: sequence.get(r, 0))
+        if uncovered:
+            attention.append({
+                'id': f'ATT-9:{project}', 'rule': 'ATT-9', 'severity': 'info', 'project': project,
+                'title': f'{project}: {len(uncovered)} release{"s" if len(uncovered) != 1 else ""} with no AI coverage',
+                'detail': ', '.join(uncovered[:4]),
+                'metric': 'releases_covered', 'value': float(len(covered)), 'threshold': float(len(releases_in_scope)), 'drill': drill,
+            })
+
+    # Tiles: worst first. Attention: red, amber, then info, then by health ascending.
+    health_rows.sort(key=lambda row: (row['health_score'] if row['health_score'] is not None else 999, row['project']))
+    health_by_project = {row['project']: row for row in health_rows}
+    attention.sort(key=lambda card: (
+        {'red': 0, 'amber': 1, 'info': 2}.get(card['severity'], 3),
+        health_by_project.get(card['project'], {}).get('health_score') if health_by_project.get(card['project'], {}).get('health_score') is not None else 999,
+        card['rule'],
+    ))
+
+    ranking = sorted(health_rows, key=lambda row: (-row['ai_value_usd'], row['project']))
+    ranking = [{
+        'rank': index + 1,
+        'project': row['project'],
+        'ai_value_usd': row['ai_value_usd'],
+        'est_cost_savings_usd': row['est_cost_savings_usd'],
+        'hours_saved': row['hours_saved'],
+        'spend_usd': row['spend_usd'],
+        'health_score': row['health_score'],
+        'band': row['band'],
+    } for index, row in enumerate(ranking)]
+
+    # --- portfolio summary ------------------------------------------------------
+    if len(outc):
+        latest_by_team = {}
+        for _, row in outc.iterrows():
+            headcount = _ai_num(row['_headcount'])
+            if headcount is None or headcount <= 0 or not row['_team']:
+                continue
+            key = (row['_team'], row.get('_project') or '', row.get('_domain') or '')
+            seq = sequence.get(row['_release'], 0)
+            if key not in latest_by_team or seq > latest_by_team[key][0] or (seq == latest_by_team[key][0] and headcount > latest_by_team[key][1]):
+                latest_by_team[key] = (seq, headcount)
+        headcount_in_scope = int(sum(value[1] for value in latest_by_team.values())) if latest_by_team else None
+    else:
+        headcount_in_scope = None
+    if not headcount_in_scope:
+        headcount_in_scope = len(set(act['_person'])) if len(act) else None
+    active_count = len(portfolio_active)
+    adoption_evidence = _ai_ratio(active_count, headcount_in_scope, 100.0)
+    hours_target = (t_hours_user * headcount_in_scope) if (t_hours_user is not None and headcount_in_scope) else None
+    est_savings_total = float(total_hours or 0.0) * rate_usd
+    savings_target = (hours_target * rate_usd) if hours_target is not None else None
+    potential_hours = hours_target
+    potential_value = savings_target
+    business_value = est_savings_total
+    unrealized_value = max(0.0, (potential_value or 0.0) - business_value) if potential_value is not None else None
+    unrealized_hours = max(0.0, (potential_hours or 0.0) - float(total_hours or 0.0)) if potential_hours is not None else None
+    roi_total = _ai_ratio(est_savings_total - float(total_spend or 0.0), total_spend)
+    quantified_total = float(act.loc[act['_source'].isin(['export', 'manual']), '_hours'].sum()) if len(act) else 0.0
+    evidence_total_hours = float(act['_hours'].sum()) if len(act) else 0.0
+    confidence_total = _ai_ratio(quantified_total, evidence_total_hours, 100.0)
+    export_pct = _ai_ratio(len(portfolio_export_users), active_count, 100.0)
+    weights = [(row['health_score'], row['people_tagged']) for row in health_rows if row['health_score'] is not None and row['people_tagged'] > 0]
+    portfolio_health = (sum(score * weight for score, weight in weights) / sum(weight for _, weight in weights)) if weights else None
+    releases_all = set(sequence.keys())
+    releases_covered_all = {r for r in releases_all if len(act) and bool(act.loc[act['_release'] == r, '_evidence'].any())}
+    current_release = max(releases_all, key=lambda r: sequence.get(r, 0)) if releases_all else None
+    red_projects = {card['project'] for card in attention if card.get('severity') == 'red'}
+    weak_projects = {row['project'] for row in health_rows if row.get('health_score') is not None and row['health_score'] < 70}
+    projects_requiring_attention = len(red_projects | weak_projects)
+
+    prev_release = None
+    if current_release:
+        earlier = [r for r in releases_all if sequence.get(r, 0) < sequence.get(current_release, 0)]
+        prev_release = max(earlier, key=lambda r: sequence.get(r, 0)) if earlier else None
+    def _release_hours(label):
+        if not label or not len(act):
+            return 0.0
+        return float(act.loc[act['_release'] == label, '_hours'].sum())
+    def _release_adoption(label):
+        if not label:
+            return None
+        pts = [pt.get('adoption_pct') for row in health_rows for pt in (row.get('release_series') or []) if pt.get('release') == label and pt.get('adoption_pct') is not None]
+        return sum(pts) / len(pts) if pts else None
+    prev_hours = _release_hours(prev_release) if prev_release else None
+    cur_hours_port = _release_hours(current_release) if current_release else float(total_hours or 0.0)
+    prev_adopt = _release_adoption(prev_release)
+    cur_adopt = adoption_evidence
+    trend = {
+        'adoption_pts': _ai_round((cur_adopt - prev_adopt) if (cur_adopt is not None and prev_adopt is not None) else None),
+        'hours_delta': _ai_round((cur_hours_port - prev_hours) if prev_hours is not None else None),
+        'value_delta': _ai_round(((cur_hours_port - prev_hours) * rate_usd) if prev_hours is not None else None, 2),
+    }
+
+    if (total_tokens or 0) <= 0:
+        tokens_band = 'neutral'
+    elif export_pct is not None and export_pct >= 80:
+        tokens_band = 'green'
+    else:
+        tokens_band = 'amber'
+    if projects_requiring_attention <= 0:
+        attention_band = 'green'
+    elif projects_requiring_attention <= 2:
+        attention_band = 'amber'
+    else:
+        attention_band = 'red'
+    # Opportunity loss is lower-is-better vs 0 target
+    if unrealized_value is None:
+        opportunity_band = 'neutral'
+    elif unrealized_value <= 0:
+        opportunity_band = 'green'
+    elif potential_value and unrealized_value <= potential_value * 0.10:
+        opportunity_band = 'amber'
+    else:
+        opportunity_band = 'red'
+    missed_pct = _ai_ratio(unrealized_value, potential_value, 100.0) if (unrealized_value is not None and potential_value) else None
+    forecast = {
+        'adoption_pct': _ai_round((adoption_evidence + (trend.get('adoption_pts') or 0)) if (adoption_evidence is not None and trend.get('adoption_pts') is not None) else None),
+        'hours_saved': _ai_round((float(total_hours or 0) + (trend.get('hours_delta') or 0)) if trend.get('hours_delta') is not None else None),
+        'business_value_usd': _ai_round((business_value + (trend.get('value_delta') or 0)) if trend.get('value_delta') is not None else None, 2),
+        'opportunity_loss_usd': _ai_round(unrealized_value, 2),
+    }
+    kpi_bands = {
+        'projects': 'neutral',
+        'releases': 'neutral',
+        'adoption': _ai_band(adoption_evidence, t_adopt, tolerance_of('Adoption_Pct'), lower_of('Adoption_Pct')),
+        'users': _ai_band(adoption_evidence, t_adopt, tolerance_of('Adoption_Pct'), lower_of('Adoption_Pct')),
+        'hours': _ai_band(total_hours, hours_target, tolerance_of('Hours_per_User'), lower_of('Hours_per_User')),
+        'savings': _ai_band(total_hours, hours_target, tolerance_of('Hours_per_User'), lower_of('Hours_per_User')),
+        'business_value': _ai_band(business_value, potential_value, tolerance_of('Hours_per_User'), False),
+        'opportunity_loss': opportunity_band,
+        'attention': attention_band,
+        'tokens': tokens_band,
+        'roi': _ai_band(roi_total, t_roi, tolerance_of('ROI_Index'), lower_of('ROI_Index')),
+    }
+
+
+    # Decision Intelligence enrichments (additive, backward compatible)
+    ATTN_ACTION = {
+        'ATT-1': 'Drive Adoption',
+        'ATT-2': 'Convert tokens to savings',
+        'ATT-3': 'Improve QA',
+        'ATT-4': 'Arrest adoption decline',
+        'ATT-5': 'Quantify activity hours',
+        'ATT-6': 'Reclaim unused seats',
+        'ATT-7': 'Improve QA',
+        'ATT-8': 'Start AI documentation',
+        'ATT-9': 'Cover uncovered releases',
+    }
+    ATTN_IMPACT = {
+        'ATT-1': 'Release Risk',
+        'ATT-2': 'Efficiency Leak',
+        'ATT-3': 'Release Risk',
+        'ATT-4': 'Release Risk',
+        'ATT-5': 'Evidence Gap',
+        'ATT-6': 'Spend Waste',
+        'ATT-7': 'Release Risk',
+        'ATT-8': 'Knowledge Gap',
+        'ATT-9': 'Coverage Gap',
+    }
+    attn_by_project = {}
+    for card in attention:
+        attn_by_project.setdefault(card.get('project') or 'Portfolio', []).append(card)
+    for row in health_rows:
+        cards = attn_by_project.get(row['project'], [])
+        risk_count = len(cards)
+        row['risk_count'] = risk_count
+        row['recommendation'] = _ai_health_recommendation(row, risk_count)
+        unrealized = row.get('unrealized_value_usd') or 0.0
+        owner = row.get('manager') or 'SDM'
+        for card in cards:
+            sev_w = 1.0 if card.get('severity') == 'red' else 0.55 if card.get('severity') == 'amber' else 0.25
+            share = (sev_w / max(1.0, sum(1.0 if c.get('severity') == 'red' else 0.55 if c.get('severity') == 'amber' else 0.25 for c in cards))) if cards else 0.0
+            lost = _ai_round(unrealized * share, 2) if unrealized else None
+            card['est_value_lost_usd'] = lost
+            card['priority'] = 'P1' if card.get('severity') == 'red' else 'P2' if card.get('severity') == 'amber' else 'P3'
+            card['owner'] = owner
+            card['recommended_action'] = ATTN_ACTION.get(card.get('rule'), row.get('recommendation') or 'Review')
+            impact_label = ATTN_IMPACT.get(card.get('rule'), 'Business Impact')
+            if lost:
+                card['business_impact'] = f"{impact_label} · ${lost:,.0f}"
+            else:
+                card['business_impact'] = impact_label if card.get('severity') != 'info' else f"{impact_label} · Info"
+    # Summary executive KPI framing (Value At Risk preferred when $ impact is material)
+    critical_projects = projects_requiring_attention
+    critical_risks = sum(1 for c in attention if c.get('severity') == 'red')
+    value_at_risk = unrealized_value
+
+    values = [row.get('value_usd') or 0.0 for row in health_rows]
+    value_split = float(np.median(values)) if values else 0.0
+    if len(values) < 2 and potential_value:
+        value_split = potential_value * 0.5
+    adopt_split = t_adopt or 80.0
+    quadrant = []
+    for row in health_rows:
+        adopt = row.get('adoption_pct')
+        val = row.get('value_usd') or 0.0
+        high_a = adopt is not None and adopt >= adopt_split
+        high_v = val >= value_split
+        if high_a and high_v:
+            qname = 'Strategic Leaders'
+        elif high_a and not high_v:
+            qname = 'Execution Risk'
+        elif (not high_a) and high_v:
+            qname = 'Growth Candidates'
+        else:
+            qname = 'Turnaround Required'
+        row['quadrant'] = qname
+        quadrant.append({
+            'project': row['project'],
+            'adoption_pct': row.get('adoption_pct'),
+            'value_usd': row.get('value_usd'),
+            'quadrant': qname,
+            'health_score': row.get('health_score'),
+            'band': row.get('band'),
+            'trend_pts': row.get('trend_pts'),
+        })
+
+    billed_n = len(set(bill['_person'])) if len(bill) else 0
+    eligible_n = billed_n or (headcount_in_scope or 0)
+    if headcount_in_scope and eligible_n > headcount_in_scope:
+        eligible_n = headcount_in_scope
+    def _stage(hours, value):
+        return {'hours': _ai_round(hours), 'value': _ai_round(value, 2)}
+    funnel = [
+        {'stage': 'Total capacity', **_stage(potential_hours, potential_value)},
+        {'stage': 'AI eligible', **_stage((eligible_n * t_hours_user) if t_hours_user else None, (eligible_n * t_hours_user * rate_usd) if t_hours_user else None)},
+        {'stage': 'AI assisted', **_stage((active_count * t_hours_user) if t_hours_user else None, (active_count * t_hours_user * rate_usd) if t_hours_user else None)},
+        {'stage': 'Actual savings', **_stage(total_hours, business_value)},
+    ]
+
+    trend_map = {}
+    for row in health_rows:
+        for pt in (row.get('release_series') or []):
+            key = pt.get('release')
+            if not key:
+                continue
+            bucket = trend_map.setdefault(key, {'release': key, 'sequence': pt.get('sequence') or 0, 'hours': 0.0, 'adopts': [], 'value': 0.0})
+            bucket['hours'] += float(pt.get('hours_saved') or 0.0)
+            if pt.get('adoption_pct') is not None:
+                bucket['adopts'].append(pt['adoption_pct'])
+            bucket['value'] += float(pt.get('hours_saved') or 0.0) * rate_usd
+    maturity_trend = [{
+        'release': item['release'],
+        'sequence': item['sequence'],
+        'adoption_pct': _ai_round(sum(item['adopts']) / len(item['adopts']) if item['adopts'] else None),
+        'hours_saved': round(item['hours'], 1),
+        'value_usd': round(item['value'], 2),
+    } for item in sorted(trend_map.values(), key=lambda row: row['sequence'])]
+
+    summary_ext = {
+        'projects_count': len(health_rows),
+        'releases_count': len(releases_all),
+        'releases_covered_count': len(releases_covered_all),
+        'current_release': current_release,
+        'active_users': active_count,
+        'headcount_in_scope': headcount_in_scope,
+        'adoption_evidence_pct': _ai_round(adoption_evidence),
+        'hours_target': _ai_round(hours_target),
+        'est_cost_savings_usd': round(est_savings_total, 2),
+        'savings_target_usd': _ai_round(savings_target, 2),
+        'business_value_usd': round(business_value, 2),
+        'potential_hours': _ai_round(potential_hours),
+        'potential_value_usd': _ai_round(potential_value, 2),
+        'unrealized_value_usd': _ai_round(unrealized_value, 2),
+        'unrealized_hours': _ai_round(unrealized_hours),
+        'projects_requiring_attention': projects_requiring_attention,
+        'critical_projects': critical_projects,
+        'critical_risks': critical_risks,
+        'value_at_risk_usd': _ai_round(value_at_risk, 2),
+        # Live choice: Value At Risk ($missed) over Critical Projects/Risks when unrealized is material.
+        'attention_kpi': {
+            'mode': 'value_at_risk' if (value_at_risk or 0) > 0 else ('critical_risks' if critical_risks else 'critical_projects'),
+            'label': 'Value at risk' if (value_at_risk or 0) > 0 else ('Critical risks' if critical_risks else 'Critical projects'),
+            'value': _ai_round(value_at_risk, 2) if (value_at_risk or 0) > 0 else (critical_risks if critical_risks else critical_projects),
+        },
+        'roi_index': _ai_round(roi_total),
+        'loaded_rate_usd': rate_usd,
+        'loaded_rate_inr': rate_inr,
+        'targets': flat_targets,
+        'evidence_confidence_pct': _ai_round(confidence_total),
+        'confidence_band': _ai_confidence_band(confidence_total),
+        'kpi_bands': kpi_bands,
+        'tokens_export_coverage': {
+            'export_users': len(portfolio_export_users),
+            'active_users': active_count,
+            'pct': _ai_round(export_pct),
+        },
+        'health_score': _ai_round(portfolio_health),
+        'health_band': _ai_health_band(portfolio_health),
+        'health_label': _ai_health_label(portfolio_health),
+        'attention_count': len(attention),
+        'trend': trend,
+        'token_efficiency_usd_per_1k': _ai_round(_ai_ratio(business_value, (total_tokens or 0) / 1000.0) if (total_tokens or 0) > 0 else None, 2),
+        'missed_pct': _ai_round(missed_pct),
+        'recovery_potential_usd': _ai_round(unrealized_value, 2),
+        'recovery_opportunity_pct': _ai_round(missed_pct),
+        'forecast': forecast,
+    }
+    # Build portfolio narrative after quadrant exists
+    summary_ext['portfolio_narrative'] = _ai_portfolio_narrative(summary_ext, health_rows, attention, quadrant)
+    return {
+        'summary_ext': summary_ext,
+        'health': health_rows,
+        'attention': attention,
+        'ranking': ranking,
+        'by_project_domain': domain_rows,
+        'quadrant': quadrant,
+        'funnel': funnel,
+        'maturity_trend': maturity_trend,
+    }
+
+
+AI_USE_CASE_CANONICAL = [
+    ('Code generation', 'Code generation'),
+    ('Code review', 'Code review'),
+    ('SQL development', 'SQL development'),
+    ('Unit testing', 'Unit testing'),
+    ('Docs', 'Documentation'),
+    ('Test design', 'Test case generation'),
+    ('Test automation', 'Automation scripts'),
+    ('Defect analysis', 'Defect analysis'),
+    ('Knowledge search', 'Knowledge Search'),
+    ('Refactoring', 'Refactoring'),
+    ('Security review', 'Security review'),
+    ('Other', 'Other'),
+]
+AI_USE_CASE_ALIASES = {
+    'code generation': 'Code generation',
+    'code genration and test matrix': 'Code generation',
+    'code generation and xml report development': 'Code generation',
+    'code review': 'Code review',
+    'sql development': 'SQL development',
+    'cusor ai integration with oracle': 'SQL development',
+    'cursor ai integration with oracle': 'SQL development',
+    'unit testing': 'Unit testing',
+    'docs': 'Docs',
+    'documentation': 'Docs',
+    'test design': 'Test design',
+    'test case generation': 'Test design',
+    'test design and security review': 'Test design',
+    'test automation': 'Test automation',
+    'automation scripts': 'Test automation',
+    'defect analysis': 'Defect analysis',
+    'knowledge search': 'Knowledge search',
+    'knowledge management': 'Knowledge search',
+    'self learning with cursor ai': 'Knowledge search',
+    'refactoring': 'Refactoring',
+    'security review': 'Security review',
+}
+
+
+def _ai_canonical_use_case(value):
+    text = str(value or '').strip()
+    if not text:
+        return 'Other'
+    key = ' '.join(text.casefold().split())
+    if key in AI_USE_CASE_ALIASES:
+        return AI_USE_CASE_ALIASES[key]
+    for canonical, _label in AI_USE_CASE_CANONICAL:
+        if canonical.casefold() == key:
+            return canonical
+    return 'Other'
+
+
+def _ai_use_case_label(canonical):
+    for key, label in AI_USE_CASE_CANONICAL:
+        if key == canonical:
+            return label
+    return canonical or 'Other'
+
+
+def _ai_impact_band(ratio):
+    if ratio is None:
+        return 'n/a'
+    if ratio >= 1.25:
+        return 'High'
+    if ratio >= 0.75:
+        return 'Medium'
+    return 'Low'
+
+
+def _ai_manager_grade(score):
+    score = _ai_num(score)
+    if score is None:
+        return 'n/a'
+    if score >= 90:
+        return 'A+'
+    if score >= 80:
+        return 'A'
+    if score >= 70:
+        return 'B'
+    if score >= 60:
+        return 'C'
+    return 'D'
+
+
+def _ai_health_recommendation(row, risk_count=0):
+    """One executive recommendation badge per project (Page 1 health)."""
+    score = row.get('health_score')
+    adopt = row.get('adoption_pct')
+    potential = row.get('potential_value_usd') or 0.0
+    value = row.get('value_usd') or 0.0
+    trend = row.get('trend_pts')
+    badges = row.get('badges') or []
+    qa_risk = any('QA' in str(b) for b in badges) or (
+        row.get('qa_adoption_pct') is not None and row.get('qa_adoption_pct') is not None and row.get('qa_adoption_pct') < 50
+    )
+    if score is not None and score < 70:
+        return 'Executive Review'
+    if risk_count and risk_count >= 3 and (score is None or score < 80):
+        return 'Executive Review'
+    if qa_risk and (score is None or 70 <= score < 80) and (adopt is None or adopt >= 60):
+        return 'Improve QA'
+    high_a = adopt is not None and adopt >= 80
+    high_v = potential > 0 and value >= potential * 0.5
+    if high_a and not high_v:
+        return 'Monitor'
+    if (not high_a) and high_v:
+        return 'Drive Adoption'
+    if score is not None and score >= 80 and (trend is None or trend >= 0):
+        return 'Scale Best Practices'
+    if score is not None and score >= 80:
+        return 'Scale Best Practices'
+    if adopt is not None and adopt < 60:
+        return 'Drive Adoption'
+    if qa_risk:
+        return 'Improve QA'
+    return 'Monitor'
+
+
+def _ai_release_certification(score):
+    if score is None:
+        return 'Uncertified'
+    if score >= 90:
+        return 'Elite'
+    if score >= 80:
+        return 'Strong'
+    if score >= 70:
+        return 'Certified'
+    if score >= 60:
+        return 'At Risk'
+    return 'Critical'
+
+
+def _ai_portfolio_narrative(summary, health_rows, attention, quadrant):
+    """≤5 executive bullets: Situation · Opportunity · Risk · Priority · Executive Action."""
+    bullets = []
+    adopt = summary.get('adoption_evidence_pct')
+    t_adopt = (summary.get('targets') or {}).get('Adoption_Pct') or 80
+    if adopt is not None:
+        gap = adopt - t_adopt
+        tone = 'on target' if gap >= 0 else f'{abs(gap):.1f} pts below target'
+        bullets.append(f"Situation: Portfolio adoption is {adopt:.1f}% ({tone}).")
+    else:
+        bullets.append('Situation: Portfolio AI adoption is not yet quantified for this release.')
+
+    missed = summary.get('unrealized_value_usd')
+    potential = summary.get('potential_value_usd')
+    actual = summary.get('business_value_usd') or summary.get('est_cost_savings_usd')
+    recovery = summary.get('recovery_potential_usd')
+    if missed is not None and potential:
+        pct = (missed / potential) * 100.0 if potential else 0.0
+        rec = recovery if recovery is not None else missed
+        bullets.append(
+            f"Opportunity: Recover ${rec:,.0f} ({pct:.0f}% of ${potential:,.0f} potential); realized ${actual:,.0f}."
+            if actual is not None else
+            f"Opportunity: ${missed:,.0f} unrealized ({pct:.0f}% of ${potential:,.0f}); recovery ${rec:,.0f}."
+        )
+    elif actual is not None:
+        bullets.append(f"Opportunity: Business value generated ${actual:,.0f} this period.")
+    else:
+        bullets.append('Opportunity: Quantify hours saved to surface recovery value.')
+
+    red_n = sum(1 for c in attention if c.get('severity') == 'red')
+    attn_n = len(attention or [])
+    need = summary.get('projects_requiring_attention') or 0
+    var = summary.get('unrealized_value_usd')
+    if attn_n or need:
+        risk_bit = f"{need} critical project(s) · {attn_n} issue(s) ({red_n} P1)"
+        if var:
+            risk_bit += f" · ${var:,.0f} value at risk"
+        bullets.append(f"Risk: {risk_bit}.")
+    else:
+        bullets.append('Risk: No leadership exceptions this release.')
+
+    worst = None
+    for row in sorted(health_rows or [], key=lambda r: r.get('health_score') if r.get('health_score') is not None else 999):
+        worst = row
+        break
+    if worst:
+        rec = worst.get('recommendation') or 'Executive Review'
+        owner = worst.get('manager') or 'SDM'
+        bullets.append(
+            f"Priority: {worst.get('project')} ({worst.get('band_label') or worst.get('band') or 'n/a'}) — {rec}; owner {owner}."
+        )
+    else:
+        bullets.append('Priority: No project health score available yet.')
+
+    leaders = [q for q in (quadrant or []) if q.get('quadrant') == 'Strategic Leaders']
+    turnaround = [q for q in (quadrant or []) if q.get('quadrant') in ('Turnaround Required', 'Executive Attention')]
+    growth = [q for q in (quadrant or []) if q.get('quadrant') in ('Growth Candidates', 'Scaling Candidates')]
+    if turnaround:
+        bullets.append(
+            f"Executive Action: Schedule review for {', '.join(q['project'] for q in turnaround[:3])}; "
+            f"recover value on lowest-health projects this release."
+        )
+    elif leaders:
+        bullets.append(
+            f"Executive Action: Scale Best Practices from {', '.join(q['project'] for q in leaders[:3])}"
+            + (f"; coach Growth Candidates ({', '.join(q['project'] for q in growth[:2])})." if growth else '.')
+        )
+    elif growth:
+        bullets.append(
+            f"Executive Action: Drive Adoption on {', '.join(q['project'] for q in growth[:3])} to unlock unrealized value."
+        )
+    else:
+        bullets.append('Executive Action: Hold portfolio AI standup on unrealized value and QA evidence gaps.')
+    return bullets[:5]
+
+
+def _ai_manager_league(scorecards, health_rows):
+    """Rank managers by effectiveness score (fallback: mean project health)."""
+    buckets = {}
+    for card in scorecards or []:
+        name = str(card.get('manager') or '').strip()
+        if not name:
+            continue
+        bucket = buckets.setdefault(name, {'scores': [], 'value': 0.0, 'projects': set(), 'hours': 0.0})
+        if card.get('score') is not None:
+            bucket['scores'].append(float(card['score']))
+        bucket['hours'] += float(card.get('hours_saved') or 0.0)
+        if card.get('project'):
+            bucket['projects'].add(card['project'])
+    if not buckets:
+        for row in health_rows or []:
+            name = str(row.get('manager') or '').strip()
+            if not name:
+                continue
+            bucket = buckets.setdefault(name, {'scores': [], 'value': 0.0, 'projects': set(), 'hours': 0.0})
+            if row.get('health_score') is not None:
+                bucket['scores'].append(float(row['health_score']))
+            bucket['value'] += float(row.get('value_usd') or row.get('est_cost_savings_usd') or 0.0)
+            bucket['hours'] += float(row.get('hours_saved') or 0.0)
+            bucket['projects'].add(row.get('project'))
+    else:
+        by_project = {row.get('project'): row for row in (health_rows or [])}
+        for bucket in buckets.values():
+            for project in bucket['projects']:
+                row = by_project.get(project) or {}
+                bucket['value'] += float(row.get('value_usd') or row.get('est_cost_savings_usd') or 0.0)
+    league = []
+    for name, bucket in buckets.items():
+        score = (sum(bucket['scores']) / len(bucket['scores'])) if bucket['scores'] else None
+        league.append({
+            'manager': name,
+            'score': _ai_round(score),
+            'grade': _ai_manager_grade(score),
+            'value_usd': round(bucket['value'], 2),
+            'hours_saved': round(bucket['hours'], 1),
+            'projects': sorted(p for p in bucket['projects'] if p),
+        })
+    league.sort(key=lambda row: (-(row['score'] if row['score'] is not None else -1), row['manager']))
+    for index, row in enumerate(league):
+        row['rank'] = index + 1
+    return league
+
+
+def _ai_maturity_level(adoption_pct, use_cases, submitted, confidence_pct, qa_rows, coverage_pct, export_share, roi_index):
+    if adoption_pct is None and not use_cases:
+        return 1 if qa_rows or submitted else None
+    level = 1
+    if (adoption_pct or 0) >= 50 and submitted:
+        level = 2
+    if level >= 2 and (adoption_pct or 0) >= 70 and use_cases >= 3 and (confidence_pct or 0) >= 50 and qa_rows > 0:
+        level = 3
+    if level >= 3 and (coverage_pct or 0) >= 100 and (export_share or 0) >= 80 and (roi_index or 0) >= 5:
+        level = 4
+    return level
+
+
+def _ai_page23_view(usage, outcomes, billing, targets, release_order, health_rows):
+    """Page 2 Project Intelligence and Page 3 Release Deep Dive (additive keys)."""
+    def target_of(metric, default=None):
+        entry = (targets or {}).get(metric) or {}
+        return _ai_num(entry.get('target'), default)
+
+    t_adopt = target_of('Adoption_Pct', 80.0)
+    t_hours_user = target_of('Hours_per_User', 8.0)
+    t_eff = target_of('Efficiency_Gain_Pct', 30.0)
+    t_qual = target_of('Release_Quality_Pct', 80.0)
+    t_roi = target_of('ROI_Index', 5.0)
+    rate_usd = target_of('Loaded_Rate_USD', 40.0) or 40.0
+    team_day_cost = target_of('Team_Day_Cost', 3200.0) or 3200.0
+
+    def clean(series, default=''):
+        return series.fillna(default).astype(str).str.strip() if series is not None else pd.Series(dtype=object)
+
+    if usage is None or usage.empty:
+        act = pd.DataFrame(columns=[
+            '_project', '_release', '_domain', '_team', '_person', '_name', '_manager',
+            '_hours', '_tokens', '_source', '_emp', '_use', '_requests', '_baseline',
+            '_test_cases', '_automation', '_artifacts', '_lines', '_evidence',
+        ])
+    else:
+        act = pd.DataFrame(index=usage.index)
+        act['_project'] = clean(usage.get('Project')).replace('', 'Unspecified')
+        act['_release'] = clean(usage.get('Release'))
+        act['_domain'] = clean(usage.get('Domain'))
+        act['_team'] = clean(usage.get('Team'))
+        act['_name'] = clean(usage.get('Employee_Name'))
+        act['_manager'] = clean(usage.get('Manager'))
+        emp = pd.to_numeric(usage.get('EMPLOYEE NUMBER'), errors='coerce')
+        act['_emp'] = emp
+        act['_person'] = [
+            f'emp:{int(number)}' if pd.notna(number) else f'name:{name.casefold()}'
+            for number, name in zip(emp, act['_name'])
+        ]
+        act['_hours'] = pd.to_numeric(usage.get('Hours_Saved'), errors='coerce').fillna(0.0)
+        act['_tokens'] = pd.to_numeric(usage.get('Total_Tokens'), errors='coerce').fillna(0.0)
+        act['_source'] = clean(usage.get('Source')).str.casefold()
+        act['_use'] = clean(usage.get('Use_Case')).map(_ai_canonical_use_case)
+        act['_requests'] = pd.to_numeric(usage.get('Request_Count'), errors='coerce').fillna(0.0)
+        act['_baseline'] = pd.to_numeric(usage.get('Baseline_Hours'), errors='coerce').fillna(0.0)
+        act['_test_cases'] = pd.to_numeric(usage.get('Test_Cases_Generated'), errors='coerce').fillna(0.0)
+        act['_automation'] = pd.to_numeric(usage.get('Automation_Assets'), errors='coerce').fillna(0.0)
+        act['_artifacts'] = pd.to_numeric(usage.get('Artifacts_Generated'), errors='coerce').fillna(0.0)
+        act['_lines'] = pd.to_numeric(usage.get('Generated_Lines'), errors='coerce').fillna(0.0)
+        act = act[act['_name'] != ''] if len(act) else act
+    act['_evidence'] = (act['_hours'] > 0) | (act['_tokens'] > 0) if len(act) else pd.Series(dtype=bool)
+
+    if outcomes is None or outcomes.empty:
+        outc = pd.DataFrame(columns=[
+            '_release', '_domain', '_team', '_project', '_owner', '_headcount', '_using',
+            '_stories', '_stories_ai', '_def_base', '_def_act', '_cycle', '_status',
+            '_opportunities', '_hours',
+        ])
+    else:
+        outc = pd.DataFrame(index=outcomes.index)
+        outc['_release'] = clean(outcomes.get('Release'))
+        outc['_domain'] = clean(outcomes.get('Domain'))
+        outc['_team'] = clean(outcomes.get('Team'))
+        outc['_project'] = clean(outcomes.get('Project'))
+        outc['_owner'] = clean(outcomes.get('Owner'))
+        outc['_headcount'] = pd.to_numeric(outcomes.get('Headcount'), errors='coerce')
+        outc['_using'] = pd.to_numeric(outcomes.get('People_Using'), errors='coerce')
+        outc['_stories'] = pd.to_numeric(outcomes.get('Stories_Delivered'), errors='coerce')
+        outc['_stories_ai'] = pd.to_numeric(outcomes.get('Stories_Using_AI'), errors='coerce')
+        outc['_def_base'] = pd.to_numeric(outcomes.get('Defects_Baseline'), errors='coerce')
+        outc['_def_act'] = pd.to_numeric(outcomes.get('Defects_Actual'), errors='coerce')
+        outc['_cycle'] = pd.to_numeric(outcomes.get('Cycle_Time_Days_Saved'), errors='coerce')
+        outc['_status'] = clean(outcomes.get('Status'))
+        outc['_opportunities'] = clean(outcomes.get('Opportunities'))
+        outc['_hours'] = pd.to_numeric(outcomes.get('Hours_Saved'), errors='coerce')
+        outc = outc[outc['_release'] != '']
+
+    if billing is None or billing.empty:
+        bill = pd.DataFrame(columns=['_project', '_name', '_cost', '_emp', '_person', '_month'])
+    else:
+        bill = pd.DataFrame(index=billing.index)
+        bill['_project'] = clean(billing.get('Project'))
+        bill['_name'] = clean(billing.get('Name'))
+        bill['_month'] = clean(billing.get('Month'))
+        bill['_cost'] = pd.to_numeric(billing.get('Cost_USD'), errors='coerce').fillna(0.0)
+        emp_b = pd.to_numeric(billing.get('EMPLOYEE NUMBER'), errors='coerce')
+        bill['_emp'] = emp_b
+        bill['_person'] = [
+            f'emp:{int(number)}' if pd.notna(number) else f'name:{name.casefold()}'
+            for number, name in zip(emp_b, bill['_name'])
+        ]
+
+    all_releases = {r for r in act['_release'].tolist() if r} | {r for r in outc['_release'].tolist() if r}
+    explicit = sorted([r for r in all_releases if r in (release_order or {})], key=lambda r: int(release_order[r]))
+    implicit = sorted([r for r in all_releases if r not in (release_order or {})], key=_ai_release_natural_key)
+    sequence = {label: index + 1 for index, label in enumerate(explicit + implicit)}
+
+    team_project = {}
+    if len(act):
+        counts = act.groupby(['_team', '_project']).size().reset_index(name='n')
+        for team, chunk in counts.groupby('_team'):
+            if team:
+                team_project[team] = chunk.sort_values('n', ascending=False)['_project'].iloc[0]
+    if len(outc):
+        blank = outc['_project'].astype(str).str.strip() == ''
+        outc.loc[blank, '_project'] = outc.loc[blank, '_team'].map(team_project)
+
+    person_project = {}
+    if len(act):
+        counts = act.groupby(['_person', '_project']).size().reset_index(name='n')
+        for person, chunk in counts.groupby('_person'):
+            person_project[person] = chunk.sort_values('n', ascending=False)['_project'].iloc[0]
+    if len(bill):
+        inferred = bill['_person'].map(person_project).fillna('')
+        bill['_alloc'] = bill['_project'].where(bill['_project'] != '', inferred)
+    else:
+        bill['_alloc'] = []
+
+    health_by_project = {row['project']: row for row in (health_rows or [])}
+    projects = sorted({p for p in act['_project'].tolist() if p} | {p for p in outc['_project'].tolist() if p})
+
+    use_case_matrix = []
+    dev_vs_qa = []
+    release_trend = []
+    manager_scorecard = []
+    risks = []
+    release_summaries = []
+    dev_contribution = []
+    qa_contribution = []
+    benefit_waterfall = []
+    narratives = []
+    release_flow = []
+    maturity_radar = []
+
+    label_by_canon = {key: label for key, label in AI_USE_CASE_CANONICAL}
+
+    for project in projects:
+        rows = act[act['_project'] == project] if len(act) else act
+        proj_out = outc[outc['_project'] == project] if len(outc) else outc
+        health = health_by_project.get(project) or {}
+        current = health.get('current_release') or (
+            max({r for r in rows['_release'].tolist() if r}, key=lambda r: sequence.get(r, 0))
+            if len(rows) and any(rows['_release']) else None
+        )
+        latest_rows = rows[rows['_release'] == current] if current else rows
+        active_now = set(latest_rows.loc[latest_rows['_evidence'], '_person']) if len(latest_rows) else set()
+        project_hours = float(latest_rows['_hours'].sum()) if len(latest_rows) else 0.0
+
+        hours_by_use = {}
+        if len(latest_rows):
+            hours_by_use = latest_rows.groupby('_use')['_hours'].sum().to_dict()
+        medians = [v / max(1, int((latest_rows['_use'] == key).sum())) for key, v in hours_by_use.items() if v > 0]
+        median_hours = float(np.median(medians)) if medians else None
+
+        for canonical, label in AI_USE_CASE_CANONICAL:
+            sel = latest_rows[latest_rows['_use'] == canonical] if len(latest_rows) else latest_rows
+            count = int(len(sel)) if len(latest_rows) else 0
+            hours = float(sel['_hours'].sum()) if count else 0.0
+            users = set(sel['_person']) if count else set()
+            adoption = _ai_ratio(len(users), len(active_now), 100.0) if active_now else None
+            per_use = _ai_ratio(hours, count) if count else None
+            impact = _ai_impact_band(_ai_ratio(per_use, median_hours) if per_use is not None else None)
+            share = _ai_ratio(hours, project_hours, 100.0) if project_hours else None
+            if count == 0:
+                hours_band = 'neutral'
+            elif share is not None and share >= 10:
+                hours_band = 'green'
+            elif share is not None and share >= 5:
+                hours_band = 'amber'
+            else:
+                hours_band = 'red'
+            base_hours = float(sel['_baseline'].sum()) if count else 0.0
+            productivity = _ai_ratio(hours, base_hours, 100.0) if base_hours > 0 else None
+            value = hours * rate_usd
+            use_case_matrix.append({
+                'project': project,
+                'use_case_canonical': canonical,
+                'use_case_label': label,
+                'count': count,
+                'hours_saved': round(hours, 1),
+                'adoption_pct': _ai_round(adoption),
+                'productivity_gain_pct': _ai_round(productivity),
+                'business_impact': impact,
+                'value_usd': round(value, 2),
+                'roi_index': _ai_round(_ai_ratio(value, project_hours * rate_usd) if project_hours else None),
+                'band': hours_band if count else 'neutral',
+            })
+
+        for domain in ('Development', 'QA'):
+            d_rows = rows[rows['_domain'].str.casefold() == domain.casefold()] if len(rows) else rows
+            d_latest = latest_rows[latest_rows['_domain'].str.casefold() == domain.casefold()] if len(latest_rows) else latest_rows
+            d_out = proj_out[proj_out['_domain'].str.casefold() == domain.casefold()] if len(proj_out) else proj_out
+            enabled = None
+            if len(d_out):
+                latest_out = d_out[d_out['_release'] == current] if current else d_out
+                if len(latest_out):
+                    enabled = float(latest_out.groupby('_team')['_headcount'].max().sum())
+            artifacts = float(d_rows['_artifacts'].sum()) if len(d_rows) else 0.0
+            test_cases = float(d_rows['_test_cases'].sum()) if len(d_rows) else 0.0
+            automation = float(d_rows['_automation'].sum()) if len(d_rows) else 0.0
+            artifact_value = artifacts + test_cases + automation
+            dev_vs_qa.append({
+                'project': project,
+                'domain': domain,
+                'users_enabled': int(enabled) if enabled is not None else None,
+                'users_active': int(len(set(d_latest.loc[d_latest['_evidence'], '_person']))) if len(d_latest) else 0,
+                'hours_saved': round(float(d_latest['_hours'].sum()) if len(d_latest) else 0.0, 1),
+                'tokens': round(float(d_latest['_tokens'].sum()) if len(d_latest) else 0.0, 0),
+                'artifacts': round(artifact_value, 0) if artifact_value else None,
+            })
+
+        # Project-scoped only: activity for this project + outcomes already filtered to `_project`.
+        # Do not union team-shared outcomes from peer projects (same discipline as health.release_series).
+        releases = sorted(
+            {r for r in rows['_release'].tolist() if r} | {r for r in proj_out['_release'].tolist() if r},
+            key=lambda r: sequence.get(r, 0),
+        )
+        for release in releases:
+            r_rows = rows[rows['_release'] == release] if len(rows) else rows
+            r_health = next((item for item in (health.get('release_series') or []) if item.get('release') == release), {})
+            r_hours = float(r_rows['_hours'].sum()) if len(r_rows) else 0.0
+            r_tokens = float(r_rows['_tokens'].sum()) if len(r_rows) else 0.0
+            r_spend = float(bill.loc[bill['_alloc'] == project, '_cost'].sum()) if len(bill) and release == current else 0.0
+            r_roi = _ai_ratio((r_hours * rate_usd) - r_spend, r_spend) if r_spend > 0 else None
+            release_trend.append({
+                'project': project,
+                'release': release,
+                'sequence': sequence.get(release, 0),
+                'adoption_pct': r_health.get('adoption_pct'),
+                'hours_saved': round(r_hours, 1),
+                'roi_index': _ai_round(r_roi),
+                'tokens': round(r_tokens, 0),
+                'has_evidence': bool(len(r_rows) and r_rows['_evidence'].any()),
+            })
+
+        managers = sorted({m for m in latest_rows['_manager'].tolist() if m} | {m for m in proj_out['_owner'].tolist() if m})
+        for manager in managers:
+            m_rows = latest_rows[latest_rows['_manager'] == manager] if len(latest_rows) else latest_rows
+            m_out = proj_out[(proj_out['_owner'] == manager) & (proj_out['_release'] == current)] if current and len(proj_out) else proj_out[proj_out['_owner'] == manager]
+            if not len(m_rows) and not len(m_out):
+                continue
+            headcount = float(m_out.groupby('_team')['_headcount'].max().sum()) if len(m_out) else float(len(set(m_rows['_person'])))
+            active = set(m_rows.loc[m_rows['_evidence'], '_person']) if len(m_rows) else set()
+            hours = float(m_rows['_hours'].sum()) if len(m_rows) else 0.0
+            hours_target = (t_hours_user * headcount) if (t_hours_user and headcount) else None
+            adoption = _ai_ratio(len(active), headcount, 100.0)
+            base = m_rows[m_rows['_baseline'] > 0] if len(m_rows) else m_rows
+            efficiency = _ai_ratio(float(base['_hours'].sum()), float(base['_baseline'].sum()), 100.0) if len(base) else None
+            defects_captured = bool(len(m_out) and m_out['_def_base'].notna().any())
+            quantified_non_est = 0
+            if len(m_rows):
+                quantified_non_est = int(((m_rows['_evidence']) & (~m_rows['_source'].isin(['estimated', 'estimated-generated']))).sum())
+            evidence = _ai_ratio(quantified_non_est, len(m_rows), 100.0) if len(m_rows) else None
+            if defects_captured:
+                reduced = float((m_out['_def_base'] - m_out['_def_act']).fillna(0).sum())
+                defect_score = _ai_ratio(reduced, target_of('Defects_Reduced', 10.0), 100.0)
+                quality = None
+                if defect_score is not None and evidence is not None:
+                    quality = min(100.0, 0.5 * min(100.0, defect_score) + 0.5 * evidence)
+                elif evidence is not None:
+                    quality = evidence
+            else:
+                quality = evidence
+            a = _ai_component_score(adoption, t_adopt)
+            s = _ai_component_score(hours, hours_target)
+            e = _ai_component_score(efficiency, t_eff)
+            q = _ai_component_score(quality, t_qual)
+            parts = [(0.30, a), (0.25, s), (0.20, e), (0.25, q)]
+            score = sum(weight * value for weight, value in parts if value is not None)
+            lowest = min(
+                [(a, 'Adoption'), (s, 'Savings'), (e, 'Efficiency'), (q, 'Evidence quality')],
+                key=lambda item: item[0] if item[0] is not None else 999,
+            )
+            est_n = int((m_rows['_source'].isin(['estimated', 'estimated-generated'])).sum()) if len(m_rows) else 0
+            blank_n = int(((m_rows['_hours'] <= 0) & (m_rows['_tokens'] <= 0)).sum()) if len(m_rows) else 0
+            gap = f'{lowest[1]} is the gap'
+            if lowest[1] == 'Evidence quality':
+                gap = f'Evidence quality is the gap: {est_n} Estimated rows, {blank_n} rows without hours.'
+            mgr_components = [
+                {'key': 'adoption', 'label': 'Adoption', 'weight': 30, 'score': _ai_round(a), 'actual': _ai_round(adoption), 'target': _ai_round(t_adopt)},
+                {'key': 'savings', 'label': 'Savings', 'weight': 25, 'score': _ai_round(s), 'actual': _ai_round(hours), 'target': _ai_round(hours_target)},
+                {'key': 'efficiency', 'label': 'Efficiency', 'weight': 20, 'score': _ai_round(e), 'actual': _ai_round(efficiency), 'target': _ai_round(t_eff)},
+                {'key': 'quality', 'label': 'Evidence', 'weight': 25, 'score': _ai_round(q), 'actual': _ai_round(quality), 'target': _ai_round(t_qual)},
+            ]
+            manager_scorecard.append({
+                'manager': manager,
+                'project': project,
+                'adoption_pct': _ai_round(adoption),
+                'hours_saved': round(hours, 1),
+                'hours_target': _ai_round(hours_target),
+                'efficiency_gain_pct': _ai_round(efficiency),
+                'release_quality_pct': _ai_round(quality),
+                'score': _ai_round(score),
+                'grade': _ai_manager_grade(score),
+                'gap_sentence': gap,
+                'components': mgr_components,
+            })
+
+        # Risks
+        if len(bill):
+            billed = bill[(bill['_alloc'] == project) & (bill['_cost'] > 0)]
+            active_persons = set(rows['_person']) if len(rows) else set()
+            active_names = {f'name:{n.casefold()}' for n in rows['_name']} if len(rows) else set()
+            idle = billed[~billed['_person'].isin(active_persons) & ~billed['_person'].isin(active_names)]
+            for _, item in idle.iterrows():
+                risks.append({
+                    'type': 'unused_licence',
+                    'severity': 'amber',
+                    'project': project,
+                    'person': item['_name'],
+                    'employee_number': int(item['_emp']) if pd.notna(item['_emp']) else None,
+                    'values': {'cost_usd': round(float(item['_cost']), 2), 'month': item['_month']},
+                    'text': f"${float(item['_cost']):,.2f} · {item['_month'] or 'October'}",
+                })
+        if current and len(rows):
+            prev_releases = [r for r in rows['_release'].unique() if sequence.get(r, 0) < sequence.get(current, 0)]
+            current_people = set(latest_rows['_person'])
+            for person, chunk in rows.groupby('_person'):
+                if person in current_people:
+                    continue
+                past = chunk[chunk['_release'].isin(prev_releases)]
+                if not len(past):
+                    continue
+                last_rel = max(past['_release'].tolist(), key=lambda r: sequence.get(r, 0))
+                risks.append({
+                    'type': 'inactive_user',
+                    'severity': 'amber',
+                    'project': project,
+                    'person': chunk['_name'].iloc[0],
+                    'employee_number': int(chunk['_emp'].dropna().iloc[0]) if chunk['_emp'].notna().any() else None,
+                    'values': {'last_release': last_rel},
+                    'text': f'last active {last_rel}',
+                })
+        if len(latest_rows) and len(active_now):
+            per_person = latest_rows.groupby('_person').agg(tokens=('_tokens', 'sum'), hours=('_hours', 'sum'), name=('_name', 'first'), emp=('_emp', 'first'))
+            per_person = per_person[per_person.index.isin(active_now)]
+            if len(active_now) >= 10:
+                p75 = float(np.percentile(per_person['tokens'], 75))
+                p25 = float(np.percentile(per_person['hours'], 25))
+                heavy = per_person[(per_person['tokens'] > p75) & (per_person['hours'] < p25)]
+            else:
+                heavy = per_person[(per_person['tokens'] >= 100000) & (per_person['hours'] < 6)]
+            for person, item in heavy.iterrows():
+                risks.append({
+                    'type': 'heavy_token',
+                    'severity': 'amber',
+                    'project': project,
+                    'person': item['name'],
+                    'employee_number': int(item['emp']) if pd.notna(item['emp']) else None,
+                    'values': {'tokens': float(item['tokens']), 'hours': float(item['hours'])},
+                    'text': f"{int(item['tokens']):,} tokens · {item['hours']:.1f} h",
+                })
+        if len(latest_rows):
+            for person, chunk in latest_rows.groupby('_person'):
+                if len(chunk) >= 3 and float(chunk['_hours'].sum()) <= 0:
+                    risks.append({
+                        'type': 'low_productivity',
+                        'severity': 'amber',
+                        'project': project,
+                        'person': chunk['_name'].iloc[0],
+                        'employee_number': int(chunk['_emp'].dropna().iloc[0]) if chunk['_emp'].notna().any() else None,
+                        'values': {'rows': int(len(chunk)), 'hours': 0.0},
+                        'text': f'{int(len(chunk))} rows · 0 h quantified',
+                    })
+        if len(proj_out):
+            seen_opp = set()
+            for _, item in proj_out.iterrows():
+                text = item['_opportunities']
+                if not text or text in seen_opp:
+                    continue
+                seen_opp.add(text)
+                risks.append({
+                    'type': 'opportunity',
+                    'severity': 'info',
+                    'project': project,
+                    'person': item['_owner'],
+                    'employee_number': None,
+                    'values': {'release': item['_release']},
+                    'text': f"from {item['_release']} outcome row",
+                    'detail': text,
+                })
+
+        for release in releases:
+            r_rows = rows[rows['_release'] == release] if len(rows) else rows
+            r_out = proj_out[proj_out['_release'] == release] if len(proj_out) else proj_out
+            r_hours = float(r_rows['_hours'].sum()) if len(r_rows) else 0.0
+            r_tokens = float(r_rows['_tokens'].sum()) if len(r_rows) else 0.0
+            r_spend = float(bill.loc[bill['_alloc'] == project, '_cost'].sum()) if len(bill) and release == current else 0.0
+            stories = float(r_out['_stories'].sum()) if len(r_out) and r_out['_stories'].notna().any() else None
+            stories_ai = float(r_out['_stories_ai'].sum()) if len(r_out) and r_out['_stories_ai'].notna().any() else None
+            qa_assets = float(r_rows['_test_cases'].sum() + r_rows['_automation'].sum()) if len(r_rows) else 0.0
+            defects = None
+            if len(r_out) and r_out['_def_base'].notna().any() and r_out['_def_act'].notna().any():
+                defects = float((r_out['_def_base'] - r_out['_def_act']).fillna(0).sum())
+            cycle = float(r_out['_cycle'].fillna(0).sum()) if len(r_out) and r_out['_cycle'].notna().any() else None
+            est = r_hours * rate_usd
+            roi = _ai_ratio(est - r_spend, r_spend)
+            release_summaries.append({
+                'project': project,
+                'release': release,
+                'stories_delivered': int(stories) if stories is not None else None,
+                'stories_using_ai': int(stories_ai) if stories_ai is not None else None,
+                'qa_assets': int(qa_assets) if qa_assets else None,
+                'hours_saved': round(r_hours, 1),
+                'defects_reduced': int(defects) if defects is not None else None,
+                'tokens': round(r_tokens, 0),
+                'est_savings': round(est, 2),
+                'roi_index': _ai_round(roi),
+                'owner': (r_out['_owner'].mode().iloc[0] if len(r_out) and r_out['_owner'].any() else None),
+                'manager': (r_out['_owner'].mode().iloc[0] if len(r_out) and r_out['_owner'].any() else health.get('manager')),
+                'health_score': health.get('health_score'),
+                'health_band': health.get('band'),
+                'certification': _ai_release_certification(health.get('health_score')),
+                'release_date': None,
+                'captured': {
+                    'stories_delivered': stories is not None,
+                    'stories_using_ai': stories_ai is not None,
+                    'qa_assets': qa_assets > 0,
+                    'defects_reduced': defects is not None,
+                    'cycle_time': cycle is not None,
+                },
+            })
+
+            for domain, bucket in (('Development', dev_contribution), ('QA', qa_contribution)):
+                d_rows = r_rows[r_rows['_domain'].str.casefold() == domain.casefold()] if len(r_rows) else r_rows
+                if not len(d_rows):
+                    continue
+                for person, chunk in d_rows.groupby('_person'):
+                    uses = set(chunk['_use'])
+                    rows_n = int(len(chunk))
+                    quantified = int(chunk['_evidence'].sum())
+                    emp = chunk['_emp'].dropna()
+                    top_use = chunk.groupby('_use')['_hours'].sum().sort_values(ascending=False)
+                    activity_type = top_use.index[0] if len(top_use) else None
+                    hours_person = float(chunk['_hours'].sum())
+                    entry = {
+                        'project': project,
+                        'release': release,
+                        'domain': domain,
+                        'name': chunk['_name'].iloc[0],
+                        'employee_number': int(emp.iloc[0]) if len(emp) else None,
+                        'rows': rows_n,
+                        'usage_pct': _ai_round(_ai_ratio(quantified, rows_n, 100.0)),
+                        'hours_saved': round(hours_person, 1),
+                        'tokens': round(float(chunk['_tokens'].sum()), 0),
+                        'stories': None,
+                        'code_generated': bool(uses & {'Code generation', 'Refactoring', 'SQL development'}),
+                        'reviews_supported': bool(uses & {'Code review', 'Security review'}),
+                        'test_cases': int(chunk['_test_cases'].sum()),
+                        'automation_assets': int(chunk['_automation'].sum()),
+                        'defect_rows': int((chunk['_use'] == 'Defect analysis').sum()),
+                        'activity_type': label_by_canon.get(activity_type, activity_type),
+                        'impact_usd': round(hours_person * rate_usd, 2),
+                    }
+                    bucket.append(entry)
+
+            docs_hours = float(r_rows.loc[r_rows['_use'] == 'Docs', '_hours'].sum()) if len(r_rows) else 0.0
+            qa_hours = float(r_rows.loc[r_rows['_domain'].str.casefold() == 'qa', '_hours'].sum()) if len(r_rows) else 0.0
+            dev_hours = float(r_rows.loc[(r_rows['_domain'].str.casefold() == 'development') & (r_rows['_use'] != 'Docs'), '_hours'].sum()) if len(r_rows) else 0.0
+            cycle_value = (cycle * team_day_cost) if cycle else None
+            base_rows = r_rows[r_rows['_baseline'] > 0] if len(r_rows) else r_rows
+            baseline_hours = float(base_rows['_baseline'].sum()) if len(base_rows) else 0.0
+            rework_value = (defects * rate_usd * 2.0) if defects is not None else None
+            realized = (dev_hours + qa_hours + docs_hours) * rate_usd + (rework_value or 0.0)
+            steps = [
+                {'step': 'Baseline', 'value': round(baseline_hours * rate_usd, 2) if baseline_hours else None, 'captured': baseline_hours > 0},
+                {'step': 'Dev savings', 'value': round(dev_hours * rate_usd, 2), 'captured': True},
+                {'step': 'QA savings', 'value': round(qa_hours * rate_usd, 2), 'captured': True},
+                {'step': 'Docs savings', 'value': round(docs_hours * rate_usd, 2), 'captured': True},
+                {'step': 'Rework reduction', 'value': round(rework_value, 2) if rework_value is not None else None, 'captured': rework_value is not None},
+                {'step': 'Final realized', 'value': round(realized, 2), 'captured': True},
+            ]
+            productivity = _ai_ratio(float(base_rows['_hours'].sum()), float(base_rows['_baseline'].sum()), 100.0) if len(base_rows) else None
+            benefit_waterfall.append({
+                'project': project,
+                'release': release,
+                'steps': steps,
+                'net_value': round(realized, 2),
+                'est_savings': round(est, 2),
+                'productivity_pct': _ai_round(productivity),
+            })
+            flow_stages = [
+                ('Requirements', {'Docs', 'Knowledge search', 'Other'}),
+                ('Development', {'Code generation', 'Code review', 'SQL development', 'Refactoring'}),
+                ('Testing', {'Unit testing', 'Test design', 'Test automation', 'Defect analysis'}),
+                ('Deployment', {'Security review'}),
+            ]
+            release_flow.append({
+                'project': project,
+                'release': release,
+                'stages': [
+                    {
+                        'stage': name,
+                        'hours': round(float(r_rows.loc[r_rows['_use'].isin(uses), '_hours'].sum()) if len(r_rows) else 0.0, 1),
+                        'value': round(float(r_rows.loc[r_rows['_use'].isin(uses), '_hours'].sum()) * rate_usd if len(r_rows) else 0.0, 2),
+                        'touchpoints': int((r_rows['_use'].isin(uses)).sum()) if len(r_rows) else 0,
+                    }
+                    for name, uses in flow_stages
+                ],
+            })
+
+            # Narrative templates (design 6.7)
+            key_wins = []
+            missed = []
+            high = []
+            low = []
+            actions = []
+            if len(r_rows):
+                by_use = r_rows.groupby('_use').agg(hours=('_hours', 'sum'), users=('_person', 'nunique')).sort_values('hours', ascending=False)
+                if len(by_use) and r_hours > 0 and by_use.iloc[0]['hours'] >= 0.10 * r_hours:
+                    top_use = by_use.index[0]
+                    share = by_use.iloc[0]['hours'] / r_hours * 100
+                    key_wins.append(
+                        f"{label_by_canon.get(top_use, top_use)} saved {by_use.iloc[0]['hours']:.0f} h across {int(by_use.iloc[0]['users'])} people ({share:.0f}% of release savings)."
+                    )
+                if roi is not None and t_roi and roi >= t_roi:
+                    key_wins.append(f"Every $1 of Cursor spend returned ${roi:.1f} in effort at ${rate_usd:.0f}/h.")
+                qa_slice = r_rows[r_rows['_domain'].str.casefold() == 'qa']
+                qa_head = None
+                if len(r_out):
+                    qa_out = r_out[r_out['_domain'].str.casefold() == 'qa']
+                    if len(qa_out):
+                        qa_head = float(qa_out.groupby('_team')['_headcount'].max().sum())
+                if not len(qa_slice):
+                    missed.append(f"QA has no AI evidence this release; {int(qa_head) if qa_head else 0} QA roles are untracked.")
+                blank_rows = r_rows[(r_rows['_hours'] <= 0) & (r_rows['_tokens'] <= 0)]
+                if len(blank_rows) >= 3:
+                    who = blank_rows.groupby('_name').size().sort_values(ascending=False)
+                    missed.append(f"{len(blank_rows)} activity rows carry no hours or tokens, so {who.index[0]}'s work is not counted.")
+                est_share = _ai_ratio(float(r_rows.loc[r_rows['_source'].isin(['estimated', 'estimated-generated']), '_hours'].sum()), r_hours, 100.0)
+                if est_share is not None and est_share >= 50:
+                    missed.append(f"{est_share:.0f}% of hours are Estimated; wire the Cursor export to make them defensible.")
+                leaders = r_rows.groupby('_name').agg(hours=('_hours', 'sum'), rows=(' _hours'.strip(), 'size'), ev=('_evidence', 'sum'))
+                leaders = leaders[leaders['hours'] > 0].sort_values('hours', ascending=False)
+                if len(leaders) >= 2:
+                    a, b = leaders.iloc[0], leaders.iloc[1]
+                    high.append(f"{leaders.index[0]} and {leaders.index[1]} led with {a['hours']:.0f} h and {b['hours']:.0f} h, all quantified.")
+                elif len(leaders) == 1:
+                    high.append(f"{leaders.index[0]} led with {leaders.iloc[0]['hours']:.0f} h quantified.")
+                adopt = next((item.get('adoption_pct') for item in release_trend if item['project'] == project and item['release'] == release), None)
+                headcount = health.get('headcount_scope')
+                if adopt is not None and adopt < 60 and headcount:
+                    active_n = int(len(set(r_rows.loc[r_rows['_evidence'], '_person'])))
+                    low.append(f"{project} adoption is {adopt:.1f}% ({active_n}/{int(headcount)}); {max(0, int(headcount) - active_n)} people have no evidence.")
+                zero_h = r_rows.groupby('_name').agg(hours=('_hours', 'sum'), n=('_hours', 'size'))
+                zero_h = zero_h[(zero_h['hours'] <= 0) & (zero_h['n'] > 0)].sort_values('n', ascending=False)
+                if len(zero_h):
+                    low.append(f"{zero_h.index[0]} logged {int(zero_h.iloc[0]['n'])} activities without hours; coach on capturing savings.")
+                if len(r_out) and r_out['_opportunities'].any():
+                    plan = r_out.loc[r_out['_opportunities'] != '', '_opportunities'].iloc[0]
+                    actions.append(f"Owner's plan: {plan}")
+                if not len(qa_slice):
+                    actions.append('Add the QA Manager row on AI release outcomes and at least one QA activity row.')
+                off_list = int((~r_rows['_use'].isin([c[0] for c in AI_USE_CASE_CANONICAL[:-1]])).sum()) if len(r_rows) else 0
+                if off_list:
+                    actions.append(f'Normalise {off_list} free-text use cases to the catalog so trend lines compare.')
+            narratives.append({
+                'project': project,
+                'release': release,
+                'key_wins': key_wins[:2],
+                'missed_opportunities': missed[:2],
+                'high_performers': high[:2],
+                'low_adoption': low[:2],
+                'actions': actions[:2],
+            })
+
+    # Current-slice convenience objects (latest overall, or first project).
+    latest_release = max(sequence, key=sequence.get) if sequence else None
+    current_summary = next((row for row in release_summaries if row['release'] == latest_release), release_summaries[0] if release_summaries else None)
+    current_narrative = next((row for row in narratives if current_summary and row['project'] == current_summary['project'] and row['release'] == current_summary['release']), narratives[0] if narratives else {
+        'key_wins': [], 'missed_opportunities': [], 'high_performers': [], 'low_adoption': [], 'actions': [],
+    })
+
+    # Maturity on health rows (additive, does not change existing keys if already present).
+    for row in health_rows or []:
+        proj_rows = act[act['_project'] == row['project']] if len(act) else act
+        qa_rows = int((proj_rows['_domain'].str.casefold() == 'qa').sum()) if len(proj_rows) else 0
+        use_n = int(proj_rows.loc[proj_rows['_hours'] > 0, '_use'].nunique()) if len(proj_rows) else 0
+        submitted = bool(len(outc) and ((outc['_project'] == row['project']) & (outc['_status'].isin(['Submitted', 'Reviewed']))).any())
+        export_share = None
+        if row.get('active_users'):
+            export_users = set(proj_rows.loc[proj_rows['_source'] == 'export', '_person']) if len(proj_rows) else set()
+            export_share = _ai_ratio(len(export_users), row['active_users'], 100.0)
+        row.setdefault('maturity_level', _ai_maturity_level(
+            row.get('adoption_pct'), use_n, submitted, row.get('evidence_confidence_pct'),
+            qa_rows, row.get('coverage_pct'), export_share, row.get('roi_index'),
+        ))
+        teams = sorted({t for t in proj_rows['_team'].tolist() if t}) if len(proj_rows) else []
+        owners = [item['_owner'] for item in (outc[outc['_project'] == row['project']].to_dict('records') if len(outc) else []) if item.get('_owner')]
+        row.setdefault('teams', teams)
+        row.setdefault('manager', owners[0] if owners else None)
+        uc = [item for item in use_case_matrix if item['project'] == row['project']]
+        def _uc_score(keys):
+            hours = sum(item['hours_saved'] for item in uc if item['use_case_canonical'] in keys)
+            total = sum(item['hours_saved'] for item in uc) or 0.0
+            if total <= 0:
+                return 0.0 if hours <= 0 else 100.0
+            return min(100.0, hours / total * 100.0 * 2.0)
+        maturity_radar.append({
+            'project': row['project'],
+            'axes': [
+                {'axis': 'Adoption', 'score': _ai_round(row.get('adoption_pct')) or 0.0},
+                {'axis': 'Automation', 'score': _ai_round(_uc_score(['Test automation'])) or 0.0},
+                {'axis': 'Documentation', 'score': _ai_round(_uc_score(['Docs'])) or 0.0},
+                {'axis': 'QA Coverage', 'score': _ai_round(row.get('qa_adoption_pct')) if row.get('qa_adoption_pct') is not None else 0.0},
+                {'axis': 'Code Generation', 'score': _ai_round(_uc_score(['Code generation'])) or 0.0},
+                {'axis': 'Knowledge Management', 'score': _ai_round(_uc_score(['Knowledge search', 'Docs'])) or 0.0},
+            ],
+        })
+
+
+    project_recommendations = []
+    for row in health_rows or []:
+        bullets = []
+        rec = row.get('recommendation') or _ai_health_recommendation(row, row.get('risk_count') or 0)
+        bullets.append(f"Primary action: {rec}.")
+        if row.get('qa_adoption_pct') is None or (row.get('qa_adoption_pct') is not None and row.get('qa_adoption_pct') == 0):
+            bullets.append("Close the QA evidence gap next release (outcome row + ≥1 QA activity).")
+        if (row.get('unrealized_value_usd') or 0) > 0:
+            bullets.append(f"Recover ${row.get('unrealized_value_usd'):,.0f} unrealized value via adoption and quantification.")
+        if row.get('evidence_confidence_pct') is not None and row.get('evidence_confidence_pct') < 50:
+            bullets.append("Raise evidence confidence: import Cursor export / convert Estimated rows to Manual.")
+        maturity = row.get('maturity_level') or 1
+        next_stage = min(5, int(maturity) + 1)
+        bullets.append(f"Maturity path: advance from L{int(maturity)} to L{next_stage} (see §3.3 criteria).")
+        project_recommendations.append({
+            'project': row['project'],
+            'recommendation': rec,
+            'bullets': bullets[:5],
+            'next_maturity_level': next_stage,
+        })
+
+    return {
+        'use_case_matrix': use_case_matrix,
+        'dev_vs_qa': dev_vs_qa,
+        'release_trend': release_trend,
+        'manager_scorecard': manager_scorecard,
+        'risks': risks,
+        'release_summary': current_summary,
+        'release_summaries': release_summaries,
+        'dev_contribution': dev_contribution,
+        'qa_contribution': qa_contribution,
+        'benefit_waterfall': benefit_waterfall,
+        'project_recommendations': project_recommendations,
+        'narrative': {
+            'key_wins': current_narrative.get('key_wins', []),
+            'missed_opportunities': current_narrative.get('missed_opportunities', []),
+            'high_performers': current_narrative.get('high_performers', []),
+            'low_adoption': current_narrative.get('low_adoption', []),
+            'actions': current_narrative.get('actions', []),
+        },
+        'narratives': narratives,
+        'release_flow': release_flow,
+        'maturity_radar': maturity_radar,
+    }
+
+
 class AnalyticsEngine:
     @staticmethod
     def get_filter_options(filters: Dict[str, Any] = None):
@@ -285,6 +2194,28 @@ class AnalyticsEngine:
         calendar_years = sorted([int(y) for y in data_loader.df_leave['START DATE'].dt.year.dropna().unique()], reverse=True)
         months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+        releases_raw = set()
+        for frame in (getattr(data_loader, 'df_ai_utilization', None), getattr(data_loader, 'df_ai_outcomes', None)):
+            if frame is None or getattr(frame, 'empty', True) or 'Release' not in frame.columns:
+                continue
+            for val in frame['Release'].dropna().astype(str).unique():
+                token = str(val).strip()
+                if token and token.lower() not in ('none', 'nan', 'null', '', 'all'):
+                    releases_raw.add(token)
+        for val in parse_filter_list(filters.get('release')):
+            if str(val).strip():
+                releases_raw.add(str(val).strip())
+        release_order = getattr(data_loader, 'ai_release_order', None) or {}
+        explicit_releases = sorted(
+            [r for r in releases_raw if r in release_order],
+            key=lambda r: int(release_order[r]),
+        )
+        implicit_releases = sorted(
+            [r for r in releases_raw if r not in release_order],
+            key=_ai_release_natural_key,
+        )
+        releases = explicit_releases + implicit_releases
+
         return {
             'states': states,
             'job_levels': job_levels,
@@ -298,7 +2229,8 @@ class AnalyticsEngine:
             'calendar_years': calendar_years,
             'months': months,
             'skills': skills,
-            'salary_bins': salary_bins
+            'salary_bins': salary_bins,
+            'releases': releases,
         }
 
 
@@ -329,7 +2261,9 @@ class AnalyticsEngine:
                 'project_headcount_trends': [],
                 'emp_type_distribution': {'total': 0, 'types': []},
                 'module_distribution': [],
-                'project_manager_hierarchy': []
+                'project_manager_hierarchy': [],
+                'work_model_mix': work_model_mix(df),
+                'training_summary': training_summary([]),
             }
         
         male_count = int((df['GENDER'] == 'Male').sum())
@@ -625,7 +2559,9 @@ class AnalyticsEngine:
             'project_headcount_trends': project_headcount_trends,
             'emp_type_distribution': emp_type_distribution,
             'module_distribution': module_dist,
-            'project_manager_hierarchy': project_manager_hierarchy
+            'project_manager_hierarchy': project_manager_hierarchy,
+            'work_model_mix': work_model_mix(df),
+            'training_summary': training_summary(df['EMPLOYEE NUMBER'].tolist()),
         }
 
     @staticmethod
@@ -710,7 +2646,7 @@ class AnalyticsEngine:
         geo_grade = sorted(geo_grade, key=lambda x: (GRADE_ORDER.index(x['job_level']) if x['job_level'] in GRADE_ORDER else 99, x['location']))
         
         # Build grouped multi-bar data by grade to prevent repeated axis labels
-        projects_list = ['NH', 'ND', 'AK']
+        projects_list = ['NH', 'ND', 'AK', 'Maven']
         locations_list = ['Bangalore', 'Hyderabad', 'Chennai', 'Pune']
         
         proj_grade_grouped = []
@@ -950,7 +2886,10 @@ class AnalyticsEngine:
             'monthly_salary': m_sal,
             'last_bonus': last_bonus,
             'hike_percentage': hike_pct,
-            'leave_records': leave_records
+            'leave_records': leave_records,
+            'work_model': str(emp.get('Work_Model') or 'Not recorded yet'),
+            'office': str(emp.get('Office')).strip() if pd.notna(emp.get('Office')) and str(emp.get('Office')).strip() not in ('', 'nan', 'None') else None,
+            'trainings': employee_training_rows(emp_number),
         }
 
 
@@ -1120,7 +3059,10 @@ class AnalyticsEngine:
             'monthly_salary': m_sal,
             'last_bonus': last_bonus,
             'hike_percentage': hike_pct,
-            'leave_records': leave_records
+            'leave_records': leave_records,
+            'work_model': str(emp.get('Work_Model') or 'Not recorded yet'),
+            'office': str(emp.get('Office')).strip() if pd.notna(emp.get('Office')) and str(emp.get('Office')).strip() not in ('', 'nan', 'None') else None,
+            'trainings': employee_training_rows(emp_number),
         }
 
     @staticmethod
@@ -1929,6 +3871,394 @@ class AnalyticsEngine:
             'selected_year': selected_year,
             'cohort_employees': cohort_employees
         }
+
+    @staticmethod
+    def get_work_model_kpis(filters: Dict[str, Any] = None):
+        filters = filters or {}
+        df = apply_employee_filters(data_loader.df_employees, filters)
+        total = len(df)
+        models = work_model_series(df)
+        mix = work_model_mix(df)
+        recorded = int((models != 'Not recorded yet').sum()) if total else 0
+
+        def breakdown(column: str, label: str, skip_blank: bool = False):
+            if column not in df.columns or total == 0:
+                return []
+            values = df[column].map(lambda value: str(value).strip() if pd.notna(value) else '')
+            rows = []
+            for name in values.unique():
+                if not name or name.lower() in ('nan', 'none', 'nat'):
+                    if skip_blank:
+                        continue
+                    name = 'Not recorded'
+                mask = values == ('' if name == 'Not recorded' else name)
+                if name == 'Not recorded':
+                    mask = values.map(lambda item: not item or item.lower() in ('nan', 'none', 'nat'))
+                sub = models[mask]
+                if len(sub) == 0:
+                    continue
+                entry = {label: name, 'total': int(len(sub))}
+                for model_name in WORK_MODEL_ORDER:
+                    entry[model_name] = int((sub == model_name).sum())
+                rows.append(entry)
+            rows.sort(key=lambda item: item['total'], reverse=True)
+            if skip_blank:
+                rows = [item for item in rows if item[label] != 'Not recorded']
+            return rows
+
+        roster_rows = []
+        for _, row in df.iterrows():
+            office = row.get('Office')
+            office_text = str(office).strip() if pd.notna(office) and str(office).strip() not in ('', 'nan', 'None') else ''
+            roster_rows.append({
+                'EMPLOYEE NUMBER': int(row['EMPLOYEE NUMBER']),
+                'EMPLOYEE LABEL': str(row.get('EMPLOYEE LABEL') or ''),
+                'LOCATION': str(row.get('LOCATION') or ''),
+                'State': str(row.get('State') or ''),
+                'JOB LEVEL': str(row.get('JOB LEVEL') or ''),
+                'DEPARTMENT': str(row.get('DEPARTMENT') or ''),
+                'JOB TITLE': str(row.get('JOB TITLE') or ''),
+                'Work_Model': str(row.get('Work_Model') or 'Not recorded yet'),
+                'Office': office_text,
+                'Employment_Type': str(row.get('Employment_Type') or '') if pd.notna(row.get('Employment_Type')) else '',
+            })
+
+        history = getattr(data_loader, 'df_work_model', None)
+        by_grade = breakdown('JOB LEVEL', 'job_level')
+        by_grade.sort(key=lambda item: GRADE_ORDER.index(item['job_level']) if item['job_level'] in GRADE_ORDER else 99)
+        by_account = breakdown('State', 'account')
+        account_order = {'NH': 0, 'ND': 1, 'AK': 2, 'Maven': 3}
+        by_account.sort(key=lambda item: account_order.get(item['account'], 9))
+        return {
+            'headcount': total,
+            'recorded_count': recorded,
+            'not_recorded_count': total - recorded,
+            'mix': mix,
+            'by_city': breakdown('LOCATION', 'location'),
+            'by_account': by_account,
+            'by_grade': by_grade,
+            'by_department': breakdown('DEPARTMENT', 'department'),
+            'by_office': breakdown('Office', 'office', skip_blank=True),
+            'roster': roster_rows,
+            'history_rows': int(len(history)) if history is not None else 0,
+        }
+
+    @staticmethod
+    def get_ai_utilization_kpis(filters: Dict[str, Any] = None):
+        filters = filters or {}
+        usage = getattr(data_loader, 'df_ai_utilization', None)
+        outcomes = getattr(data_loader, 'df_ai_outcomes', None)
+        billing = getattr(data_loader, 'df_cursor_billing', None)
+        if usage is None:
+            usage = pd.DataFrame()
+        else:
+            usage = usage.copy()
+        if outcomes is None:
+            outcomes = pd.DataFrame()
+        else:
+            outcomes = outcomes.copy()
+        if billing is None:
+            billing = pd.DataFrame()
+        else:
+            billing = billing.copy()
+
+        def _manager_names(values) -> set:
+            """FilterBar managers are often 'Name (emp#)'; AI sheets store plain Manager / Owner names."""
+            names = set()
+            for raw in parse_filter_list(values):
+                text = str(raw).strip()
+                if not text:
+                    continue
+                names.add(text.casefold())
+                cleaned = re.sub(r'\s*\(\d+\)\s*$', '', text).strip()
+                if cleaned:
+                    names.add(cleaned.casefold())
+            return names
+
+        def _match_manager_series(series: pd.Series, wanted: set) -> pd.Series:
+            raw = series.fillna('').astype(str).str.strip()
+            cleaned = raw.str.replace(r'\s*\(\d+\)\s*$', '', regex=True).str.strip()
+            return raw.str.casefold().isin(wanted) | cleaned.str.casefold().isin(wanted)
+
+        def _apply_dim(frame: pd.DataFrame) -> pd.DataFrame:
+            if frame is None or frame.empty:
+                return frame
+            out = frame
+            pairs = (
+                ('project', 'Project'),
+                ('Project', 'Project'),
+                ('team', 'Team'),
+                ('Team', 'Team'),
+                ('release', 'Release'),
+                ('Release', 'Release'),
+                ('domain', 'Domain'),
+                ('Domain', 'Domain'),
+            )
+            seen = set()
+            for key, column in pairs:
+                if column in seen or column not in out.columns:
+                    continue
+                value = filters.get(key)
+                if not value:
+                    continue
+                seen.add(column)
+                wanted = {str(v).strip().casefold() for v in (value if isinstance(value, list) else [value]) if str(v).strip()}
+                if wanted:
+                    out = out[out[column].astype(str).str.strip().str.casefold().isin(wanted)]
+            return out
+
+        usage = _apply_dim(usage)
+        outcomes = _apply_dim(outcomes) if 'Project' in outcomes.columns else outcomes
+        billing = _apply_dim(billing) if 'Project' in billing.columns else billing
+
+        # Manager is on AI utilization (Manager) and outcomes (Owner). Dept/Module are People-only — not applied here.
+        manager_wanted = _manager_names(filters.get('manager'))
+        if manager_wanted:
+            if not usage.empty and 'Manager' in usage.columns:
+                usage = usage[_match_manager_series(usage['Manager'], manager_wanted)]
+            if not outcomes.empty and 'Owner' in outcomes.columns:
+                outcomes = outcomes[_match_manager_series(outcomes['Owner'], manager_wanted)]
+            if not billing.empty and not usage.empty and 'EMPLOYEE NUMBER' in usage.columns and 'EMPLOYEE NUMBER' in billing.columns:
+                scoped = set(pd.to_numeric(usage['EMPLOYEE NUMBER'], errors='coerce').dropna().astype(int).tolist())
+                if scoped:
+                    billing = billing[pd.to_numeric(billing['EMPLOYEE NUMBER'], errors='coerce').isin(scoped)]
+                else:
+                    billing = billing.iloc[0:0].copy()
+
+        people = sorted({
+            str(name).strip()
+            for name in usage.get('Employee_Name', pd.Series(dtype=object)).fillna('').tolist()
+            if str(name).strip()
+        } | {
+            str(name).strip()
+            for name in billing.get('Name', pd.Series(dtype=object)).fillna('').tolist()
+            if str(name).strip()
+        })
+        hours = float(pd.to_numeric(usage.get('Hours_Saved'), errors='coerce').fillna(0).sum()) if not usage.empty else 0.0
+        if hours <= 0 and not outcomes.empty and 'Hours_Saved' in outcomes.columns:
+            hours = float(pd.to_numeric(outcomes['Hours_Saved'], errors='coerce').fillna(0).sum())
+        tokens = float(pd.to_numeric(usage.get('Total_Tokens'), errors='coerce').fillna(0).sum()) if not usage.empty else 0.0
+        if tokens <= 0 and not outcomes.empty and 'Total_Tokens' in outcomes.columns:
+            tokens = float(pd.to_numeric(outcomes['Total_Tokens'], errors='coerce').fillna(0).sum())
+        cursor_spend = float(pd.to_numeric(billing.get('Cost_USD'), errors='coerce').fillna(0).sum()) if not billing.empty else 0.0
+        if cursor_spend <= 0 and not usage.empty and 'Cost_USD' in usage.columns:
+            person_cost = (
+                usage.dropna(subset=['Employee_Name'])
+                .groupby(usage['Employee_Name'].astype(str).str.strip())['Cost_USD']
+                .max()
+            )
+            cursor_spend = float(pd.to_numeric(person_cost, errors='coerce').fillna(0).sum())
+
+        headcount_scope = int(pd.to_numeric(outcomes.get('Headcount'), errors='coerce').fillna(0).max()) if not outcomes.empty else len(people)
+        if headcount_scope <= 0:
+            headcount_scope = max(len(people), 1)
+        people_using = int(pd.to_numeric(outcomes.get('People_Using'), errors='coerce').fillna(0).max()) if not outcomes.empty else 0
+        if people_using <= 0:
+            people_using = len(people)
+        adoption = round((people_using / headcount_scope) * 100, 1) if headcount_scope else 0.0
+
+        def _count_breakdown(frame: pd.DataFrame, column: str, label: str):
+            if frame is None or frame.empty or column not in frame.columns:
+                return []
+            series = frame[column].fillna('').astype(str).str.strip()
+            series = series[series != '']
+            rows = []
+            for name, count in series.value_counts().items():
+                rows.append({label: name, 'count': int(count)})
+            return rows
+
+        def _sum_breakdown(frame: pd.DataFrame, column: str, value_col: str, label: str):
+            if frame is None or frame.empty or column not in frame.columns or value_col not in frame.columns:
+                return []
+            tmp = frame.copy()
+            tmp[column] = tmp[column].fillna('').astype(str).str.strip()
+            tmp = tmp[tmp[column] != '']
+            tmp[value_col] = pd.to_numeric(tmp[value_col], errors='coerce').fillna(0)
+            grouped = tmp.groupby(column, dropna=False)[value_col].sum().sort_values(ascending=False)
+            return [{label: str(name), 'value': float(round(val, 2))} for name, val in grouped.items()]
+
+        # Project x Team hours matrix
+        matrix = []
+        if not usage.empty and 'Project' in usage.columns and 'Team' in usage.columns:
+            tmp = usage.copy()
+            tmp['Project'] = tmp['Project'].fillna('').astype(str).str.strip().replace('', 'Unspecified')
+            tmp['Team'] = tmp['Team'].fillna('').astype(str).str.strip().replace('', 'Unspecified')
+            tmp['Hours_Saved'] = pd.to_numeric(tmp['Hours_Saved'], errors='coerce').fillna(0)
+            piv = tmp.pivot_table(index='Team', columns='Project', values='Hours_Saved', aggfunc='sum', fill_value=0)
+            projects = list(piv.columns.astype(str))
+            for team, row in piv.iterrows():
+                entry = {'team': str(team), 'total': float(round(row.sum(), 2))}
+                for project in projects:
+                    entry[project] = float(round(row.get(project, 0), 2))
+                matrix.append(entry)
+            matrix.sort(key=lambda item: item['total'], reverse=True)
+        else:
+            projects = []
+
+        person_rows = []
+        if not usage.empty:
+            grp = usage.groupby(usage['Employee_Name'].fillna('').astype(str).str.strip(), dropna=False)
+            for name, chunk in grp:
+                if not name:
+                    continue
+                emp = pd.to_numeric(chunk.get('EMPLOYEE NUMBER'), errors='coerce').dropna()
+                emp_number = int(emp.iloc[0]) if len(emp) else None
+                cost = pd.to_numeric(chunk.get('Cost_USD'), errors='coerce').max()
+                if pd.isna(cost) and not billing.empty:
+                    match = billing[billing['Name'].astype(str).str.strip().str.casefold() == name.casefold()]
+                    if len(match):
+                        cost = pd.to_numeric(match['Cost_USD'], errors='coerce').max()
+                person_rows.append({
+                    'employee_number': emp_number,
+                    'name': name,
+                    'activities': int(len(chunk)),
+                    'hours_saved': float(round(pd.to_numeric(chunk.get('Hours_Saved'), errors='coerce').fillna(0).sum(), 2)),
+                    'tokens': float(round(pd.to_numeric(chunk.get('Total_Tokens'), errors='coerce').fillna(0).sum(), 2)),
+                    'cursor_usd': float(round(cost, 2)) if pd.notna(cost) else 0.0,
+                    'tools': sorted({str(t).strip() for t in chunk.get('Tool', pd.Series(dtype=object)).fillna('') if str(t).strip()}),
+                    'projects': sorted({str(t).strip() for t in chunk.get('Project', pd.Series(dtype=object)).fillna('') if str(t).strip()}),
+                    'teams': sorted({str(t).strip() for t in chunk.get('Team', pd.Series(dtype=object)).fillna('') if str(t).strip()}),
+                })
+        person_rows.sort(key=lambda item: (item['cursor_usd'], item['hours_saved']), reverse=True)
+
+        activity_rows = []
+        for _, row in usage.iterrows():
+            emp = row.get('EMPLOYEE NUMBER')
+            activity_rows.append({
+                'release': str(row.get('Release') or ''),
+                'domain': str(row.get('Domain') or ''),
+                'team': str(row.get('Team') or ''),
+                'project': str(row.get('Project') or ''),
+                'manager': str(row.get('Manager') or ''),
+                'employee_number': int(emp) if pd.notna(emp) else None,
+                'name': str(row.get('Employee_Name') or ''),
+                'tool': str(row.get('Tool') or ''),
+                'use_case': str(row.get('Use_Case') or ''),
+                'activity': str(row.get('Activity') or ''),
+                'hours_saved': float(row['Hours_Saved']) if pd.notna(row.get('Hours_Saved')) else 0.0,
+                'tokens': float(row['Total_Tokens']) if pd.notna(row.get('Total_Tokens')) else 0.0,
+                'source': str(row.get('Source') or ''),
+                'benefit': str(row.get('Benefit_Note') or ''),
+                'cost_usd': float(row['Cost_USD']) if pd.notna(row.get('Cost_USD')) else None,
+            })
+
+        outcome_rows = []
+        for _, row in outcomes.iterrows():
+            headcount = float(row['Headcount']) if pd.notna(row.get('Headcount')) else 0.0
+            using = float(row['People_Using']) if pd.notna(row.get('People_Using')) else 0.0
+            adoption_pct = float(row['Adoption_Pct']) if pd.notna(row.get('Adoption_Pct')) else (
+                round((using / headcount) * 100, 1) if headcount else 0.0
+            )
+            if adoption_pct <= 1 and headcount:
+                adoption_pct = round(adoption_pct * 100, 1)
+            outcome_rows.append({
+                'release': str(row.get('Release') or ''),
+                'domain': str(row.get('Domain') or ''),
+                'team': str(row.get('Team') or ''),
+                'owner': str(row.get('Owner') or ''),
+                'headcount': int(headcount),
+                'people_using': int(using),
+                'adoption_pct': adoption_pct,
+                'hours_saved': float(row['Hours_Saved']) if pd.notna(row.get('Hours_Saved')) else 0.0,
+                'tools_used': str(row.get('Tools_Used') or ''),
+                'top_use_cases': str(row.get('Top_Use_Cases') or ''),
+                'benefits': str(row.get('Measurable_Benefits') or ''),
+                'gaps': str(row.get('Gaps') or ''),
+                'challenges': str(row.get('Challenges') or ''),
+                'opportunities': str(row.get('Opportunities') or ''),
+                'status': str(row.get('Status') or ''),
+            })
+
+        billing_rows = []
+        for _, row in billing.iterrows():
+            billing_rows.append({
+                'name': str(row.get('Name') or ''),
+                'cost_usd': float(row['Cost_USD']) if pd.notna(row.get('Cost_USD')) else 0.0,
+                'month': str(row.get('Month') or ''),
+                'team': str(row.get('Team') or ''),
+                'project': str(row.get('Project') or ''),
+                'employee_number': int(row['EMPLOYEE NUMBER']) if pd.notna(row.get('EMPLOYEE NUMBER')) else None,
+            })
+        billing_rows.sort(key=lambda item: item['cost_usd'], reverse=True)
+
+        alerts = []
+        estimated = int((usage.get('Source', pd.Series(dtype=object)).astype(str).str.casefold() == 'estimated').sum()) if not usage.empty else 0
+        if estimated:
+            alerts.append({'tone': 'amber', 'text': f'{estimated} activity rows are Estimated - replace with Export when Cursor usage export is available.'})
+        if cursor_spend > 0 and hours <= 0:
+            alerts.append({'tone': 'rose', 'text': 'Cursor spend is recorded but hours saved are still blank on activity rows.'})
+        if adoption < 50:
+            alerts.append({'tone': 'amber', 'text': f'Adoption is {adoption}% of headcount in scope - seat rollout or intake gaps remain.'})
+        if not alerts:
+            alerts.append({'tone': 'emerald', 'text': 'Release evidence and Cursor billing are both present for the current slice.'})
+
+        # Page 1 Executive Command Center (additive): health tiles, attention zone, ranking, project x domain.
+        executive = _ai_executive_view(
+            usage, outcomes, billing,
+            getattr(data_loader, 'ai_targets', None) or {},
+            getattr(data_loader, 'ai_release_order', None) or {},
+            hours, tokens, cursor_spend,
+        )
+        summary = {
+            'people_using': people_using,
+            'people_named': len(people),
+            'headcount_scope': headcount_scope,
+            'adoption_pct': adoption,
+            'activity_rows': int(len(usage)),
+            'hours_saved': round(hours, 1),
+            'tokens': round(tokens, 0),
+            'cursor_spend_usd': round(cursor_spend, 2),
+            'outcome_rows': int(len(outcomes)),
+            'usd_per_hour': round(cursor_spend / hours, 2) if hours > 0 else None,
+        }
+        summary.update(executive['summary_ext'])
+        page23 = _ai_page23_view(
+            usage, outcomes, billing,
+            getattr(data_loader, 'ai_targets', None) or {},
+            getattr(data_loader, 'ai_release_order', None) or {},
+            executive['health'],
+        )
+
+        return {
+            'summary': summary,
+            'by_domain': _count_breakdown(usage, 'Domain', 'domain'),
+            'by_tool': _count_breakdown(usage, 'Tool', 'tool'),
+            'by_use_case': _count_breakdown(usage, 'Use_Case', 'use_case'),
+            'by_project': _sum_breakdown(usage, 'Project', 'Hours_Saved', 'project'),
+            'by_team': _sum_breakdown(usage, 'Team', 'Hours_Saved', 'team'),
+            'by_release': _sum_breakdown(usage, 'Release', 'Hours_Saved', 'release'),
+            'matrix_projects': projects,
+            'matrix': matrix,
+            'people': person_rows,
+            'activities': activity_rows,
+            'outcomes': outcome_rows,
+            'billing': billing_rows,
+            'alerts': alerts,
+            'health': executive['health'],
+            'attention': executive['attention'],
+            'ranking': executive['ranking'],
+            'by_project_domain': executive['by_project_domain'],
+            'quadrant': executive.get('quadrant') or [],
+            'funnel': executive.get('funnel') or [],
+            'maturity_trend': executive.get('maturity_trend') or [],
+            'league': _ai_manager_league(page23.get('manager_scorecard') or [], executive['health']),
+            'use_case_matrix': page23['use_case_matrix'],
+            'dev_vs_qa': page23['dev_vs_qa'],
+            'release_trend': page23['release_trend'],
+            'manager_scorecard': page23['manager_scorecard'],
+            'project_recommendations': page23.get('project_recommendations') or [],
+            'risks': page23['risks'],
+            'release_summary': page23['release_summary'],
+            'release_summaries': page23['release_summaries'],
+            'dev_contribution': page23['dev_contribution'],
+            'qa_contribution': page23['qa_contribution'],
+            'benefit_waterfall': page23['benefit_waterfall'],
+            'narrative': page23['narrative'],
+            'narratives': page23['narratives'],
+            'release_flow': page23.get('release_flow') or [],
+            'maturity_radar': page23.get('maturity_radar') or [],
+        }
+
 
 analytics_engine = AnalyticsEngine()
 

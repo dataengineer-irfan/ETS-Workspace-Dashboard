@@ -172,12 +172,18 @@ class SemanticQueryEngine:
 
         inv_params = TypedParameters(raw_query=question)
         for f in ir.filters.flat():
-            if f.field == "location":
+            if f.field == "location" and not inv_params.physical_location:
                 inv_params.physical_location = f.value
-            elif f.field == "state":
+            elif f.field == "state" and not inv_params.project_state:
                 inv_params.project_state = f.value
-            elif f.field == "department":
+            elif f.field == "department" and not inv_params.department:
                 inv_params.department = f.value
+            elif f.field == "status" and not inv_params.current_status:
+                inv_params.current_status = f.value
+            elif f.field == "job_level" and not inv_params.job_level:
+                inv_params.job_level = f.value
+            elif f.field == "project" and not inv_params.project:
+                inv_params.project = f.value
 
         if ir.ordering:
             inv_params.direction = ir.ordering.direction
@@ -185,10 +191,15 @@ class SemanticQueryEngine:
         if ir.entity and ir.entity.relation == "REPORTEES":
             inv_params.inquiry_type = "direct_reports_lookup"
 
+        cohort = {}
+        for f in ir.filters.flat():
+            if f.op == "=" and f.field not in cohort:
+                cohort[f.field] = f.value
         inv_contract = CapabilityContract(
             capability=cap,
             parameters=inv_params,
-            execution_route="MULTI_REQUIREMENT"
+            execution_route="MULTI_REQUIREMENT",
+            meta={"measures": [m.measure for m in ir.metrics], "cohort": cohort},
         )
         inv_res = invariant_engine.validate_capability_result(
             contract=inv_contract,

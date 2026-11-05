@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Select from 'react-select';
 import type { EmployeeDetails, EmployeeListItem, CalendarData } from '../../types/dashboard';
 import { ExportButton } from '../common/ExportButton';
+import { TrainingDetail } from '../common/TrainingDetail';
 import { 
   User, 
   Mail, 
@@ -9,25 +10,20 @@ import {
   HeartPulse, 
   ShieldCheck, 
   GitFork, 
-  Award, 
-  Clock, 
-  TrendingUp, 
   Code, 
   Sparkles, 
   Search, 
   RotateCcw, 
   X, 
-  Filter, 
   CalendarCheck,
   Building,
   MapPin,
   ExternalLink,
   CheckCircle2,
   Circle,
-  ChevronLeft,
-  ChevronRight,
   Star,
-  Zap
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -39,9 +35,22 @@ import {
   ComposedChart,
   Bar,
   Line,
-  Area,
-  ReferenceLine
+  ReferenceLine,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
+
+function emailWithBreaks(email: string) {
+  if (!email) return '—';
+  const parts = email.split(/(@|\.|-)/);
+  return parts.map((part, i) => (
+    <React.Fragment key={`${part}-${i}`}>
+      {part}
+      {(part === '@' || part === '.' || part === '-') && <wbr />}
+    </React.Fragment>
+  ));
+}
 
 interface Employee360DashboardProps {
   employee: EmployeeDetails | null;
@@ -49,8 +58,8 @@ interface Employee360DashboardProps {
   selectedEmpNumber?: number;
   onSelectEmployee: (empNumber: number) => void;
   loading: boolean;
-  onSwitchView?: () => void;
   calendarData?: CalendarData | null;
+  profileFocus?: string | null;
 }
 
 // Enterprise custom styles for react-select employee selector
@@ -142,20 +151,33 @@ const employeeSelectStyles = {
   }),
 };
 
+function hasRecordedExit(value: unknown) {
+  const text = String(value ?? '').trim().toLowerCase();
+  return Boolean(text) && text !== 'nat' && text !== 'none' && text !== 'null' && text !== 'nan';
+}
+
 export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
   employee,
   employeeList,
   selectedEmpNumber: propSelectedEmpNumber,
   onSelectEmployee,
   loading,
-  onSwitchView,
   calendarData,
+  profileFocus,
 }) => {
-  // Collapsible sidebar state (defaults to collapsed on sub-1280px viewports/scaling)
-  const [slicersCollapsed, setSlicersCollapsed] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth < 1280);
+  const empSearchRef = useRef<HTMLInputElement>(null);
   const [empSearch, setEmpSearch] = useState<string>('');
   const [gradeFilter, setGradeFilter] = useState<string>('All');
   const [projectFilter, setProjectFilter] = useState<string>('All');
+  const [leaveFocus, setLeaveFocus] = useState<number | null>(null);
+  const [rosterOpen, setRosterOpen] = useState(true);
+
+  useEffect(() => {
+    if (profileFocus !== 'training') return;
+    document.getElementById('training-detail')?.scrollIntoView({ block: 'nearest' });
+  }, [profileFocus, employee?.employee_number]);
+
+
 
   // Map employee leave counts from calendarData if available
   const leaveCountMap = useMemo(() => {
@@ -210,6 +232,8 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
         location: e['LOCATION'] || '',
         ctc: e['EMP_CTC1'] || 0,
         leave_count: leaveCountMap.get(e['EMPLOYEE NUMBER']) ?? 0,
+        exit_date: hasRecordedExit(e['EXIT DATE']) ? String(e['EXIT DATE']) : '',
+        exit_date: hasRecordedExit(e['EXIT DATE']) ? String(e['EXIT DATE']) : '',
       }))
       .sort((a, b) => {
         // If searching, prioritize search relevance!
@@ -256,6 +280,18 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
   // or when an exact ID match is typed
   const currentEmpId = propSelectedEmpNumber ?? employee?.employee_number;
   const isCurrentInList = currentEmpId ? filteredEmployees.some(e => e.employee_number === currentEmpId) : true;
+  const userPickedRef = useRef(false);
+  const didInitialActivePick = useRef(false);
+  React.useEffect(() => {
+    if (didInitialActivePick.current || userPickedRef.current) return;
+    if (filteredEmployees.length === 0 || loading || !employee) return;
+    didInitialActivePick.current = true;
+    if (!employee.exit_date) return;
+    const active = filteredEmployees.find((row) => !row.exit_date);
+    if (active && active.employee_number !== employee.employee_number) {
+      onSelectEmployee(active.employee_number);
+    }
+  }, [employee, filteredEmployees, loading, onSelectEmployee]);
   React.useEffect(() => {
     if (filteredEmployees.length === 0 || loading) return;
     const trimmed = empSearch.trim();
@@ -268,7 +304,8 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
     }
     // Otherwise, auto-select first employee only if current employee was filtered out and no prop was set
     if (!isCurrentInList && !propSelectedEmpNumber) {
-      onSelectEmployee(filteredEmployees[0].employee_number);
+      const active = filteredEmployees.find((row) => !row.exit_date);
+      onSelectEmployee((active ?? filteredEmployees[0]).employee_number);
     }
   }, [isCurrentInList, filteredEmployees, onSelectEmployee, empSearch, currentEmpId, loading, propSelectedEmpNumber]);
 
@@ -341,10 +378,10 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
 
   const getSkillLevelColor = (level: string) => {
     const lvl = (level || '').toLowerCase();
-    if (lvl.includes('expert') || lvl.includes('master')) return 'bg-amber-500';
-    if (lvl.includes('advanced')) return 'bg-cyan-500';
-    if (lvl.includes('intermediate') || lvl.includes('proficient')) return 'bg-blue-400';
-    return 'bg-slate-400';
+    if (lvl.includes('expert') || lvl.includes('master')) return '#f59e0b';
+    if (lvl.includes('advanced')) return '#06b6d4';
+    if (lvl.includes('intermediate') || lvl.includes('proficient')) return '#60a5fa';
+    return '#94a3b8';
   };
 
   // A1 + A2 + B3 FIX: Leave computed for CURRENT year only, no floor clamp
@@ -372,32 +409,34 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
     return min === max ? `${min}` : `${min}–${max}`;
   })();
 
-  // Leave type breakdown (all-time, for reference badges)
-  const sickLeaveDays = leaveRecords.filter(r => {
-    const t = (r.leave_type || '').toLowerCase();
-    return t.includes('sick') || t.includes('casual');
-  }).reduce((acc, l) => acc + (l.day_value || 1), 0);
-
-  const privilegeLeaveDays = leaveRecords.filter(r => {
-    const t = (r.leave_type || '').toLowerCase();
-    return t.includes('privilege') || t.includes('vacation');
-  }).reduce((acc, l) => acc + (l.day_value || 1), 0);
-
-  const lopLeaveDays = leaveRecords.filter(r => {
-    const t = (r.leave_type || '').toLowerCase();
-    return t.includes('lop') || t.includes('loss');
-  }).reduce((acc, l) => acc + (l.day_value || 1), 0);
-
   // Current-year entitlement (standard 30 days: 18 Privilege + 12 Casual/Sick)
   const annualAllocation = 30;
   const currentYearBalance = Math.max(0, annualAllocation - currentYearLeaveDays);
-  const currentYearUtilPct = Math.min(100, Math.round((currentYearLeaveDays / annualAllocation) * 100));
-
-  // A2 FIX: Real attendance from current year — working days minus leave
-  const workingDaysInYear = 240;
-  const attendanceRate = currentYearLeaveDays === 0
-    ? (currentYearLeave.length === 0 ? null : 100)  // null = no current-year data at all
-    : Math.max(0, +(100 - (currentYearLeaveDays / workingDaysInYear) * 100).toFixed(1));
+  const leaveSource = currentYearLeave.length > 0 ? currentYearLeave : leaveRecords;
+  const leaveColorFor = (name: string) => {
+    const kind = name.toLowerCase();
+    if (kind.includes('casual') || kind.includes('sick')) return '#0284c7';
+    if (kind.includes('privilege') || kind.includes('vacation') || kind.includes('earned')) return '#10b981';
+    if (kind.includes('lop') || kind.includes('loss')) return '#f43f5e';
+    if (kind.includes('maternity')) return '#ec4899';
+    if (kind.includes('paternity')) return '#8b5cf6';
+    if (kind.includes('bereave')) return '#64748b';
+    return '#f59e0b';
+  };
+  const leaveTotals = new Map<string, number>();
+  leaveSource.forEach((r) => {
+    const name = (r.leave_type || 'Other').trim() || 'Other';
+    leaveTotals.set(name, (leaveTotals.get(name) || 0) + (r.day_value || 1));
+  });
+  const leaveSlices = [...leaveTotals.entries()]
+    .map(([name, days]) => ({ name, days, color: leaveColorFor(name) }))
+    .sort((a, b) => b.days - a.days);
+  const leaveSliceTotal = leaveSlices.reduce((acc, s) => acc + s.days, 0);
+  const leaveActive = leaveFocus != null && leaveFocus < leaveSlices.length ? leaveFocus : null;
+  const formatLeaveDays = (days: number) => {
+    const rounded = Math.round(days * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
 
   // A3 FIX: Performance rating derived from latest finance_history Hike entry
   const financeHistory = employee.finance_history || [];
@@ -449,15 +488,51 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
     }
   })();
 
-  // Chart data with normalized hike % for display
-  const chartData = financeHistory.map((f: any) => {
-    const rawH = f.Hike ?? f.Hike_Percentage ?? 0;
-    const hikePct = rawH <= 1 && rawH > 0 ? rawH * 100 : rawH;
-    return {
-      ...f,
-      hikePctDisplay: +hikePct.toFixed(1),
-    };
-  });
+  // Chart and year table share these rows. A year with no positive salary is a
+  // placeholder: plotting it (or letting it sit in the domain) pulls the axis to 0.
+  const chartData = [...financeHistory]
+    .filter((f: any) => {
+      const base = Number(f.Base_Salary);
+      const total = Number(f.Total_CTC);
+      return (Number.isFinite(base) && base > 0) || (Number.isFinite(total) && total > 0);
+    })
+    .map((f: any) => {
+      const rawH = f.Hike ?? f.Hike_Percentage ?? 0;
+      const hikePct = rawH <= 1 && rawH > 0 ? rawH * 100 : rawH;
+      return {
+        ...f,
+        hikePctDisplay: +hikePct.toFixed(1),
+      };
+    })
+    .sort((a: any, b: any) => Number(a.Year) - Number(b.Year));
+
+  // Bar charts default the left domain to 0, which flattens a salary series that
+  // lives well above zero. Scale from the positive base salaries only. Hike stays
+  // on the right axis so a percent cannot stretch this domain.
+  const salaryAxis = (() => {
+    const bases = chartData
+      .map((row: any) => Number(row.Base_Salary))
+      .filter((n: number) => Number.isFinite(n) && n > 0);
+    if (bases.length === 0) return null;
+    const hiPool = [...bases];
+    if (gradeMedianCTC > 0) hiPool.push(gradeMedianCTC);
+    const lo = Math.min(...bases);
+    const hi = Math.max(...hiPool);
+    const span = Math.max(hi - lo, hi * 0.08);
+    const domainMin = Math.max(lo - span * 0.15, lo * 0.9);
+    const domainMax = hi + span * 0.1;
+    const steps = 3;
+    const ticks = Array.from({ length: steps + 1 }, (_, i) => domainMin + ((domainMax - domainMin) * i) / steps);
+    return { domain: [domainMin, domainMax] as [number, number], ticks };
+  })();
+
+  const hikeAxis = (() => {
+    const hikes = chartData
+      .map((row: any) => Number(row.hikePctDisplay))
+      .filter((n: number) => Number.isFinite(n) && n > 0);
+    const hi = hikes.length ? Math.max(...hikes) : 10;
+    return { domain: [0, Math.max(10, hi * 1.2)] as [number, number] };
+  })();
 
   // Executive Compensation dynamics
   const firstFinRow = financeHistory.length > 0 ? (financeHistory[0] as any) : null;
@@ -480,231 +555,134 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-row gap-2 min-h-0 overflow-hidden select-none">
+    <div className="dash-fit flex flex-row gap-2 select-none min-w-0">
       
       {/* ========================================================================= */}
       {/* MAIN 360 PROFILE CANVAS                                                   */}
       {/* ========================================================================= */}
-      <div className="flex-1 flex flex-col gap-2 min-h-0 overflow-hidden">
+      <div className="profile-canvas flex-1 flex flex-col gap-2 min-h-0 min-w-0 overflow-hidden">
 
-        {/* HERO BANNER — Career DNA Strip */}
-        <div className="glass-panel rounded-xl px-4 py-2.5 shrink-0 border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center gap-3">
-            {/* Avatar with gradient ring */}
-            <div className="relative shrink-0">
-              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-500 to-indigo-600 flex items-center justify-center font-extrabold text-white text-sm shadow-md ring-2 ring-cyan-300/50 dark:ring-cyan-700/50">
+        {/* Two rows: identity, then role beside the three figures. */}
+        <div data-profile-strip className="profile-strip glass-panel rounded-xl px-3 shrink-0 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div data-profile-row="1" className="profile-hero-id">
+            <div className="profile-avatar relative shrink-0">
+              <div className="profile-avatar-orb rounded-full bg-gradient-to-tr from-cyan-500 via-blue-500 to-indigo-600 flex items-center justify-center font-extrabold text-white shadow-md ring-2 ring-cyan-300/50 dark:ring-cyan-700/50">
                 {employee.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-900" title="Active" />
+              <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-900 ${hasExited ? 'bg-rose-400' : 'bg-emerald-400'}`} />
+            </div>
+            <h1 className="profile-hero-name text-slate-900 dark:text-slate-100">{employee.name}</h1>
+            <span className="profile-hero-chip text-slate-400 dark:text-slate-500 font-mono">#{employee.employee_number}</span>
+            <span className="profile-hero-chip font-bold px-1.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950/70 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 font-mono">{employee.job_level}</span>
+            <span className={`profile-hero-chip font-bold px-1.5 py-0.5 rounded-full border ${hasExited ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800' : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'}`}>
+              {hasExited ? 'Separated' : 'Active'}
+            </span>
+            {isRehire && (
+              <span className="profile-hero-chip font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-mono flex items-center gap-1">
+                <GitFork className="w-2.5 h-2.5" /> Rehire
+              </span>
+            )}
+          </div>
+
+          <div data-profile-row="2" className="profile-hero-detail">
+            <div data-profile-meta className="profile-meta text-slate-500 dark:text-slate-400">
+              <span className="profile-meta-item font-medium text-slate-600 dark:text-slate-300">{employee.job_title}</span>
+              <span className="profile-meta-item">{employee.department}</span>
+              <span className="profile-meta-item"><MapPin className="w-2.5 h-2.5 shrink-0" />{employee.location}</span>
+              <span className="profile-meta-item">Project <strong className="font-mono text-slate-700 dark:text-slate-300">{employee.project}</strong></span>
+              <span className="profile-meta-mgr"><Building className="w-2.5 h-2.5 shrink-0" />Reports to <strong className="text-slate-700 dark:text-slate-300">{employee.manager.split('(')[0].trim()}</strong></span>
             </div>
 
-            {/* Name + grade */}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-sm font-bold text-slate-900 dark:text-slate-100">{employee.name}</h1>
-                <span className="text-slate-400 dark:text-slate-500 font-mono text-[10px]">#{employee.employee_number}</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950/70 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 font-mono">{employee.job_level}</span>
-                {isRehire && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-mono flex items-center gap-1">
-                    <GitFork className="w-2.5 h-2.5" /> Rehire
+            <div data-profile-figures className="profile-figures">
+              <div data-profile-figure="ctc" className="profile-fig">
+                <span className="profile-fig-line">
+                  <span className="profile-fig-label">Total CTC</span>
+                  <span className="profile-fig-value text-slate-900 dark:text-slate-100">
+                    {currentCTC > 0 ? `₹${(currentCTC / 100000).toFixed(2)} lakh` : 'Pending'}
+                  </span>
+                </span>
+                {gradeMedianCTC > 0 && (
+                  <span className={`profile-fig-note ${ctcPctDiff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {ctcPctDiff >= 0 ? '+' : ''}{ctcPctDiff.toFixed(1)}% vs grade {employee.job_level}
                   </span>
                 )}
-                {hasExited && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">Separated</span>
+              </div>
+              <div data-profile-figure="tenure" className="profile-fig">
+                <span className="profile-fig-line">
+                  <span className="profile-fig-label">ETS tenure</span>
+                  <span className="profile-fig-value text-slate-900 dark:text-slate-100">
+                    {currentTenure} years
+                  </span>
+                </span>
+                <span className="profile-fig-note text-slate-500">Joined {joinDate} · {employee.total_exp} years total</span>
+              </div>
+              <div data-profile-figure="promotion" className="profile-fig">
+                <span className="profile-fig-line">
+                  <span className="profile-fig-label">Promotion</span>
+                  <span className="profile-fig-value text-slate-900 dark:text-slate-100">
+                    {lastPromotion || 'Not on record'}
+                  </span>
+                </span>
+                {nextPromoEligible && (
+                  <span className="profile-fig-note text-emerald-600 dark:text-emerald-400">Eligible {nextPromoEligible}</span>
                 )}
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                <span className="font-medium text-slate-700 dark:text-slate-300">{employee.job_title}</span>
-                <span className="text-slate-300 dark:text-slate-600">·</span>
-                <span>{employee.department}</span>
-                <span className="text-slate-300 dark:text-slate-600">·</span>
-                <span className="flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{employee.location}</span>
-                <span className="text-slate-300 dark:text-slate-600">·</span>
-                <span>Project: <strong className="font-mono text-slate-700 dark:text-slate-300">{employee.project}</strong></span>
-                <span className="text-slate-300 dark:text-slate-600">·</span>
-                <span className="flex items-center gap-0.5"><Building className="w-2.5 h-2.5" />Reports to: <strong className="text-slate-700 dark:text-slate-300">{employee.manager.split('(')[0].trim()}</strong></span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setSlicersCollapsed(!slicersCollapsed)}
-                className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-md border transition-colors ${
-                  !slicersCollapsed
-                    ? 'bg-cyan-100 dark:bg-cyan-950/70 text-cyan-950 dark:text-cyan-300 border-cyan-300 dark:border-cyan-800 shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                }`}
-                title="Toggle employee filter sidebar"
-              >
-                <Filter className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
-                <span>Filter ({filteredEmployees.length})</span>
-              </button>
-              {onSwitchView && (
-                <button
-                  onClick={onSwitchView}
-                  className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition-colors shrink-0"
-                  title="Toggle to classic dossier view"
-                >
-                  Classic Dossier
-                </button>
-              )}
             </div>
           </div>
         </div>
 
       {/* ========================================================================= */}
-      {/* 3 HEADLINE KPIS (Non-redundant authoritative metrics)                       */}
+      {/* 3-COLUMN BODY: Verified Capability Profile, Compensation, Personal & Benefits */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-3 gap-2 shrink-0">
-        {/* KPI 1: Total CTC */}
-        <div className="glass-panel rounded-xl p-3 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3.5">
-          <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800/60">
-            <Award className="w-5 h-5" />
+      <div className="pane-grid profile-pane flex-1 min-h-0">
+
+        {/* LEFT: Verified Capability Profile (9-box kept in the file, not shown) */}
+        <div className="profile-skills glass-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden min-h-0 min-w-0 h-full">
+          <div className="profile-capability">
+          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 dark:border-slate-800 shrink-0 min-w-0">
+            <span className="w-1 h-3 rounded-full bg-cyan-400 shrink-0" />
+            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 leading-tight whitespace-nowrap">Verified Capability Profile</span>
           </div>
-          <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total CTC</div>
-            <div className="text-xl font-extrabold text-slate-900 dark:text-slate-100 font-mono leading-tight mt-0.5">
-              {currentCTC > 0 ? `₹${(currentCTC / 100000).toFixed(2)}L` : 'Pending'}
-            </div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-              {gradeMedianCTC > 0 ? (
-                <span className={ctcPctDiff >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-rose-600 dark:text-rose-400 font-semibold'}>
-                  {ctcPctDiff >= 0 ? `+${ctcPctDiff.toFixed(1)}%` : `${ctcPctDiff.toFixed(1)}%`} vs {employee.job_level} median
+
+          <div className="profile-skill-wrap p-2.5 flex flex-col min-h-0 min-w-0 overflow-hidden">
+            <div className="profile-skill-list custom-scrollbar">
+              <div className="profile-skill-summary flex items-center justify-between">
+                <span className="text-[8px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 whitespace-nowrap">
+                  {skillsList.length} skills · {avgSkillExp}y avg
                 </span>
-              ) : <span>No grade median data</span>}
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 2: ETS Tenure */}
-        <div className="glass-panel rounded-xl p-3 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3.5">
-          <div className="w-9 h-9 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-200 dark:border-cyan-800/60">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ETS Tenure</div>
-            <div className="text-xl font-extrabold text-slate-900 dark:text-slate-100 font-mono leading-tight mt-0.5">
-              {currentTenure}<span className="text-sm font-normal text-slate-400 ml-0.5">y</span>
-            </div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-              DOJ <strong className="font-mono text-slate-700 dark:text-slate-300">{joinDate}</strong> · Total <strong className="font-mono text-slate-700 dark:text-slate-300">{employee.total_exp}y</strong>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 3: Promotion */}
-        <div className="glass-panel rounded-xl p-3 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3.5">
-          <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800/60">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Promotion</div>
-            <div className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight mt-0.5 truncate">
-              {lastPromotion || 'Not on record'}
-            </div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-              {nextPromoEligible
-                ? <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Eligible {nextPromoEligible}</span>
-                : lastPromotion ? <span>Career milestone · Level {employee.job_level}</span>
-                : <span>Promotion history not available</span>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* ASYMMETRIC 3-COLUMN BODY: Performance, Compensation, Personal & Benefits */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-12 gap-2 flex-1 min-h-0">
-
-        {/* COLUMN 1 (col-span-12 xl:col-span-4): Enhanced Skills & Career Velocity Hub */}
-        <div className="col-span-12 xl:col-span-4 glass-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden min-h-0">
-          <div className="flex items-center justify-between px-3.5 py-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-cyan-500" />
-              <span>Skills & Career Velocity</span>
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 font-mono">
-              {skillsList.length} Skills · {avgSkillExp}y Avg
-            </span>
-          </div>
-
-          <div className="p-3 flex-1 flex flex-col justify-between overflow-hidden gap-2 min-h-0">
-            {/* Top: Verified Competencies List */}
-            <div className="flex flex-col gap-1.5 overflow-y-auto custom-scrollbar max-h-[175px] pr-0.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-                  Verified Capability Profile
+                <span className="text-[8px] font-mono text-slate-400 whitespace-nowrap">
+                  {maxSkillExp}y max
                 </span>
-                <span className="text-[9px] text-slate-400 font-mono">Depth: {maxSkillExp}y Max</span>
               </div>
 
-              {/* Primary Specialization Highlight (if any) */}
-              {primarySkills.length > 0 && primarySkills.map((pSkill: any, pIdx: number) => {
-                const pPct = getSkillLevelPct(pSkill['Skill Level']);
-                const pExp = pSkill.Skill_Exp || pSkill['Skill_Exp'] || pSkill['Experience Years'] || null;
-                const pCat = pSkill['Skill Category'] || 'Domain';
+              <div className="profile-skill-rows">
+              {[...primarySkills, ...secondarySkills].map((s: any, idx: number) => {
+                const level = s['Skill Level'] || '—';
+                const expYears = Number(s.Skill_Exp || s['Skill_Exp'] || s['Experience Years'] || s['Exp_Years'] || 0);
+                const cat = s['Skill Category'] || '';
+                const isPrimary = (s['Skill Type'] || '').toLowerCase() === 'primary';
+                const depth = maxSkillExp > 0 ? Math.max(8, Math.round((expYears / maxSkillExp) * 100)) : getSkillLevelPct(level);
                 return (
-                  <div key={`p-${pIdx}`} className="p-2 rounded-lg bg-cyan-50/60 dark:bg-cyan-950/30 border border-cyan-200/80 dark:border-cyan-800/60 flex flex-col gap-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1 min-w-0">
-                        <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
-                        <span className="text-[8.5px] font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
-                          Primary Specialization
-                        </span>
-                      </div>
-                      <span className="text-[8.5px] font-bold px-1.5 py-0.2 rounded bg-cyan-200/70 dark:bg-cyan-800/60 text-cyan-900 dark:text-cyan-100 font-mono">
-                        {pCat}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-800 dark:text-slate-100">
-                      <span className="truncate">{pSkill['Skill Name']}</span>
-                      <span className="text-[10px] font-mono text-cyan-700 dark:text-cyan-300 shrink-0">
-                        {pExp ? `${pExp}y` : ''} · {pSkill['Skill Level']}
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full bg-cyan-200/50 dark:bg-cyan-900/40 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-400" style={{ width: `${pPct}%` }} />
-                    </div>
+                  <div key={`${s['Skill Name']}-${idx}`} className={`cap-skill${isPrimary ? ' is-primary' : ''}`}>
+                    <span className="cap-skill-name" title={s['Skill Name']}>
+                      {isPrimary && <Star className="cap-skill-star" />}
+                      {s['Skill Name']}
+                    </span>
+                    {cat && <span className="cap-skill-cat">{cat}</span>}
+                    <span className="cap-skill-meta">{expYears ? `${expYears}y` : '—'}</span>
+                    <span className="cap-skill-level">{level}</span>
+                    <span className="cap-skill-meter" aria-hidden="true">
+                      <span style={{ width: `${depth}%`, backgroundColor: getSkillLevelColor(level) }} />
+                    </span>
                   </div>
                 );
               })}
-
-              {/* Secondary Skills */}
-              {(secondarySkills.length > 0 ? secondarySkills : (primarySkills.length === 0 ? skillsList : [])).map((s: any, idx: number) => {
-                const pct = getSkillLevelPct(s['Skill Level']);
-                const barColor = getSkillLevelColor(s['Skill Level']);
-                const expYears = s.Skill_Exp || s['Skill_Exp'] || s['Experience Years'] || s['Exp_Years'] || null;
-                const cat = s['Skill Category'] || null;
-                return (
-                  <div key={idx} className="flex flex-col gap-0.5">
-                    <div className="flex items-center justify-between text-[10.5px]">
-                      <div className="flex items-center gap-1 min-w-0 flex-1 mr-1">
-                        <span className="text-slate-700 dark:text-slate-300 font-medium truncate">{s['Skill Name']}</span>
-                        {cat && (
-                          <span className="text-[7.5px] uppercase font-bold px-1 py-0.1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 shrink-0">
-                            {cat}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[9px] text-slate-400 shrink-0 font-mono">
-                        {expYears ? `${expYears}y · ` : ''}{s['Skill Level'] || '—'}
-                      </span>
-                    </div>
-                    <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
+              </div>
             </div>
 
-            <hr className="border-slate-200 dark:border-slate-800 shrink-0" />
-
-            {/* Middle: 9-Box Career Velocity Grid */}
-            <div className="flex flex-col gap-1 shrink-0">
+            {false && (
+            <>
+            <div className="flex flex-col gap-1.5 shrink-0">
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">9-Box Velocity Matrix</span>
                 <span className="text-[9px] font-mono text-slate-400">
@@ -713,12 +691,12 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
               </div>
 
               {/* 3x3 Grid */}
-              <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                <div className="grid grid-cols-3 gap-0.5 text-center text-[7.5px] font-bold">
+              <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <div className="grid grid-cols-3 gap-1.5 text-center text-[9px] font-bold">
                   {(['Risk', 'Expert', 'Top Performer'] as const).map((label, ci) => {
                     const isActive = hasRealHikeData && ci === perfAxis && potentialAxis === 2;
                     return (
-                      <div key={label} className={`p-1 rounded transition-all ${isActive ? 'bg-amber-400 dark:bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-200/50 dark:bg-slate-800/40 text-slate-500'}`}>
+                      <div key={label} className={`min-h-[28px] px-1 py-1.5 rounded flex items-center justify-center leading-tight ${isActive ? 'bg-amber-400 dark:bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-200/40 dark:bg-slate-800/50 text-slate-500'}`}>
                         {label}{isActive ? ' ★' : ''}
                       </div>
                     );
@@ -726,7 +704,7 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                   {(['Under', 'Core', 'Strong'] as const).map((label, ci) => {
                     const isActive = hasRealHikeData && ci === perfAxis && potentialAxis === 1;
                     return (
-                      <div key={label} className={`p-1 rounded transition-all ${isActive ? 'bg-amber-400 dark:bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-200/50 dark:bg-slate-800/40 text-slate-500'}`}>
+                      <div key={label} className={`min-h-[28px] px-1 py-1.5 rounded flex items-center justify-center leading-tight ${isActive ? 'bg-amber-400 dark:bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-200/40 dark:bg-slate-800/50 text-slate-500'}`}>
                         {label}{isActive ? ' ★' : ''}
                       </div>
                     );
@@ -734,7 +712,7 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                   {(['Low', 'Inconsistent', 'Rising Star'] as const).map((label, ci) => {
                     const isActive = hasRealHikeData && ci === perfAxis && potentialAxis === 0;
                     return (
-                      <div key={label} className={`p-1 rounded transition-all ${isActive ? 'bg-amber-400 dark:bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-200/50 dark:bg-slate-800/40 text-slate-500'}`}>
+                      <div key={label} className={`min-h-[28px] px-1 py-1.5 rounded flex items-center justify-center leading-tight ${isActive ? 'bg-amber-400 dark:bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-200/40 dark:bg-slate-800/50 text-slate-500'}`}>
                         {label}{isActive ? ' ★' : ''}
                       </div>
                     );
@@ -764,10 +742,7 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
               </div>
             </div>
 
-            <hr className="border-slate-200 dark:border-slate-800 shrink-0" />
-
-            {/* Bottom: Capability Intelligence Strip (Fills card vertically, NO VOID!) */}
-            <div className="rounded-lg bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 shrink-0">
+            <div className="rounded-lg bg-slate-50/50 dark:bg-slate-900/40 px-2 py-1.5 flex flex-col gap-1 shrink-0">
               <div className="text-[8.5px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                 <span>Talent DNA Assessment</span>
                 <span className="text-cyan-600 dark:text-cyan-400 font-mono">Level {employee.job_level}</span>
@@ -787,57 +762,65 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                 </div>
               </div>
             </div>
+            </>
+            )}
 
+          </div>
+          </div>
+
+          <div className="profile-training-band">
+            <TrainingDetail trainings={employee.trainings} />
           </div>
         </div>
 
-        {/* COLUMN 2 (col-span-12 xl:col-span-4): Compensation Progression & Intelligence */}
-        <div className="col-span-12 xl:col-span-4 glass-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden min-h-0">
-          <div className="flex items-center justify-between px-3.5 py-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">📈 Compensation Progression</span>
+        {/* CENTER: Compensation Progression */}
+        <div className="profile-comp glass-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden min-h-0 min-w-0 h-full">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1.5 border-b border-slate-200 dark:border-slate-800 shrink-0 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-1 h-3 rounded-full bg-cyan-300 shrink-0" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight whitespace-nowrap">Compensation Progression</span>
               {hasSyntheticData && (
                 <span className="text-[8.5px] font-bold px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800" title="Estimated records">
                   ~ Est.
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono whitespace-nowrap">
                 {chartData.length}-Year
               </span>
               <ExportButton data={employee.finance_history} filename={`comp_history_${employee.employee_number}.csv`} />
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden justify-between p-2 gap-2">
-            {/* Expanded Chart (185px) */}
-            <div className="shrink-0 h-[185px] relative">
+          <div className="profile-comp-stack min-h-0 overflow-hidden p-2">
+            <div className="profile-comp-plot w-full min-h-0">
+              <div className="pane-plot-fill">
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={180}>
-                  <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="compBaseGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#0284c7" stopOpacity={0.95} />
-                        <stop offset="100%" stopColor="#0369a1" stopOpacity={0.7} />
-                      </linearGradient>
-                      <linearGradient id="compBonusGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
-                        <stop offset="100%" stopColor="#047857" stopOpacity={0.7} />
-                      </linearGradient>
-                      <linearGradient id="compHikeAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ec4899" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#ec4899" stopOpacity={0.02} />
-                      </linearGradient>
-                      <filter id="compGlowPink" x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#ec4899" floodOpacity="0.45" />
-                      </filter>
-                    </defs>
-
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} opacity={0.6} />
-                    <XAxis dataKey="Year" stroke="var(--muted)" tick={{ fontSize: 9.5, fill: 'var(--muted)' }} />
-                    <YAxis yAxisId="left" stroke="var(--muted)" tick={{ fontSize: 9.5, fill: 'var(--muted)' }} tickFormatter={formatCTCAxis} tickCount={5} />
-                    <YAxis yAxisId="right" orientation="right" stroke="var(--muted)" tick={{ fontSize: 9.5, fill: 'var(--muted)' }} tickFormatter={(v) => `${v}%`} />
+                    <XAxis dataKey="Year" interval={0} stroke="var(--muted)" tick={{ fontSize: 9.5, fill: 'var(--muted)' }} />
+                    <YAxis
+                      yAxisId="left"
+                      domain={salaryAxis ? salaryAxis.domain : ['auto', 'auto']}
+                      ticks={salaryAxis ? salaryAxis.ticks : undefined}
+                      allowDataOverflow
+                      width={42}
+                      stroke="var(--muted)"
+                      tick={{ fontSize: 9.5, fill: 'var(--muted)' }}
+                      tickFormatter={formatCTCAxis}
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      domain={hikeAxis.domain}
+                      allowDataOverflow
+                      width={32}
+                      stroke="var(--muted)"
+                      tick={{ fontSize: 9.5, fill: 'var(--muted)' }}
+                      tickFormatter={(v) => `${Math.round(Number(v))}%`}
+                    />
 
                     {gradeMedianCTC > 0 && (
                       <ReferenceLine
@@ -858,27 +841,29 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                       }}
                     />
 
-                    <Bar yAxisId="left" dataKey="Base_Salary" fill="url(#compBaseGrad)" name="Base Salary" radius={[3, 3, 0, 0]} maxBarSize={24} />
-                    <Bar yAxisId="left" dataKey="Bonus" fill="url(#compBonusGrad)" name="Bonus" radius={[3, 3, 0, 0]} maxBarSize={24} />
-                    <Area yAxisId="right" type="monotone" dataKey="hikePctDisplay" fill="url(#compHikeAreaGrad)" fillOpacity={1} stroke="none" />
-                    <Line yAxisId="right" type="monotone" dataKey="hikePctDisplay" stroke="#ec4899" strokeWidth={2.5} dot={{ r: 3.5, fill: '#ec4899', stroke: '#ffffff', strokeWidth: 1.5 }} activeDot={{ r: 5.5, fill: '#f43f5e' }} filter="url(#compGlowPink)" name="Hike %" />
+                    <Bar isAnimationActive={false} yAxisId="left" dataKey="Base_Salary" fill="#0284c7" name="Base Salary" radius={[3, 3, 0, 0]} maxBarSize={36} />
+                    <Bar isAnimationActive={false} yAxisId="left" dataKey="Bonus" fill="#10b981" name="Bonus" radius={[3, 3, 0, 0]} maxBarSize={36} />
+                    <Line isAnimationActive={false} yAxisId="left" type="monotone" dataKey="Base_Salary" stroke="#67e8f9" strokeWidth={2} dot={{ r: 3, fill: '#67e8f9', stroke: '#0f172a', strokeWidth: 1 }} name="Salary" />
+                    <Line isAnimationActive={false} yAxisId="right" type="monotone" dataKey="hikePctDisplay" stroke="#ec4899" strokeWidth={2} dot={{ r: 3, fill: '#ec4899', stroke: '#0f172a', strokeWidth: 1 }} name="Hike %" />
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full text-slate-400 text-xs">No compensation records found.</div>
               )}
+              </div>
             </div>
 
             {/* Custom Legend */}
-            <div className="flex items-center justify-center gap-3 text-[8.5px] text-slate-500 dark:text-slate-400 shrink-0">
+            <div data-profile-legend className="profile-comp-legend flex flex-nowrap items-center justify-center gap-2 text-[8.5px] text-slate-500 dark:text-slate-400 shrink-0">
               <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-xs bg-[#0284c7]" />Base</span>
+              <span className="flex items-center gap-1"><div className="w-3 border-t-2 border-cyan-300" />Salary</span>
               <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-xs bg-[#10b981]" />Bonus</span>
-              <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#ec4899]" />Hike %</span>
+              <span className="flex items-center gap-1"><div className="w-3 border-t-2 border-[#ec4899]" />Hike %</span>
               {gradeMedianCTC > 0 && <span className="flex items-center gap-1"><div className="w-2.5 border-t-2 border-dashed border-amber-500" />Median</span>}
             </div>
 
             {/* Financial Breakdown Table */}
-            <div className="overflow-y-auto custom-scrollbar flex-1 min-h-[95px] max-h-[140px]">
+            <div className="profile-comp-table">
               <table className="w-full text-left text-[10.5px]">
                 <thead className="text-[8.5px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs z-10">
                   <tr>
@@ -896,7 +881,7 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                     const isPromo = (row as any).Is_Promotion === 'Yes' || (row as any).Is_Promotion === true;
                     const hikeColor = row.hikePctDisplay >= 15 ? 'text-emerald-600 dark:text-emerald-400' : row.hikePctDisplay >= 8 ? 'text-amber-600 dark:text-amber-400' : row.hikePctDisplay > 0 ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400';
                     return (
-                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                      <tr key={idx} data-year={row.Year} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="py-1 px-1.5 font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-0.5">
                           {row.Year}
                           {isPromo && <span title="Promoted this year" className="text-[7px] text-amber-500">▲</span>}
@@ -915,7 +900,7 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
             </div>
 
             {/* Bottom: Financial Intelligence Strip (Fills card vertically, NO VOID!) */}
-            <div className="rounded-lg bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 shrink-0">
+            <div className="profile-comp-foot rounded-lg bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 shrink-0">
               <div className="flex items-center justify-between text-[8.5px] font-bold uppercase tracking-wider text-slate-500">
                 <span>Executive Comp Dynamics</span>
                 {compGrowthPct != null && (
@@ -940,243 +925,195 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
           </div>
         </div>
 
-        {/* COLUMN 3 (col-span-12 xl:col-span-4): Personal, Statutory & Attendance Benefits (Zero-Scroll Layout!) */}
-        <div className="col-span-12 xl:col-span-4 glass-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden min-h-0">
-          <div className="flex items-center justify-between px-3.5 py-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">👤 Personal & Benefits</span>
+        {/* RIGHT: Personal & Benefits */}
+        <div className="profile-personal glass-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden min-h-0 min-w-0 h-full">
+          <div className="flex items-center justify-between gap-2 px-3.5 py-2 border-b border-slate-200 dark:border-slate-800 shrink-0 min-w-0">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+              <span className="w-1 h-3 rounded-full bg-emerald-400" />
+              Personal & Benefits
+            </span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" />KYC ✓
             </span>
           </div>
 
-          <div className="p-3 flex-1 flex flex-col justify-between overflow-hidden gap-2 min-h-0">
-
-            {/* Top: 2-Column Balanced Key-Value Grid (Identity & Contact together!) */}
-            <div className="grid grid-cols-2 gap-2 text-[10px]">
-              {/* Left Column: Identity */}
-              <div className="p-2 rounded-lg bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 flex flex-col gap-1">
-                <div className="flex items-center gap-1 pb-0.5 border-b border-slate-200/60 dark:border-slate-800/60">
-                  <div className="w-1 h-2.5 rounded-full bg-blue-500" />
-                  <span className="text-[8.5px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Identity</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-slate-100 dark:border-slate-800/60">
-                  <span className="text-slate-400">DOB</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200">{dob !== '—' ? dob : '—'}{age != null ? ` (${age}y)` : ''}</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-slate-100 dark:border-slate-800/60">
-                  <span className="text-slate-400">Gender</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200">{employee.gender || '—'}</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-slate-100 dark:border-slate-800/60">
-                  <span className="text-slate-400">Blood</span>
-                  <span className="font-mono font-bold text-rose-600 dark:text-rose-400 flex items-center gap-0.5">
-                    <HeartPulse className="w-2.5 h-2.5" />{bloodGroup || 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-400">Status</span>
-                  <span className={serviceStatusColor}>{serviceStatus}</span>
-                </div>
+          <div className="profile-body px-3 py-2 flex-1 min-h-0 overflow-x-hidden overflow-y-auto flex flex-col">
+            <div className="profile-label flex items-center gap-1.5 shrink-0">
+              <span className="w-1 h-2.5 rounded-full bg-blue-500" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Identity</span>
+            </div>
+            <div className="profile-rows flex flex-col flex-[4] justify-evenly">
+              <div data-field="dob" className="profile-field flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">DOB</span>
+                <span className="font-mono text-[11px] text-slate-800 dark:text-slate-100 whitespace-nowrap">{dob !== '—' ? dob : '—'}{age != null ? ` (${age}y)` : ''}</span>
               </div>
-
-              {/* Right Column: Contact & Statutory */}
-              <div className="p-2 rounded-lg bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 flex flex-col gap-1">
-                <div className="flex items-center gap-1 pb-0.5 border-b border-slate-200/60 dark:border-slate-800/60">
-                  <div className="w-1 h-2.5 rounded-full bg-cyan-500" />
-                  <span className="text-[8.5px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Contact & Ins.</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-slate-100 dark:border-slate-800/60 gap-1">
-                  <span className="text-slate-400 shrink-0">Work</span>
-                  <span className="font-mono text-cyan-600 dark:text-cyan-400 truncate text-[9.5px] text-right" title={officialEmail}>{officialEmail}</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-slate-100 dark:border-slate-800/60 gap-1">
-                  <span className="text-slate-400 shrink-0">Personal</span>
-                  <span className="font-mono text-slate-600 dark:text-slate-300 truncate text-[9.5px] text-right" title={personalEmail || undefined}>{personalEmail || '—'}</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-slate-100 dark:border-slate-800/60">
-                  <span className="text-slate-400">Mobile</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200">{contactNo}</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-400">Policy</span>
-                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-[9.5px]">{mediclaimNo || '—'}</span>
-                </div>
+              <div data-field="gender" className="profile-field flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">Gender</span>
+                <span className="font-mono text-[11px] text-slate-800 dark:text-slate-100 whitespace-nowrap">{employee.gender || '—'}</span>
+              </div>
+              <div data-field="blood" className="profile-field flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">Blood</span>
+                <span className="font-mono text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1 whitespace-nowrap">
+                  <HeartPulse className="w-3 h-3" />{bloodGroup || 'N/A'}
+                </span>
+              </div>
+              <div data-field="status" className="profile-field flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">Status</span>
+                <span className={`text-[11px] whitespace-nowrap ${serviceStatusColor}`}>{serviceStatus}</span>
               </div>
             </div>
 
-            {/* Middle: Emergency Contact Strip */}
-            <div className="px-2.5 py-1.5 rounded-lg bg-violet-50/50 dark:bg-violet-950/20 border border-violet-200/60 dark:border-violet-800/50 flex items-center justify-between text-[10px] shrink-0">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <ShieldCheck className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                <span className="text-slate-700 dark:text-slate-300 truncate font-medium">
-                  {emergencyName || 'Primary Emergency Contact'}
-                </span>
+            <div className="profile-label flex items-center gap-1.5 shrink-0 mt-1">
+              <span className="w-1 h-2.5 rounded-full bg-cyan-500" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Contact</span>
+            </div>
+            <div className="profile-rows flex flex-col flex-[4] justify-evenly">
+              <div data-field="work" className="profile-field profile-wide flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">Work</span>
+                <span className="profile-email font-mono text-[11px] text-cyan-600 dark:text-cyan-400">{emailWithBreaks(officialEmail)}</span>
               </div>
-              <span className="font-mono text-violet-700 dark:text-violet-300 font-bold shrink-0">
+              <div data-field="personal" className="profile-field profile-wide flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">Personal</span>
+                <span className="profile-email font-mono text-[11px] text-slate-700 dark:text-slate-200">{emailWithBreaks(personalEmail || '—')}</span>
+              </div>
+              <div data-field="mobile" className="profile-field flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">Mobile</span>
+                <span className="font-mono text-[11px] text-slate-800 dark:text-slate-100 whitespace-nowrap">{contactNo}</span>
+              </div>
+              <div data-field="policy" className="profile-field flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">Policy</span>
+                <span className="font-mono text-[11px] font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{mediclaimNo || '—'}</span>
+              </div>
+            </div>
+
+            <div data-field="emergency" className="profile-field profile-span flex items-center justify-between gap-2 min-w-0 shrink-0 mt-1 px-2 py-1.5 rounded-md bg-violet-50/70 dark:bg-violet-950/30 border border-violet-200/70 dark:border-violet-800/50">
+              <span className="flex items-center gap-1.5 min-w-0 text-[10px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                <ShieldCheck className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                {emergencyName || 'Primary contact'}{emergencyRelation && !(emergencyName || '').toLowerCase().includes(emergencyRelation.toLowerCase()) ? ` (${emergencyRelation})` : ''}
+              </span>
+              <span className="font-mono text-[11px] font-bold text-violet-700 dark:text-violet-300 whitespace-nowrap shrink-0">
                 {emergencyPhone || '—'}
               </span>
             </div>
 
-            {/* Statutory & Benefit Entitlements */}
-            <div className="rounded-lg bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 shrink-0 text-[10px]">
-              <div className="flex items-center justify-between text-[8.5px] font-bold uppercase tracking-wider text-slate-500">
-                <span>Statutory & Benefits Profile</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">100% Compliant</span>
+            <div className="profile-label flex items-center justify-between gap-3 shrink-0 mt-2">
+              <span className="flex items-center gap-1.5 min-w-0">
+                <span className="w-1 h-2.5 rounded-full bg-emerald-500" />
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Statutory</span>
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 whitespace-nowrap">100% compliant</span>
+            </div>
+            <div className="profile-rows flex flex-col flex-[2] justify-evenly">
+              <div data-field="gratuity" className="profile-field flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">Gratuity</span>
+                <span className="font-mono text-[11px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                  {currentTenure >= 5 ? 'Eligible (5+ yrs)' : 'Vesting'}
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[9.5px]">
-                <div className="flex justify-between items-center py-0.5 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-slate-400">Gratuity</span>
-                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                    {currentTenure >= 5 ? 'Eligible (5+ yrs)' : 'Vesting'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-slate-400">Provident Fund</span>
-                  <span className="font-mono text-slate-700 dark:text-slate-300">Enrolled ✓</span>
-                </div>
+              <div data-field="pf" className="profile-field flex items-center justify-between gap-2 min-w-0">
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">Provident Fund</span>
+                <span className="font-mono text-[11px] text-slate-800 dark:text-slate-100 whitespace-nowrap">Enrolled ✓</span>
               </div>
             </div>
-
-            <hr className="border-slate-200 dark:border-slate-800 shrink-0" />
-
-            {/* Bottom: Leave & Attendance Health (NOW 100% VISIBLE WITH ZERO SCROLL!) */}
-            <div className="flex flex-col gap-1.5 shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <div className="w-1 h-2.5 rounded-full bg-emerald-500" />
-                  <span className="text-[8.5px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                    Leave & Attendance ({currentYear})
-                  </span>
-                </div>
-                {attendanceRate != null ? (
-                  <span className={`font-mono text-[9.5px] font-bold ${attendanceRate >= 90 ? 'text-emerald-600 dark:text-emerald-400' : attendanceRate >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {attendanceRate}% Present
-                  </span>
-                ) : (
-                  <span className="text-slate-400 font-mono text-[9px]">No {currentYear} data</span>
-                )}
-              </div>
-
-              {/* Leave Ring & Stats */}
-              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/50 p-2 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <svg width="42" height="42" className="shrink-0">
-                    <circle cx="21" cy="21" r="17" fill="none" stroke="var(--border)" strokeWidth="4" />
-                    <circle
-                      cx="21" cy="21" r="17" fill="none"
-                      stroke={currentYearUtilPct >= 80 ? '#ef4444' : currentYearUtilPct >= 50 ? '#f59e0b' : '#10b981'}
-                      strokeWidth="4"
-                      strokeDasharray={`${(currentYearUtilPct / 100) * 107} 107`}
-                      strokeLinecap="round"
-                      transform="rotate(-90 21 21)"
-                    />
-                    <text x="21" y="25" textAnchor="middle" className="font-mono" fontSize="8.5" fontWeight="bold" fill="currentColor">
-                      {currentYearUtilPct}%
-                    </text>
-                  </svg>
-                  <div className="flex flex-col">
-                    <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold">Annual Cycle</span>
-                    <span className="text-[12px] font-extrabold text-slate-800 dark:text-slate-100 font-mono leading-tight">
-                      {currentYearBalance}d <span className="text-[9px] font-normal text-slate-400">rem.</span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-center pr-1">
-                  <div>
-                    <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 font-mono">{annualAllocation}d</div>
-                    <div className="text-[7.5px] uppercase text-slate-400 font-semibold">Entitled</div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 font-mono">{currentYearLeaveDays}d</div>
-                    <div className="text-[7.5px] uppercase text-slate-400 font-semibold">Used</div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">{currentYearBalance}d</div>
-                    <div className="text-[7.5px] uppercase text-slate-400 font-semibold">Balance</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Historical Summary & Chips */}
-              <div className="flex items-center justify-between text-[9px] font-mono pt-0.5 border-t border-slate-100 dark:border-slate-800/80">
-                <span className="text-slate-500">Historical Total{leaveYearsRange ? ` (${leaveYearsRange})` : ''}:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{allTimeLeaveDays}d</span>
-              </div>
-
-              <div className="flex items-center gap-1 text-[8.5px] font-mono flex-wrap">
-                {sickLeaveDays > 0 && (
-                  <span className="px-1.5 py-0.2 rounded bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
-                    Sick: {sickLeaveDays}d
-                  </span>
-                )}
-                {privilegeLeaveDays > 0 && (
-                  <span className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                    PL: {privilegeLeaveDays}d
-                  </span>
-                )}
-                {lopLeaveDays > 0 && (
-                  <span className="px-1.5 py-0.2 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                    LOP: {lopLeaveDays}d
-                  </span>
-                )}
-                {sickLeaveDays === 0 && privilegeLeaveDays === 0 && lopLeaveDays === 0 && leaveRecords.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded bg-slate-50 dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-700">
-                    Total: {allTimeLeaveDays}d
-                  </span>
-                )}
-              </div>
-            </div>
-
           </div>
+
+          <div data-profile-leave className="profile-leave shrink-0 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40">
+              <div className="profile-leave-head">
+                <div className="flex items-center gap-1 min-w-0">
+                  <div className="w-1 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-[8.5px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                    Leave ({currentYearLeave.length > 0 ? currentYear : leaveYearsRange || 'all'})
+                  </span>
+                </div>
+                <span data-leave-caption className="profile-leave-caption font-mono text-[9px] text-slate-500">
+                  {currentYearLeaveDays}d used · {currentYearBalance}d left
+                </span>
+              </div>
+
+              <div className="profile-leave-body">
+                <div className={`profile-leave-plot${leaveSlices.length === 0 ? ' is-empty' : ''}`}>
+                  {leaveSlices.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={leaveSlices}
+                          dataKey="days"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="58%"
+                          outerRadius="84%"
+                          paddingAngle={leaveSlices.length > 1 ? 2 : 0}
+                          isAnimationActive={false}
+                          stroke="var(--surface)"
+                          onMouseEnter={(_, index) => setLeaveFocus(index)}
+                          onMouseLeave={() => setLeaveFocus(null)}
+                        >
+                          {leaveSlices.map((slice, index) => (
+                            <Cell
+                              key={slice.name}
+                              fill={slice.color}
+                              stroke={leaveActive === index ? 'var(--text)' : 'var(--surface)'}
+                              strokeWidth={leaveActive === index ? 2 : 1}
+                              className="cursor-pointer"
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)' }}
+                          itemStyle={{ color: 'var(--text)' }}
+                          formatter={(value: any, name: any) => {
+                            const days = Number(value) || 0;
+                            const share = leaveSliceTotal > 0 ? Math.round((days / leaveSliceTotal) * 100) : 0;
+                            return [`${formatLeaveDays(days)}d (${share}%)`, name];
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : null}
+                  <div className="profile-leave-center">
+                    <span>{formatLeaveDays(leaveActive != null ? leaveSlices[leaveActive].days : leaveSliceTotal)}d</span>
+                    <small>{leaveActive != null ? leaveSlices[leaveActive].name : (leaveYearsRange || 'total')}</small>
+                  </div>
+                </div>
+                <div className="profile-leave-legend">
+                  {leaveSlices.map((slice, index) => (
+                    <button
+                      key={slice.name}
+                      type="button"
+                      className={`profile-leave-key${leaveActive === index ? ' is-on' : ''}`}
+                      onMouseEnter={() => setLeaveFocus(index)}
+                      onMouseLeave={() => setLeaveFocus(null)}
+                    >
+                      <i style={{ backgroundColor: slice.color }} />
+                      <span>{slice.name}</span>
+                      <b>{formatLeaveDays(slice.days)}d</b>
+                    </button>
+                  ))}
+                  <div className="profile-leave-hist text-[9px] font-mono">
+                    <span className="profile-leave-hist-label">History</span>
+                    {leaveYearsRange ? <span className="profile-leave-hist-range">{leaveYearsRange}</span> : null}
+                    <b>{allTimeLeaveDays}d</b>
+                  </div>
+                </div>
+              </div>
+            </div>
         </div>
 
       </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* RIGHT COLUMN: Dedicated Collapsible Employee Filter Panel (Matching User Image) */}
-      {/* ========================================================================= */}
-      <div className={`transition-all duration-300 flex flex-col shrink-0 glass-panel rounded-xl border border-slate-200 dark:border-slate-800 ${
-        slicersCollapsed ? 'w-9 p-1.5' : 'w-64 p-2.5'
-      } overflow-hidden min-h-0 shadow-sm`}>
-        {slicersCollapsed ? (
-          <div 
-            onClick={() => setSlicersCollapsed(false)}
-            className="flex flex-col items-center justify-between h-full py-2 cursor-pointer group"
-            title="Expand employee filter panel"
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSlicersCollapsed(false);
-              }}
-              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 group-hover:bg-cyan-50 dark:group-hover:bg-cyan-950/50 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div className="flex flex-col items-center gap-2 py-4">
-              <Filter className="w-3.5 h-3.5 text-cyan-500" />
-              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest [writing-mode:vertical-lr] rotate-180">
-                EMPLOYEE FILTER ({filteredEmployees.length})
-              </span>
-            </div>
-            <div className="w-2 h-2 rounded-full bg-cyan-500/70" />
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col gap-2 min-h-0">
-            {/* Panel Header */}
-            <div className="flex items-center justify-between shrink-0 pb-1 border-b border-slate-100 dark:border-slate-800/80">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                  EMPLOYEE FILTER
+      {/* Employee filter stays in the row from the laptop width up. */}
+      <div className={`${rosterOpen ? 'w-[210px] p-2' : 'w-8 px-1 py-1.5'} shrink-0 flex flex-col min-h-0 min-w-0 glass-panel rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm`}>
+          <div className="flex-1 flex flex-col gap-1.5 min-h-0 min-w-0 w-full">
+            <div className={`flex items-center shrink-0 ${rosterOpen ? 'justify-between pb-1 border-b border-slate-100 dark:border-slate-800/80' : 'justify-center'}`}>
+              {rosterOpen && (
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 leading-tight whitespace-normal min-w-0">
+                  Employee filter ({employeeList.length})
                 </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                  {filteredEmployees.length} Found
-                </span>
-                {hasAnyFilter && (
+              )}
+              <div className="flex items-center gap-0.5 shrink-0">
+                {rosterOpen && hasAnyFilter && (
                   <button
                     onClick={handleResetFilters}
                     className="p-0.5 rounded text-slate-400 hover:text-rose-500 transition-colors"
@@ -1186,18 +1123,23 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                   </button>
                 )}
                 <button
-                  onClick={() => setSlicersCollapsed(true)}
-                  className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-                  title="Collapse slicer panel"
+                  type="button"
+                  onClick={() => setRosterOpen((open) => !open)}
+                  className="p-0.5 rounded text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors"
+                  title={rosterOpen ? 'Hide employee filter' : 'Show employee filter'}
+                  aria-expanded={rosterOpen}
+                  aria-label={rosterOpen ? 'Hide employee filter' : 'Show employee filter'}
                 >
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  {rosterOpen ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>
+            {rosterOpen && (
+            <>
 
             {/* Quick Slicers: Grade & Project Pills */}
             <div className="shrink-0 flex flex-col gap-1 pb-1 border-b border-slate-100 dark:border-slate-800/60">
-              <div className="flex items-center gap-0.5 overflow-x-auto custom-scrollbar text-[9px] font-mono">
+              <div className="profile-grade-row text-[9px] font-mono">
                 <span className="text-[8px] font-bold text-slate-400 mr-1 shrink-0">GRADE:</span>
                 {['All', 'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10'].map((g) => (
                   <button
@@ -1213,9 +1155,9 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-0.5 overflow-x-auto custom-scrollbar text-[9px] font-mono">
+              <div className="profile-grade-row text-[9px] font-mono">
                 <span className="text-[8px] font-bold text-slate-400 mr-1 shrink-0">PROJ:</span>
-                {['All', 'NH', 'ND', 'AK'].map((p) => (
+                {['All', 'NH', 'ND', 'AK', 'Maven'].map((p) => (
                   <button
                     key={p}
                     onClick={() => setProjectFilter(p)}
@@ -1235,6 +1177,7 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
             <div className="relative shrink-0">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
+                ref={empSearchRef}
                 type="text"
                 placeholder="Search employee or ID..."
                 value={empSearch}
@@ -1268,7 +1211,7 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
-                  <span className="truncate text-[11px] font-bold">All Employees</span>
+                  <span className="profile-emp-name text-[11px] font-bold">All Employees</span>
                 </div>
                 <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-200/70 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300">
                   Cohort
@@ -1281,7 +1224,10 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                 return (
                   <div
                     key={emp.employee_number}
-                    onClick={() => onSelectEmployee(emp.employee_number)}
+                    onClick={() => {
+                      userPickedRef.current = true;
+                      onSelectEmployee(emp.employee_number);
+                    }}
                     className={`px-2 py-1 rounded-md cursor-pointer flex items-center justify-between gap-1.5 text-xs transition-colors ${
                       isSelected
                         ? 'bg-cyan-100/90 dark:bg-cyan-950/80 text-cyan-950 dark:text-cyan-200 font-bold border border-cyan-300 dark:border-cyan-800'
@@ -1295,7 +1241,7 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                         <Circle className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
                       )}
                       <div className="min-w-0">
-                        <p className="truncate text-[11px] leading-tight font-medium">{emp.name}</p>
+                        <p className="profile-emp-name text-[11px] leading-tight font-medium">{emp.name}</p>
                         <p className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">#{emp.employee_number}</p>
                       </div>
                     </div>
@@ -1318,8 +1264,9 @@ export const Employee360Dashboard: React.FC<Employee360DashboardProps> = ({
                 );
               })}
             </div>
+            </>
+            )}
           </div>
-        )}
       </div>
 
     </div>

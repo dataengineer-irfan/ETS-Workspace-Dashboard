@@ -199,38 +199,39 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({
 
   return (
     <>
-      {/* Dimmed backdrop on viewports < 1280px (xl) for mobile/tablet overlay mode */}
+      {/* Dimmed backdrop below lg (1024px). From lg up the panel docks in the flex row. */}
       <div
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 xl:hidden transition-opacity"
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 lg:hidden transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      <aside className="fixed inset-y-0 right-0 z-50 xl:static xl:z-20 w-80 sm:w-[360px] xl:w-[360px] bg-white dark:bg-[#0c1829] border-l border-slate-200 dark:border-[#223755] shadow-2xl xl:shadow-none flex flex-col shrink-0 h-full transition-all duration-200">
+      <aside className="fixed inset-y-0 right-0 z-50 lg:static lg:z-20 lg:self-stretch w-80 sm:w-[360px] lg:w-[260px] bg-white dark:bg-[#0c1829] border-l border-slate-200 dark:border-[#223755] shadow-2xl lg:shadow-none flex flex-col shrink-0 h-full min-h-0 max-h-full overflow-hidden transition-all duration-200">
       {/* Header */}
-      <div className="h-12 px-3.5 border-b border-slate-200 dark:border-[#223755] flex items-center justify-between shrink-0 bg-slate-50/90 dark:bg-[#0f1f35]">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center shadow-xs">
+      <div className="h-12 px-2 min-w-0 overflow-hidden border-b border-slate-200 dark:border-[#223755] flex items-center justify-between gap-1 shrink-0 bg-slate-50/90 dark:bg-[#0f1f35]">
+        <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+          <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center shadow-xs shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-white" />
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 tracking-tight">ETS Genie</h3>
-              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 uppercase">
+          <div className="min-w-0 overflow-hidden">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 tracking-tight whitespace-nowrap">ETS Genie</h3>
+              <span className="genie-lg-hide hidden sm:inline text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 uppercase">
                 AI Assistant
               </span>
             </div>
-            <p className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold">Context: {activeTab.replace('_', ' ').toUpperCase()}</p>
+            <p className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold truncate">Context: {activeTab.replace('_', ' ').toUpperCase()}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={handleClearChat}
-            className="px-2 py-1 rounded-md text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 text-[11px] font-medium cursor-pointer"
+            className="px-1.5 py-1 rounded-md text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 text-[11px] font-medium cursor-pointer"
             title="Clear chat conversation"
+            aria-label="Clear chat conversation"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>Clear</span>
+            <span className="genie-lg-hide hidden sm:inline">Clear</span>
           </button>
           <button
             onClick={onClose}

@@ -19,6 +19,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 // Tabs allowed by role
 export const TAB_PERMISSIONS: Record<string, UserRole[]> = {
   home: ['EMPLOYEE', 'MANAGER', 'HR_ANALYTICS', 'EXECUTIVE', 'ADMIN'],
+  work_model: ['EMPLOYEE', 'MANAGER', 'HR_ANALYTICS', 'EXECUTIVE', 'ADMIN'],
+  ai_utilization: ['EMPLOYEE', 'MANAGER', 'HR_ANALYTICS', 'EXECUTIVE', 'ADMIN'],
   techwise: ['EMPLOYEE', 'MANAGER', 'HR_ANALYTICS', 'EXECUTIVE', 'ADMIN'],
   statewise: ['EMPLOYEE', 'MANAGER', 'HR_ANALYTICS', 'EXECUTIVE', 'ADMIN'],
   calendar: ['EMPLOYEE', 'MANAGER', 'HR_ANALYTICS', 'EXECUTIVE', 'ADMIN'],

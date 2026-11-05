@@ -59,6 +59,8 @@ class SQLiteEngine:
         clean_emp['total_exp'] = _sanitize_series(df_emp['Total_Exp'], "numeric")
         clean_emp['salary_bin'] = _sanitize_series(df_emp['SalaryBin'], "text")
         clean_emp['primary_skill'] = _sanitize_series(df_emp['Primary_Skill'], "text")
+        module_series = df_emp['Module'] if 'Module' in df_emp.columns else pd.Series([""] * len(df_emp))
+        clean_emp['module'] = _sanitize_series(module_series, "text")
         clean_emp['primary_skill_exp'] = _sanitize_series(df_emp['Primary_Skill_Exp'], "numeric")
         clean_emp['primary_skill_level'] = _sanitize_series(df_emp['Primary_Skill_Level'], "text")
         clean_emp['date_of_birth'] = _sanitize_series(df_emp['DATE OF BIRTH'], "date")
@@ -172,6 +174,7 @@ Columns:
  - prior_exp (REAL), infinite_exp (REAL), total_exp (REAL): Experience in years
  - salary_bin (TEXT): '<5L', '5-10L', '10-15L', '15-20L', '20-30L', '>30L'
  - primary_skill (TEXT), primary_skill_exp (REAL), primary_skill_level (TEXT)
+ - module (TEXT): enterprise module recorded on the employee (empty when unassigned)
  - date_of_birth (TEXT, YYYY-MM-DD), age (INT): Employee current age in years
 
 TABLE: skills (2177 rows)

@@ -10,7 +10,9 @@ import {
   SalarywiseKPIs,
   Salarywise2KPIs,
   CalendarData,
-  CopilotResponse
+  CopilotResponse,
+  WorkModelKPIs,
+  AIUtilizationKPIs,
 } from '../types/dashboard';
 
 const API_BASE = '/api';
@@ -98,6 +100,16 @@ export const fetchSalarywiseKPIs = async (filters: FilterParams): Promise<Salary
 
 export const fetchSalarywise2KPIs = async (filters: FilterParams): Promise<Salarywise2KPIs> => {
   const res = await api.get('/salarywise2/kpis', { params: filters });
+  return res.data;
+};
+
+export const fetchWorkModelKPIs = async (filters: FilterParams): Promise<WorkModelKPIs> => {
+  const res = await api.get('/work-model/kpis', { params: filters });
+  return res.data;
+};
+
+export const fetchAIUtilizationKPIs = async (filters: FilterParams): Promise<AIUtilizationKPIs> => {
+  const res = await api.get('/ai-utilization/kpis', { params: filters, timeout: 120000 });
   return res.data;
 };
 
@@ -191,7 +203,9 @@ export const downloadMasterDataset = async () => {
   const a = document.createElement('a');
   a.href = url;
   const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  a.download = `ETS_Dasboard_DS_export_${todayStr}.xlsx`;
+  const disposition = String(res.headers['content-disposition'] || '');
+  const named = disposition.match(/filename="?([^"]+)"?/i);
+  a.download = named?.[1] || `Infinite_ETS_India_Workforce_export_${todayStr}.xlsx`;
   document.body.appendChild(a);
   a.click();
   a.remove();
