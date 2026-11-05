@@ -1025,7 +1025,9 @@ export function AIUtilizationPage2({
                       title={`${row.axis} ${fmt(row.score, 0)} · L${nextMaturity} target ${maturityTarget}`}
                     >
                       <span className="ai-p2-qa-bar-label">{row.axis}</span>
-                      <QaMeter value={row.score} target={maturityTarget} band={band} label={row.axis} />
+                      <span className="ai-p2-qa-bar-track">
+                        <QaMeter value={row.score} target={maturityTarget} band={band} label={row.axis} />
+                      </span>
                       <span className="ai-p2-qa-bar-val" data-band={band}>{fmt(row.score, 0)}</span>
                     </div>
                   );
