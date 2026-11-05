@@ -4984,10 +4984,11 @@ html.dark .ai-attn-heat-pop {
      Leftover height goes to low (Manager|Release|League).
      Narr strip (`.ai-p2-narr`) deferred — restored later as 4th `auto` row.
      Shared mid/low column tracks so Manager width === Battle width.
-     Release sits in low col 2 (~0.75fr) with denser callouts/chart/chips. */
+     Modest slice from QA (col 3) → UC (col 2) so names/Rec aren't cramped;
+     QA stays the widest track. Release sits in low col 2 (~0.93fr). */
   --ai-p2-col-1: minmax(0, 0.56fr);
-  --ai-p2-col-2: minmax(0, 0.75fr);
-  --ai-p2-col-3: minmax(0, 1.69fr);
+  --ai-p2-col-2: minmax(0, 0.93fr);
+  --ai-p2-col-3: minmax(0, 1.51fr);
   grid-template-rows: auto auto minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
 }
@@ -5780,7 +5781,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   fill: color-mix(in srgb, var(--text) 78%, var(--muted));
 }
 /* Release head: title stays intact; project·count + Improve/Trend wrap
-   instead of clipping when the card is low col 2 (~0.75fr). */
+   instead of clipping when the card is low col 2 (~0.93fr). */
 .ai-p2-rel .ai-p2-card-head-battle {
   flex-wrap: wrap;
   row-gap: 0.04rem;
@@ -6330,10 +6331,11 @@ html.dark .ai-rec-engine li {
 @container (max-width: 1180px) {
   .ai-util-fit[data-page="2"] > .ai-p2 {
     /* Genie mid/low share these tracks (Manager under Battle).
-       Col 1 stays a bit wider than the Genie-closed 0.56 — the pane is tighter. */
+       Col 1 stays a bit wider than the Genie-closed 0.56 — the pane is tighter.
+       Matching modest QA→UC shift so names/Rec aren't cramped when Genie is open. */
     --ai-p2-col-1: minmax(0, 0.66fr);
-    --ai-p2-col-2: minmax(0, 0.84fr);
-    --ai-p2-col-3: minmax(0, 1.60fr);
+    --ai-p2-col-2: minmax(0, 1.00fr);
+    --ai-p2-col-3: minmax(0, 1.44fr);
     grid-template-rows: auto auto minmax(12.75rem, 1fr);
   }
   .ai-p2-mid {
