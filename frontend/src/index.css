@@ -5395,22 +5395,32 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
   overflow: hidden;
 }
 
-/* QA maturity: head fixed; body scrolls when scorecard exceeds low-row height. */
+/* QA maturity: decision-first scorecard. Wide: journey + decision | bars.
+   Genie (flex-column): journey → decision → leftover bars. */
 .ai-p2-qa-body {
   flex: 1 1 0%;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.22rem;
+  display: grid;
+  grid-template-columns: minmax(13.5rem, 0.48fr) minmax(0, 1fr);
+  grid-template-areas:
+    "journey bars"
+    "decision bars";
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  column-gap: 0.7rem;
+  row-gap: 0.28rem;
   overflow-x: hidden;
   overflow-y: auto;
   padding-top: 0.08rem;
 }
 .ai-p2-qa-journey {
-  flex-shrink: 0;
+  grid-area: journey;
+  order: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.14rem;
+  gap: 0.16rem;
+  min-width: 0;
+  padding-top: 0.08rem;
 }
 .ai-p2-qa-journey-row {
   display: flex;
@@ -5420,13 +5430,19 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
   min-width: 0;
 }
 .ai-p2-qa-score {
-  font-size: 12.5px;
+  font-size: 18px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, Consolas, monospace;
   color: var(--text);
   white-space: nowrap;
-  line-height: 1.15;
+  line-height: 1.1;
+}
+.ai-p2-qa-score span {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--muted);
+  margin-left: 0.18rem;
 }
 .ai-p2-qa-meta {
   font-size: 9.5px;
@@ -5438,54 +5454,92 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ai-p2-qa-progress {
-  height: 5px;
+.ai-p2-score-meter.ai-p2-qa-meter {
+  position: relative;
+  overflow: visible;
+  height: 7px;
+  background: color-mix(in srgb, var(--border) 42%, transparent);
 }
-/* Bars absorb leftover pane height; do not crush below content (body scrolls). */
+.ai-p2-qa-tick {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 13px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--text) 78%, transparent);
+  pointer-events: none;
+}
+.ai-p2-qa-scale {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  min-height: 0.95rem;
+  font-size: 8px;
+  font-weight: 650;
+  color: var(--muted);
+  line-height: 1;
+}
+.ai-p2-qa-scale-target {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-weight: 750;
+  color: color-mix(in srgb, var(--text) 70%, var(--muted));
+  white-space: nowrap;
+}
 .ai-p2-qa-bars {
-  flex: 1 0 auto;
-  min-height: 4.25rem;
+  grid-area: bars;
+  order: 3;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.12rem;
+  gap: 0.1rem;
   overflow: hidden;
-  padding: 0.12rem 0.08rem 0.1rem;
+  padding: 0.1rem 0.16rem 0.12rem;
   border-radius: 0.4rem;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
 }
 .ai-p2-qa-bars-label {
   flex-shrink: 0;
-  padding: 0 0.12rem;
+  padding: 0 0.08rem;
 }
 .ai-p2-qa-bars-list {
-  flex: 1 0 auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
-  gap: 0.14rem;
+  justify-content: flex-start;
+  gap: 0.16rem;
 }
 .ai-p2-qa-bar {
   display: grid;
-  grid-template-columns: minmax(0, 5.8rem) minmax(0, 1fr) 1.55rem;
+  grid-template-columns: minmax(7.4rem, 8.6rem) minmax(0, 1fr) 1.6rem;
   align-items: center;
   gap: 0.28rem;
   min-width: 0;
-  flex-shrink: 0;
-  padding: 0 0.12rem;
+  padding: 0.04rem 0.1rem;
+  border-radius: 0.28rem;
+}
+.ai-p2-qa-bar.is-blocker {
+  background: color-mix(in srgb, #be123c 10%, transparent);
+}
+html.dark .ai-p2-qa-bar.is-blocker {
+  background: color-mix(in srgb, #fb7185 12%, transparent);
 }
 .ai-p2-qa-bar-label {
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 650;
   color: var(--text);
-  line-height: 1.15;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
-.ai-p2-qa-bar .ai-p2-score-meter {
-  height: 4px;
+.ai-p2-qa-bar .ai-p2-qa-meter {
+  height: 6px;
 }
 .ai-p2-qa-bar-val {
   font-size: 10px;
@@ -5501,27 +5555,37 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
 html.dark .ai-p2-qa-bar-val[data-band="green"] { color: #34d399; }
 html.dark .ai-p2-qa-bar-val[data-band="amber"] { color: #fbbf24; }
 html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
+.ai-p2-qa-decision {
+  grid-area: decision;
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+  min-height: 0;
+  z-index: 1;
+  padding: 0.22rem 0.32rem 0.24rem;
+  border-radius: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--panel) 88%, var(--panel-alt));
+}
 .ai-p2-qa-block,
 .ai-p2-qa-rec {
-  flex-shrink: 0;
-  padding-top: 0.14rem;
-  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   min-width: 0;
 }
 .ai-p2-qa-block-line {
   margin: 0.06rem 0 0;
   font-size: 11px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.3;
   color: var(--text);
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .ai-p2-qa-block-impact,
-.ai-p2-qa-rec-text,
-.ai-p2-qa-summary {
+.ai-p2-qa-rec-text {
   margin: 0.05rem 0 0;
   font-size: 10px;
   font-weight: 550;
@@ -5532,7 +5596,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow: hidden;
 }
 .ai-p2-qa-block-impact {
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
 }
 .ai-p2-qa-rec-text {
   font-size: 11px;
@@ -5545,7 +5609,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   flex-wrap: wrap;
   align-items: center;
   gap: 0.22rem;
-  margin-top: 0.14rem;
+  margin-top: 0.12rem;
   min-width: 0;
 }
 .ai-p2-qa-rec-chip {
@@ -5564,21 +5628,10 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ai-p2-qa-summary {
-  flex-shrink: 0;
-  margin-top: auto;
-  -webkit-line-clamp: 2;
-  padding-top: 0.14rem;
-  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
-  font-size: 10px;
-  font-weight: 550;
-  line-height: 1.35;
-  color: color-mix(in srgb, var(--muted) 35%, var(--text));
-}
 /* QA in mid col 3. Battle/UC set the auto row. height:0 + min-height:100%
    keeps the scorecard from inflating mid; the card stretches to that row
-   and the body scrolls (head stays fixed). Bars hug content so journey +
-   capability bars + constraint lead; recommendation and summary scroll. */
+   and the body scrolls (head stays fixed). Journey + capabilities share a
+   row; constraint + one action stay in the decision band (not below-fold). */
 .ai-p2-mid > .ai-p2-qa {
   height: 0;
   min-height: 100%;
@@ -5586,33 +5639,35 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow: hidden;
 }
 .ai-p2-mid .ai-p2-qa-body {
-  gap: 0.1rem;
+  row-gap: 0.2rem;
+  column-gap: 0.55rem;
   padding-top: 0.02rem;
 }
 .ai-p2-mid .ai-p2-qa-journey {
-  gap: 0.06rem;
+  gap: 0.1rem;
+  padding-top: 0.02rem;
+}
+.ai-p2-mid .ai-p2-qa-score {
+  font-size: 16px;
 }
 .ai-p2-mid .ai-p2-qa-bars {
-  flex: 0 0 auto;
-  min-height: 0;
-  gap: 0.04rem;
-  padding: 0.06rem 0.08rem 0.05rem;
+  gap: 0.06rem;
+  padding: 0.08rem 0.12rem 0.08rem;
 }
 .ai-p2-mid .ai-p2-qa-bars-list {
-  flex: 0 0 auto;
-  justify-content: flex-start;
-  gap: 0.05rem;
+  gap: 0.1rem;
 }
 .ai-p2-mid .ai-p2-qa-bar {
-  gap: 0.16rem;
+  gap: 0.18rem;
+  padding: 0.02rem 0.08rem;
 }
 .ai-p2-mid .ai-p2-qa-bar-label {
-  font-size: 9px;
-  line-height: 1.1;
+  font-size: 9.5px;
+  line-height: 1.15;
 }
-.ai-p2-mid .ai-p2-qa-block,
-.ai-p2-mid .ai-p2-qa-rec {
-  padding-top: 0.06rem;
+.ai-p2-mid .ai-p2-qa-decision {
+  padding: 0.14rem 0.26rem 0.16rem;
+  gap: 0.1rem;
 }
 .ai-p2-mid .ai-p2-qa-block-line,
 .ai-p2-mid .ai-p2-qa-block-impact,
@@ -5623,18 +5678,30 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   margin-top: 0.06rem;
   gap: 0.12rem;
 }
-.ai-p2-mid .ai-p2-qa-summary {
-  margin-top: 0;
-  padding-top: 0.06rem;
-}
-/* Genie-narrow / laptop: keep bars visible; collapse secondary copy. */
+/* Genie-narrow: flex-column so bars cannot paint over the decision band. */
 @container (max-width: 1180px) {
   .ai-p2-qa-body {
-    gap: 0.16rem;
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    grid-template-areas: none;
+    grid-template-rows: none;
+    row-gap: 0.16rem;
+  }
+  .ai-p2-qa-journey,
+  .ai-p2-qa-decision {
+    flex: 0 0 auto;
   }
   .ai-p2-qa-bars {
-    min-height: 3.6rem;
-    padding: 0.08rem 0.06rem 0.08rem;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: auto;
+  }
+  .ai-p2-qa-score {
+    font-size: 15px;
+  }
+  .ai-p2-qa-bars {
+    padding: 0.08rem 0.1rem 0.08rem;
     gap: 0.08rem;
   }
   .ai-p2-qa-bars-label {
@@ -5644,32 +5711,31 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     gap: 0.1rem;
   }
   .ai-p2-qa-bar {
-    grid-template-columns: minmax(0, 4.5rem) minmax(0, 1fr) 1.35rem;
+    grid-template-columns: minmax(6.6rem, 7.8rem) minmax(0, 1fr) 1.45rem;
     gap: 0.18rem;
   }
   .ai-p2-qa-bar-label {
     font-size: 9px;
   }
-  .ai-p2-qa-bar .ai-p2-score-meter {
-    height: 3.5px;
+  .ai-p2-qa-bar .ai-p2-qa-meter {
+    height: 5px;
+  }
+  .ai-p2-qa-decision {
+    padding: 0.14rem 0.24rem 0.16rem;
   }
   .ai-p2-qa-rec-text {
-    -webkit-line-clamp: 1;
+    -webkit-line-clamp: 2;
   }
   .ai-p2-qa-block-impact {
-    display: none;
+    -webkit-line-clamp: 1;
   }
   .ai-p2-qa-rec-meta {
     gap: 0.16rem;
-    margin-top: 0.1rem;
+    margin-top: 0.08rem;
   }
   .ai-p2-qa-rec-chip {
     padding: 0.05rem 0.26rem;
     font-size: 8.5px;
-  }
-  .ai-p2-qa-summary {
-    -webkit-line-clamp: 1;
-    padding-top: 0.1rem;
   }
   .ai-p2-qa-meta {
     font-size: 9px;

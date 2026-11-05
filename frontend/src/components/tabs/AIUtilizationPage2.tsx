@@ -120,6 +120,35 @@ function scoreBand(score: number | null | undefined): Band {
   return 'red';
 }
 
+/** Horizontal 0–100 meter with a next-level target tick (overflow visible so the tick can sit on the track). */
+function QaMeter({
+  value,
+  target,
+  band,
+  label,
+}: {
+  value: number;
+  target: number;
+  band: Band;
+  label: string;
+}) {
+  const fill = Math.max(0, Math.min(100, value));
+  const tick = Math.max(1.5, Math.min(98.5, target));
+  return (
+    <div
+      className="ai-p2-score-meter ai-p2-qa-meter"
+      role="meter"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(value)}
+    >
+      <span className={`ai-p2-score-meter-fill is-${band}`} style={{ width: `${fill}%` }} />
+      <span className="ai-p2-qa-tick" style={{ left: `${tick}%` }} title={`Target ${Math.round(target)}`} />
+    </div>
+  );
+}
+
 function bandOf(value: string | undefined | null): Band {
   const key = String(value || 'neutral').toLowerCase();
   if (key === 'green' || key === 'amber' || key === 'red') return key;
@@ -949,44 +978,54 @@ export function AIUtilizationPage2({
             <div className="ai-p2-qa-journey">
               <div className="ai-p2-qa-journey-row">
                 <span className="ai-p2-qa-score">
-                  {maturityScore == null ? 'n/a' : `${fmt(maturityScore, 0)} / 100`}
+                  {maturityScore == null ? 'n/a' : fmt(maturityScore, 0)}
+                  {maturityScore != null && <span> vs {maturityTarget}</span>}
                 </span>
-                <span className="ai-p2-qa-meta" title={`Target ${maturityTarget}${maturityReadiness != null ? ` · Ready ${fmt(maturityReadiness, 0)}%` : ''}${maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}`}>
-                  Target {maturityTarget}
-                  {maturityReadiness != null ? ` · Ready ${fmt(maturityReadiness, 0)}%` : ''}
+                <span
+                  className="ai-p2-qa-meta"
+                  title={`L${nextMaturity} target ${maturityTarget}${maturityReadiness != null ? ` · Ready ${fmt(maturityReadiness, 0)}%` : ''}${maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}`}
+                >
+                  {maturityReadiness != null ? `Ready ${fmt(maturityReadiness, 0)}%` : 'Ready n/a'}
                   {maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}
                 </span>
               </div>
-              <div
-                className="ai-p2-score-meter ai-p2-qa-progress"
-                role="meter"
-                aria-label={`Maturity score ${maturityScore == null ? 'n/a' : Math.round(maturityScore)} of 100 toward L${nextMaturity}`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                {...(maturityScore != null ? { 'aria-valuenow': Math.round(maturityScore) } : {})}
-              >
+              <QaMeter
+                value={maturityScore ?? 0}
+                target={maturityTarget}
+                band={scoreBand(maturityScore)}
+                label={`QA maturity ${maturityScore == null ? 'n/a' : Math.round(maturityScore)} versus L${nextMaturity} target ${maturityTarget}`}
+              />
+              <div className="ai-p2-qa-scale" aria-hidden="true">
+                <span>0</span>
                 <span
-                  className={`ai-p2-score-meter-fill is-${scoreBand(maturityScore)}`}
-                  style={{ width: `${maturityScore == null ? 0 : Math.max(0, Math.min(100, maturityScore))}%` }}
-                />
+                  className="ai-p2-qa-scale-target"
+                  style={{ left: `${Math.max(10, Math.min(90, maturityTarget))}%` }}
+                >
+                  L{nextMaturity} · {maturityTarget}
+                </span>
+                <span>100</span>
               </div>
             </div>
 
             <div className="ai-p2-qa-bars" aria-label="Capability scorecard">
-              <span className="ai-p2-eyebrow ai-p2-qa-bars-label">Capabilities · weakest first</span>
+              <span className="ai-p2-eyebrow ai-p2-qa-bars-label">
+                Capabilities · weakest first · tick = L{nextMaturity}
+              </span>
               {maturityAxes.length === 0 && (
                 <p className="ai-p2-empty">No maturity axis scores for this project.</p>
               )}
               <div className="ai-p2-qa-bars-list">
                 {maturityAxes.map((row) => {
                   const band = scoreBand(row.score);
-                  const fill = Math.max(0, Math.min(100, row.score));
+                  const isBlocker = Boolean(weakestAxis && row.key === weakestAxis.key);
                   return (
-                    <div key={row.key} className="ai-p2-qa-bar" title={`${row.axis} ${fmt(row.score, 0)} / 100`}>
+                    <div
+                      key={row.key}
+                      className={`ai-p2-qa-bar${isBlocker ? ' is-blocker' : ''}`}
+                      title={`${row.axis} ${fmt(row.score, 0)} · L${nextMaturity} target ${maturityTarget}`}
+                    >
                       <span className="ai-p2-qa-bar-label">{row.axis}</span>
-                      <div className="ai-p2-score-meter" role="presentation">
-                        <span className={`ai-p2-score-meter-fill is-${band}`} style={{ width: `${fill}%` }} />
-                      </div>
+                      <QaMeter value={row.score} target={maturityTarget} band={band} label={row.axis} />
                       <span className="ai-p2-qa-bar-val" data-band={band}>{fmt(row.score, 0)}</span>
                     </div>
                   );
@@ -994,40 +1033,39 @@ export function AIUtilizationPage2({
               </div>
             </div>
 
-            {weakestAxis && (
-              <div className="ai-p2-qa-block">
-                <span className="ai-p2-eyebrow">Biggest constraint</span>
-                <p
-                  className="ai-p2-qa-block-line"
-                  title={`${weakestAxis.axis} · ${fmt(weakestAxis.score, 0)} → ${maturityTarget} · Gap ${fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)}`}
-                >
-                  <strong>{weakestAxis.axis}</strong>
-                  {' · '}
-                  {fmt(weakestAxis.score, 0)} → {maturityTarget}
-                  {' · Gap '}
-                  {fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)}
-                </p>
-                <p className="ai-p2-qa-block-impact" title={axisImpact(weakestAxis.axis)}>
-                  {axisImpact(weakestAxis.axis)}
-                </p>
-              </div>
-            )}
-
-            <div className="ai-p2-qa-rec">
-              <span className="ai-p2-eyebrow">Recommendation</span>
-              <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
-              <div className="ai-p2-qa-rec-meta" aria-label="Recommendation meta">
-                {weakestAxis && (
-                  <span className="ai-p2-qa-rec-chip">
-                    Expected Gain ~{fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)} pts
-                  </span>
-                )}
-                <span className="ai-p2-qa-rec-chip">Priority high</span>
-                <span className="ai-p2-qa-rec-chip">Impact L{nextMaturity}</span>
+            <div className="ai-p2-qa-decision" title={maturityInsight}>
+              {weakestAxis && (
+                <div className="ai-p2-qa-block">
+                  <span className="ai-p2-eyebrow">Biggest constraint</span>
+                  <p
+                    className="ai-p2-qa-block-line"
+                    title={`${weakestAxis.axis} · ${fmt(weakestAxis.score, 0)} → ${maturityTarget} · Gap ${fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)}`}
+                  >
+                    <strong>{weakestAxis.axis}</strong>
+                    {' · '}
+                    {fmt(weakestAxis.score, 0)} → {maturityTarget}
+                    {' · Gap '}
+                    {fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)}
+                  </p>
+                  <p className="ai-p2-qa-block-impact" title={axisImpact(weakestAxis.axis)}>
+                    {axisImpact(weakestAxis.axis)}
+                  </p>
+                </div>
+              )}
+              <div className="ai-p2-qa-rec">
+                <span className="ai-p2-eyebrow">One action</span>
+                <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
+                <div className="ai-p2-qa-rec-meta" aria-label="Recommendation meta">
+                  {weakestAxis && (
+                    <span className="ai-p2-qa-rec-chip">
+                      Expected Gain ~{fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)} pts
+                    </span>
+                  )}
+                  <span className="ai-p2-qa-rec-chip">Priority high</span>
+                  <span className="ai-p2-qa-rec-chip">Impact L{nextMaturity}</span>
+                </div>
               </div>
             </div>
-
-            <p className="ai-p2-qa-summary" title={maturityInsight}>{maturityInsight}</p>
           </div>
         </section>
       </div>
