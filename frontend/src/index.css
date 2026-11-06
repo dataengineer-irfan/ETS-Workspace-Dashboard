@@ -4985,10 +4985,12 @@ html.dark .ai-attn-heat-pop {
      Leftover height goes to low (Manager | QA maturity | AI adoption funnel).
      Insight is a thin auto row (≤4 one-line bullets) so the page does not scroll.
      Col 1 stays the Battle track so Manager width equals Battle width.
-     Col fractions stay 0.56 / 1.08 / 1.36 (Genie 0.66 / 1.12 / 1.32). */
-  --ai-p2-col-1: minmax(0, 0.56fr);
-  --ai-p2-col-2: minmax(0, 1.08fr);
-  --ai-p2-col-3: minmax(0, 1.36fr);
+     Col 3 is the narrow Release / funnel track. Width taken from it
+     goes to Battle (col 1) and Use case + QA (col 2).
+     Closed 0.72 / 1.28 / 0.90; Genie 0.78 / 1.22 / 0.90. */
+  --ai-p2-col-1: minmax(0, 0.72fr);
+  --ai-p2-col-2: minmax(0, 1.28fr);
+  --ai-p2-col-3: minmax(0, 0.90fr);
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
 }
@@ -5010,7 +5012,7 @@ html.dark .ai-attn-heat-pop {
 .ai-p2 > .ai-p2-mid,
 .ai-p2-mid {
   display: grid;
-  /* Battle | UC | Release — shared tracks with low. Release is the wide col 3. */
+  /* Battle | UC | Release — shared tracks with low. Release is the narrow col 3. */
   grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
   /* Row height = Battle content. UC and Release stretch to it (see .ai-p2-rel). */
   grid-template-rows: auto;
@@ -5054,7 +5056,7 @@ html.dark .ai-attn-heat-pop {
   padding-left: 0.28rem;
   padding-right: 0.28rem;
 }
-/* Release in wide mid col 3 — keep the tight horizontal pad so the chart uses the width. */
+/* Release in narrow mid col 3 — keep the tight horizontal pad so the chart uses the width. */
 .ai-p2-card.ai-p2-rel {
   padding-left: 0.28rem;
   padding-right: 0.28rem;
@@ -5723,9 +5725,9 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 .ai-p2-mid .ai-p2-rel-meta {
   max-width: 10rem;
 }
-/* QA in low col 2 (the old release track, ~1.08fr). Column fractions stay put.
+/* QA in low col 2 (~1.28fr, Genie ~1.22fr), under Use case effectiveness.
    Stack journey, short capability meters, then the constraint and one action
-   so the narrower card stays readable. Labels wrap instead of clipping.
+   so the card stays readable. Labels wrap instead of clipping.
    Bars take leftover low-row height; the decision band stays fully visible. */
 .ai-p2-low .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
@@ -5860,7 +5862,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   fill: color-mix(in srgb, var(--text) 78%, var(--muted));
 }
 /* Release head: title stays intact; project·count + Improve/Trend wrap
-   instead of clipping. The card now sits in wide mid col 3. */
+   instead of clipping. The card sits in the narrow mid col 3. */
 .ai-p2-rel .ai-p2-card-head-battle {
   flex-wrap: wrap;
   row-gap: 0.04rem;
@@ -5898,7 +5900,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   padding: 0.03rem 0.18rem;
   line-height: 1.15;
 }
-/* Release intelligence — wide mid col 3. Roles once (merged Best·Now), chart = trend, chips = picker.
+/* Release intelligence — narrow mid col 3. Roles once (merged Best·Now), chart = trend, chips = picker.
    Callout and chip labels still wrap instead of clipping. Chart fills leftover Battle height. */
 .ai-p2-rel-body {
   flex: 1 1 0%;
@@ -6655,11 +6657,11 @@ html.dark .ai-rec-engine li {
    on a 768-tall laptop. Insight stays the thin 4th row. */
 @container (max-width: 1180px) {
   .ai-util-fit[data-page="2"] > .ai-p2 {
-    /* Col 1 stays a bit wider than the closed 0.56 — the pane is tighter.
-       Manager shares the Battle track. Release is wide mid col 3; the funnel stays wide low col 3. */
-    --ai-p2-col-1: minmax(0, 0.66fr);
-    --ai-p2-col-2: minmax(0, 1.12fr);
-    --ai-p2-col-3: minmax(0, 1.32fr);
+    /* Col 1 stays a bit wider than the closed 0.72 — the pane is tighter.
+       Manager shares the Battle track. Release and the funnel stay the narrow col 3. */
+    --ai-p2-col-1: minmax(0, 0.78fr);
+    --ai-p2-col-2: minmax(0, 1.22fr);
+    --ai-p2-col-3: minmax(0, 0.90fr);
     grid-template-rows: auto auto minmax(0, 1fr) auto;
     gap: 0.28rem;
   }
