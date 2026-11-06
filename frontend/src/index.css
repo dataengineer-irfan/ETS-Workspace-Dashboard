@@ -4976,19 +4976,19 @@ html.dark .ai-attn-heat-pop {
   align-items: stretch;
   box-sizing: border-box;
 }
+.ai-util-fit[data-page="2"] > .ai-p2 {
+  gap: 0.32rem;
+}
 .ai-p2 {
-  /* header | mid (Battle|UC|QA) | low — mid is content-sized (`auto`)
-     from the Battle card (full Dev vs QA list). UC and QA match that
-     height and fit their existing rows inside it (no mid-body scroll).
-     Leftover height goes to low (Manager|Release|League).
-     Narr strip (`.ai-p2-narr`) deferred — restored later as 4th `auto` row.
-     Shared mid/low column tracks so Manager width === Battle width.
-     Modest slice from QA (col 3) → UC (col 2) so names/Rec aren't cramped;
-     QA stays the widest track. Release sits in low col 2 (~1.08fr). */
+  /* Laptop fit (1440×900, also 1366×768 and Genie): header | mid | low | insight.
+     Mid is content-sized from the Battle card. UC and QA match that height.
+     Leftover height goes to low (Manager | release journey | value treemap + leakage).
+     Insight is a thin auto row (≤4 one-line bullets) so the page does not scroll.
+     Col 1 stays the Battle track so Manager width equals Battle width. */
   --ai-p2-col-1: minmax(0, 0.56fr);
   --ai-p2-col-2: minmax(0, 1.08fr);
   --ai-p2-col-3: minmax(0, 1.36fr);
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
 }
 .ai-p3 {
@@ -5034,7 +5034,7 @@ html.dark .ai-attn-heat-pop {
   overflow: hidden;
 }
 .ai-p2-low.ai-p2-low-3 {
-  /* Manager | Release | League — identical tracks to mid (Battle | UC | QA). */
+  /* Manager | Release journey | Value realization — same tracks as mid (Battle | UC | QA). */
   grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
 }
 
@@ -5229,6 +5229,12 @@ html.dark .ai-attn-heat-pop {
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
+}
+.ai-uc-row.is-emphasis .ai-uc-label {
+  font-weight: 800;
+}
+.ai-uc-row.is-emphasis::before {
+  background: color-mix(in srgb, #047857 18%, transparent);
 }
 .ai-uc-name .ai-chip {
   font-size: 9px;
@@ -5858,8 +5864,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   padding-top: 0;
 }
 .ai-p2-rel-callouts {
@@ -6048,8 +6053,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   padding: 0.12rem 0.55rem !important;
 }
 .ai-p2-head .ai-score-ring svg {
-  width: 26px;
-  height: 26px;
+  width: 34px;
+  height: 34px;
 }
 .ai-p2-head-row1 {
   display: flex;
@@ -6091,6 +6096,34 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 /* Teams live in title tooltip — keep collapsed header to two rows. */
 .ai-p2-head-teams {
   display: none;
+}
+.ai-p2-head-kpis {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.ai-p2-head-kpi {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ai-p2-head-kpi-k {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ai-p2-head-kpi b {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text);
+  font-family: ui-monospace, Consolas, monospace;
 }
 .ai-p2-head-row2 {
   display: flex;
@@ -6275,6 +6308,188 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 .ai-battle-val.is-qa {
   text-align: left;
 }
+.ai-battle-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.04rem;
+  margin-top: 0.06rem;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.ai-battle-split {
+  display: grid;
+  grid-template-columns: auto minmax(2.2rem, 1fr) auto;
+  align-items: center;
+  gap: 0.22rem;
+  min-width: 0;
+}
+.ai-battle-split-val {
+  font-size: 9px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--text);
+  white-space: nowrap;
+}
+.ai-battle-split-bar {
+  display: block;
+  height: 5px;
+  border-radius: 99px;
+  background: color-mix(in srgb, #0284c7 28%, var(--border));
+  overflow: hidden;
+}
+.ai-battle-split-bar > i {
+  display: block;
+  height: 100%;
+  background: #047857;
+}
+.ai-battle-rec {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.15;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ai-p2-leak-body {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+.ai-p2-leak-chart {
+  flex: 1 1 auto;
+  min-height: 2.8rem;
+}
+.ai-p2-leak-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.02rem;
+  flex-shrink: 0;
+}
+.ai-p2-leak-legend span {
+  display: grid;
+  grid-template-columns: 0.45rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 9px;
+  font-weight: 650;
+  color: var(--muted);
+  line-height: 1.15;
+}
+.ai-p2-leak-legend b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 800;
+}
+.ai-p2-leak-legend i {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 1px;
+  background: #64748b;
+}
+.ai-p2-leak-legend i[data-sign="up"] { background: #64748b; }
+.ai-p2-leak-legend i[data-sign="down"] { background: #be123c; }
+.ai-p2-leak-legend i[data-sign="total"] { background: #047857; }
+.ai-p2-tree {
+  gap: 0.08rem;
+}
+.ai-p2-tree-body {
+  flex: 1 1 0%;
+  min-height: 2.4rem;
+}
+.ai-p2-tree-quiet {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.ai-p2-tree .ai-p2-leak {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+.ai-p2-tree .ai-p2-leak-body {
+  flex: 0 0 auto;
+  gap: 0.04rem;
+}
+.ai-p2-tree .ai-p2-leak-chart {
+  flex: 0 0 4.8rem;
+  min-height: 4.4rem;
+}
+.ai-p2-tree .ai-p2-leak-legend {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.08rem 0.4rem;
+}
+.ai-p2-tree .ai-p2-leak-legend span {
+  display: inline-flex;
+  gap: 0.16rem;
+  font-size: 10px;
+  width: auto;
+}
+.ai-p2-donut-row {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  min-height: 28px;
+}
+.ai-p2-donut-share {
+  font-size: 10px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+.ai-p2-donut-basis,
+.ai-p2-donut-na {
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.ai-p2-donut-basis {
+  text-transform: lowercase;
+}
+.ai-p2-qa-constraints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.12rem;
+  margin-top: 0.04rem;
+}
+.ai-p2-qa-constraints .ai-chip {
+  font-size: 9px;
+  padding: 0.04rem 0.22rem;
+}
+.ai-p2-tree .ai-p2-card-sub {
+  white-space: nowrap;
+}
+.ai-p2-insight {
+  min-height: 0;
+  max-height: 1.85rem;
+  padding: 0.16rem 0.4rem !important;
+  overflow: hidden;
+}
+.ai-p2-insight .ai-narr-list {
+  padding: 0;
+  gap: 0.28rem;
+  align-items: center;
+}
+.ai-p2-insight .ai-narr-list li {
+  -webkit-line-clamp: 1;
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 0.04rem 0.28rem 0.04rem 0.38rem;
+  border-left-color: color-mix(in srgb, var(--border) 35%, #047857);
+}
 /* Legacy unmarked segments (non–Page-2); labeled stepper uses .ai-maturity-step. */
 .ai-p2 .ai-maturity:not(.ai-maturity-labeled) > span:not(:last-child) {
   width: 0.8rem;
@@ -6359,21 +6574,50 @@ html.dark .ai-rec-engine li {
   display: inline-flex;
   flex-shrink: 0;
 }
-/* Genie-docked Page 2: keep true 3-col mid (Battle | UC | QA).
-   Prior 2+1 stamped Battle/UC at ~134px — unreadable. Mid stays content-`auto`
-   (Battle sets the height; UC and QA match it and fit, no body scroll).
-   UC Trend hides so Rec stays. Low stays 3-col Manager | Release | League
-   (same fractions). Release callouts/chips stay dense for col 2.
-   Narr strip deferred — no 4th auto row until restored. */
+/* Content below ~1600px (docked Genie on 1920, laptop ~1440): fewer chart labels. */
+@container (max-width: 1600px) {
+  .ai-p2-rel-label,
+  .ai-p2-tree-quiet {
+    display: none;
+  }
+}
+/* Below a 1440 laptop pane (~1366 content, and 90% zoom): drop secondary
+   copy. KPI values (score, value, recoverable, risks, leakage figures) stay. */
+@container (max-width: 1366px) {
+  .ai-p2-qa-block-impact,
+  .ai-p2-qa-scale,
+  .ai-p2-qa-bars-label,
+  .ai-p2-tree .ai-p2-card-sub,
+  .ai-p2-rel-insight,
+  .ai-p2-rel-meta {
+    display: none;
+  }
+  .ai-p2-qa-rec-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ai-p2-rel-chart {
+    min-height: 2rem;
+  }
+}
+
+/* Genie-docked Page 2 (~1180px content, also the 1100 laptop case):
+   true 3-col mid and low. No 12.75rem floor — that forced a page scroll
+   on a 768-tall laptop. Insight stays the thin 4th row. */
 @container (max-width: 1180px) {
   .ai-util-fit[data-page="2"] > .ai-p2 {
-    /* Genie mid/low share these tracks (Manager under Battle).
-       Col 1 stays a bit wider than the Genie-closed 0.56 — the pane is tighter.
-       Matching modest QA→UC shift so names/Rec aren't cramped when Genie is open. */
+    /* Col 1 stays a bit wider than the closed 0.56 — the pane is tighter.
+       Manager shares the Battle track. Treemap + leakage stay the wide col 3. */
     --ai-p2-col-1: minmax(0, 0.66fr);
     --ai-p2-col-2: minmax(0, 1.12fr);
     --ai-p2-col-3: minmax(0, 1.32fr);
-    grid-template-rows: auto auto minmax(12.75rem, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 0.28rem;
+  }
+  .ai-p2-qa-rec-meta {
+    display: none;
   }
   .ai-p2-mid {
     grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);

@@ -2,19 +2,23 @@ import React, { useMemo, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import {
   Area,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   ComposedChart,
   LabelList,
   Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
+  Treemap,
   XAxis,
   YAxis,
 } from 'recharts';
+import type { TreemapNode } from 'recharts';
 import type {
   AIHealthRow,
-  AILeagueRow,
   AIReleaseTrendRow,
   AIRiskCard,
   AIUtilizationKPIs,
@@ -52,10 +56,9 @@ const MATURITY_LABEL: Record<number, string> = {
    with slight air after reclaiming the More control; Genie uses compact row density instead of a toggle. */
 /* UC effectiveness: full ranked strip always visible (# · name+tag · Usage · Hours · Trend · Value · Rec) —
    no More/Less; Genie uses compact density (drops Trend) instead of a toggle. */
-/* Release intelligence (low col 2, narrower than the old mid col 3): single-line head when it fits;
-   Best/Worst/Now callouts (merge when Now=Best/Worst); chart = trend only; chips = release picker
-   (name + ! only); insight = action, no metric restatement. Callouts/chart/chips are denser so
-   labels still fit ~0.75fr; body scrolls if the low row is shorter than the stack. */
+/* Release journey (low col 2): single-line head; Best/Worst/Now (merge when Now equals
+   Best or Worst); chart = trend with release-name milestones; chips = picker (name + !);
+   one action line, no metric echo. Point labels drop under the compact container query. */
 
 function sameProject(a: string | null | undefined, b: string | null | undefined): boolean {
   return String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
@@ -104,7 +107,6 @@ function maturityStatus(readiness: number | null, gap: number | null): { label: 
   return { label: 'At Risk', band: 'red' };
 }
 
-/** Canonical manager scorecard components — never blank titles on the 2×2 tiles. */
 const MGR_COMP_META: Record<string, { label: string; weight: number }> = {
   adoption: { label: 'Adoption', weight: 30 },
   savings: { label: 'Savings', weight: 25 },
@@ -179,6 +181,97 @@ function shortName(name: string) {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
+/** Header shows one SDM, never a comma-separated roster. */
+function oneManager(name: string | null | undefined) {
+  const raw = String(name || '').trim();
+  if (!raw) return '—';
+  const first = raw.split(/[,;|]|(?:\s+and\s+)/i)[0]?.trim();
+  return first || '—';
+}
+
+function finiteNum(value: number | null | undefined): number | null {
+  if (value == null || Number.isNaN(value)) return null;
+  return value;
+}
+
+type LeakStep = { name: string; base: number; delta: number; sign: 'up' | 'down' | 'total'; raw: number };
+
+/**
+ * Honest 3-step leakage: Potential → Unrealized → Generated.
+ * Potential is `potential_value_usd`, or current + unrealized when that field
+ * is absent (same identity the API uses). No Automation / Evidence / Coverage
+ * dollar split — those components are not in the payload.
+ */
+function leakageSteps(health: AIHealthRow | undefined): LeakStep[] {
+  if (!health) return [];
+  const current = finiteNum(health.value_usd ?? health.ai_value_usd);
+  const leakage = finiteNum(health.unrealized_value_usd);
+  let potential = finiteNum(health.potential_value_usd);
+  if (potential == null && current != null && leakage != null) {
+    potential = current + Math.max(0, leakage);
+  }
+  if (potential == null || leakage == null || current == null) return [];
+  const drop = Math.max(0, leakage);
+  const pot = Math.max(0, potential);
+  return [
+    { name: 'Potential', base: 0, delta: pot, sign: 'up', raw: potential },
+    { name: 'Leakage', base: Math.max(0, pot - drop), delta: drop, sign: 'down', raw: leakage },
+    { name: 'Current', base: 0, delta: Math.max(0, current), sign: 'total', raw: current },
+  ];
+}
+
+const LEAK_FILL: Record<LeakStep['sign'], string> = {
+  up: '#64748b',
+  down: '#be123c',
+  total: '#047857',
+};
+
+type ContributionShare = {
+  devPct: number;
+  qaPct: number;
+  devRaw: number;
+  qaRaw: number;
+  basis: 'value' | 'hours' | 'assets';
+};
+
+function TreeBlock(props: TreemapNode & { top?: number; rec?: string }) {
+  const { x, y, width, height, name, value, depth } = props;
+  if (depth !== 1 || width < 1 || height < 1) return <g />;
+  const numeric = typeof value === 'number' ? value : Number(value);
+  const top = Number.isFinite(props.top) && numeric === props.top;
+  const label = String(name || '');
+  const rec = String(props.rec || 'Monitor');
+  const font = 10;
+  const textFits = label.length > 0 && label.length * (font * 0.56) + 10 <= width && height >= 16;
+  const valueFits = textFits && height >= 32;
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={top ? '#047857' : '#0f766e'}
+        fillOpacity={top ? 1 : 0.72}
+        stroke={top ? '#022c22' : 'rgba(248,250,252,0.7)'}
+        strokeWidth={top ? 2 : 1}
+        rx={2}
+      />
+      <title>{`${label} · ${money(Number.isFinite(numeric) ? numeric : null)} · ${rec}`}</title>
+      {textFits && (
+        <text x={x + 5} y={y + (valueFits ? 14 : Math.min(height - 4, 13))} fill="#f8fafc" fontSize={font} fontWeight={750}>
+          {label}
+        </text>
+      )}
+      {valueFits && (
+        <text x={x + 5} y={y + 28} fill="#ecfdf5" fontSize={10} fontWeight={700}>
+          {money(numeric)}
+        </text>
+      )}
+    </g>
+  );
+}
+
 function ScoreRing({ score, band }: { score: number | null; band: string }) {
   const tone = bandOf(band);
   const color = tone === 'green' ? '#047857' : tone === 'amber' ? '#b45309' : tone === 'red' ? '#be123c' : '#64748b';
@@ -187,7 +280,7 @@ function ScoreRing({ score, band }: { score: number | null; band: string }) {
   const c = 2 * Math.PI * r;
   const dash = (pctFill / 100) * c;
   return (
-    <span className="ai-score-ring" aria-label={`Health ${score ?? 'n/a'}`}>
+    <span className="ai-score-ring ai-p2-health-ring" aria-label={`Health ${score ?? 'n/a'}`}>
       <svg viewBox="0 0 36 36" width="26" height="26">
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(148,163,184,0.25)" strokeWidth="3.5" />
         <circle
@@ -255,9 +348,6 @@ const REL_ROLE_LABEL: Record<RelCalloutRole, string> = {
   now: 'Now',
 };
 
-/** Deferred: Project Recommendation Engine bottom strip (`.ai-p2-narr`). Re-enable at end. */
-const SHOW_PROJECT_REC_ENGINE = false;
-
 export function AIUtilizationPage2({
   data,
   project,
@@ -272,7 +362,8 @@ export function AIUtilizationPage2({
   onBack: () => void;
 }) {
   const [showTeam, setShowTeam] = useState(false);
-  const [showFullLeague, setShowFullLeague] = useState(false);
+  const relChartRef = React.useRef<HTMLDivElement>(null);
+  const [relChartW, setRelChartW] = useState(0);
 
   const health = (data.health ?? []).find((row) => sameProject(row.project, project)) as AIHealthRow | undefined;
   const projectRisks = useMemo(
@@ -362,111 +453,15 @@ export function AIUtilizationPage2({
       }))
       .sort((a, b) => a.score - b.score);
   }, [data.maturity_radar, project]);
-  /** Page 2 is project-scoped — do not show portfolio league (NH/Maven/…) while drilled into AK. */
-  const league = useMemo(() => {
-    const cards = (data.manager_scorecard ?? []).filter((row) => sameProject(row.project, project) && String(row.manager || '').trim());
-    if (cards.length > 0) {
-      const byMgr = new Map<string, (typeof cards)[number]>();
-      for (const card of cards) {
-        const key = String(card.manager).trim();
-        const prev = byMgr.get(key);
-        if (!prev || (card.score ?? -1) > (prev.score ?? -1)) byMgr.set(key, card);
-      }
-      return [...byMgr.values()]
-        .sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || String(a.manager).localeCompare(String(b.manager)))
-        .map((card, index) => ({
-          rank: index + 1,
-          manager: card.manager,
-          score: card.score ?? null,
-          grade: card.grade || '—',
-          value_usd: Math.round((card.hours_saved || 0) * 40),
-          hours_saved: card.hours_saved ?? 0,
-          projects: [project],
-        })) as AILeagueRow[];
-    }
-    return (data.league ?? [])
-      .filter((row) => (row.projects || []).some((p) => sameProject(p, project)))
-      .map((row, index) => ({
-        ...row,
-        rank: index + 1,
-        projects: (row.projects || []).filter((p) => sameProject(p, project)),
-      }));
-  }, [data.manager_scorecard, data.league, project]);
-  // #region agent log
   React.useEffect(() => {
-    const portfolioLen = (data.league ?? []).length;
-    const foreignProjects = [...new Set(league.flatMap((r) => r.projects || []))].filter((p) => p !== project);
-    const send = (hypothesisId: string, message: string, dataPayload: Record<string, unknown>) => {
-      const body = JSON.stringify({
-        sessionId: '6a418b',
-        runId: 'post-fix-league-ui',
-        hypothesisId,
-        location: 'AIUtilizationPage2.tsx:league',
-        message,
-        data: dataPayload,
-        timestamp: Date.now(),
-      });
-      fetch('http://127.0.0.1:7896/ingest/a53d98a9-e463-4e07-91cc-72a241898446', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '6a418b' },
-        body,
-      }).catch(() => {});
-      fetch('/api/ai-utilization/debug-log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
-    };
-    send('L1', 'Page2 manager league scoped to drilled project', {
-      pageProject: project,
-      portfolioLeagueLen: portfolioLen,
-      scopedLeagueLen: league.length,
-      foreignProjects,
-      sample: league.slice(0, 5).map((r) => ({ rank: r.rank, manager: r.manager, projects: r.projects, score: r.score })),
-      expectForeignEmpty: true,
-      expectScopedLtPortfolio: portfolioLen === 0 || league.length <= portfolioLen,
-    });
-    const id = window.requestAnimationFrame(() => {
-      const root = document.querySelector('[data-ai-p2-root]') as HTMLElement | null;
-      const head = document.querySelector('[data-ai-p2-head]') as HTMLElement | null;
-      const panel = document.querySelector('[data-league-panel]') as HTMLElement | null;
-      const scroll = document.querySelector('[data-league-scroll]') as HTMLElement | null;
-      const rows = scroll?.querySelectorAll('tbody tr')?.length ?? 0;
-      const genieOpen = !!document.querySelector('.genie-docked, [data-genie-open="true"], .ai-copilot-open');
-      const fs = document.documentElement.classList.contains('app-fullscreen')
-        || !!document.fullscreenElement;
-      send('M1', 'league panel geometry (collapse check)', {
-        pageProject: project,
-        showFullLeague,
-        leagueLen: league.length,
-        visibleLen: showFullLeague ? league.length : Math.min(5, league.length),
-        panelH: panel?.clientHeight ?? null,
-        scrollH: scroll?.clientHeight ?? null,
-        scrollScrollH: scroll?.scrollHeight ?? null,
-        rowCountInDom: rows,
-        expectScrollHGt: 48,
-        expectRowsGt: 0,
-      });
-      send('H1', 'Page2 header + viewport mode', {
-        pageProject: project,
-        headH: head?.clientHeight ?? null,
-        headLines: head ? Math.round((head.clientHeight || 0) / 22) : null,
-        rootH: root?.clientHeight ?? null,
-        genieOpen,
-        fullscreen: fs,
-        expectHeadHLt: 88,
-        showTeam,
-      });
-      const chips = Array.from(document.querySelectorAll('.ai-cmd-quad, .ai-p2 .ai-chip')).slice(0, 0);
-      void chips;
-      const releaseChips = Array.from(
-        document.querySelectorAll('[data-rel-panel] .ai-chip'),
-      ).map((el) => (el.textContent || '').trim());
-      send('R1', 'release delta chips (no inflated %)', {
-        pageProject: project,
-        releaseChips,
-        expectNoHugePct: !releaseChips.some((t) => /\+\d{3,}%/.test(t)),
-      });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [league, project, data.league, showFullLeague, showTeam]);
-  // #endregion
+    const el = relChartRef.current;
+    if (!el) return;
+    const measure = () => setRelChartW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [project]);
   const projRec = useMemo(
     () => (data.project_recommendations ?? []).find((row) => sameProject(row.project, project)),
     [data.project_recommendations, project],
@@ -509,13 +504,14 @@ export function AIUtilizationPage2({
       if (!key || seen.has(key)) continue;
       seen.set(key, risk);
     }
-    return [...seen.values()];
+    const valueOf = (risk: AIRiskCard) => {
+      const raw = risk.values?.cost_usd ?? risk.values?.value_usd ?? risk.values?.hours_saved ?? risk.values?.hours;
+      const n = typeof raw === 'number' ? raw : Number(raw);
+      return Number.isFinite(n) ? n : 0;
+    };
+    return [...seen.values()].sort((a, b) => valueOf(b) - valueOf(a) || String(a.person || '').localeCompare(String(b.person || '')));
   }, [projectRisks]);
-
-  const topContributorValue = health?.value_usd ?? contributors.reduce((sum, risk) => {
-    const cost = risk.values?.cost_usd;
-    return sum + (typeof cost === 'number' ? cost : 0);
-  }, 0);
+  const topTeam = contributors.slice(0, 3);
 
   const battle = useMemo(() => {
     const dev = domains.find((row) => row.domain === 'Development');
@@ -578,8 +574,37 @@ export function AIUtilizationPage2({
       else if (ratio < 1 / 1.15) conclusion = 'QA LEADING';
       else conclusion = 'BALANCED';
     }
+    const devArtifacts = typeof dev?.artifacts === 'number' ? dev.artifacts : sumCount(['Code generation']);
+    const qaArtifacts = typeof qa?.artifacts === 'number' ? qa.artifacts : sumCount(['Unit testing', 'Test design']);
+    const shareOf = (devN: number, qaN: number) => {
+      if (!(devN > 0) && !(qaN > 0)) return null;
+      const total = devN + qaN;
+      return { devPct: (devN / total) * 100, qaPct: (qaN / total) * 100, devRaw: devN, qaRaw: qaN };
+    };
+    const valueShare = shareOf(devValue, qaValue);
+    const hoursShare = shareOf(devHours, qaHours);
+    const assetShare = shareOf(devArtifacts, qaArtifacts);
+    const contribution: ContributionShare | null = valueShare
+      ? { ...valueShare, basis: 'value' }
+      : hoursShare
+        ? { ...hoursShare, basis: 'hours' }
+        : assetShare
+          ? { ...assetShare, basis: 'assets' }
+          : null;
+    let recommend: string | null = null;
+    if (!hasQa) {
+      recommend = 'Increase QA participation — no QA evidence.';
+    } else if (conclusion === 'DEV LEADING') {
+      if (contribution?.basis === 'value') {
+        recommend = `Increase QA participation — QA is ${fmt(contribution.qaPct, 0)}% of value.`;
+      } else if (devActive > 0 || qaActive > 0) {
+        recommend = `Increase QA participation — ${fmt(qaActive)} QA vs ${fmt(devActive)} Dev active.`;
+      } else if (contribution) {
+        recommend = `Increase QA participation — QA is ${fmt(contribution.qaPct, 0)}% of ${contribution.basis}.`;
+      }
+    }
 
-    return { rows, hasQa, conclusion, devValue, qaValue };
+    return { rows, hasQa, conclusion, devValue, qaValue, contribution, recommend };
   }, [domains, useCases, health?.qa_adoption_pct]);
 
   const effectiveness = useMemo(() => {
@@ -653,6 +678,9 @@ export function AIUtilizationPage2({
       : Math.min(100, (maturityScore / maturityTarget) * 100);
   const maturityTrack = maturityStatus(maturityReadiness, maturityGap);
   const weakestAxis = maturityAxes[0] ?? null;
+  const topConstraints = (maturityAxes.filter((axis) => axis.score < maturityTarget).slice(0, 2).length
+    ? maturityAxes.filter((axis) => axis.score < maturityTarget).slice(0, 2)
+    : weakestAxis ? [weakestAxis] : []);
   const maturityRec = (() => {
     const bullets = (projRec?.bullets ?? []).filter(Boolean);
     const fromGap = bullets.find((b) => {
@@ -773,33 +801,7 @@ export function AIUtilizationPage2({
     return 'Click a release for deep dive.';
   })();
 
-  const recommendation = projectRecommendation(health, projRec?.recommendation);
   const mgrRec = managementRecommendation(card, health);
-
-  const execActions = useMemo(() => {
-    const fromApi = (projRec?.bullets ?? []).filter(Boolean).slice(0, 4);
-    if (fromApi.length) return fromApi;
-    const actions: string[] = [];
-    if (!battle.hasQa || battle.conclusion === 'QA GAP') {
-      actions.push('Increase QA participation — close the evidence gap next release.');
-    } else if (battle.conclusion === 'DEV LEADING') {
-      const qaActive = domains.find((d) => d.domain === 'QA')?.users_active ?? 0;
-      actions.push(`Increase QA participation from ${qaActive} toward ${Math.max(qaActive + 10, 40)} active users.`);
-    }
-    const topRoi = effectiveness.find((r) => r.tag === 'Highest ROI');
-    if (topRoi) actions.push(`Expand ${topRoi.label} as highest ROI activity.`);
-    const under = effectiveness.find((r) => r.tag === 'Underutilized');
-    if (under) actions.push(`Activate underutilized ${under.label} use case.`);
-    if ((health?.unrealized_value_usd || 0) > 0) {
-      actions.push(`Recover remaining ${money(health?.unrealized_value_usd)} unrealized value.`);
-    }
-    if ((health?.risk_count ?? projectRisks.length) >= 3) {
-      actions.push(`Clear ${health?.risk_count ?? projectRisks.length} open risk signals before the next release.`);
-    }
-    actions.push(`Advance maturity L${maturity} (${MATURITY_LABEL[maturity] || '—'}) → L${nextMaturity} (${MATURITY_LABEL[nextMaturity] || '—'}).`);
-    return actions.slice(0, 4);
-  }, [projRec?.bullets, battle, domains, effectiveness, health, projectRisks.length, maturity, nextMaturity]);
-
   const managerComponents = (() => {
     const fallback = [
       { key: 'adoption', label: 'Adoption', weight: 30, score: card?.adoption_pct != null ? Math.min(100, (card.adoption_pct / 80) * 100) : null },
@@ -816,7 +818,62 @@ export function AIUtilizationPage2({
     });
   })();
 
-  const leagueVisible = showFullLeague ? league : league.slice(0, 5);
+  const leak = leakageSteps(health);
+  const valueTree = useMemo(() => {
+    const rows = effectiveness
+      .filter((row) => (row.value || 0) > 0)
+      .map((row) => ({ name: row.label, value: row.value || 0, rec: row.rec }));
+    const top = rows.reduce((max, row) => Math.max(max, row.value), 0);
+    const quiet = effectiveness.filter((row) => (row.value || 0) <= 0).map((row) => row.label);
+    return { rows, top, quiet };
+  }, [effectiveness]);
+  const executiveInsight = (() => {
+    const lines: { role: string; text: string }[] = [];
+    if (health?.health_score != null) {
+      const band = health.band_label || health.band || 'Unbanded';
+      const trendBit = delta == null
+        ? ''
+        : delta > 0
+          ? `, up ${fmt(delta, 0)} pts`
+          : delta < 0
+            ? `, down ${fmt(Math.abs(delta), 0)} pts`
+            : ', flat vs prior';
+      lines.push({ role: 'Situation', text: `${project} is ${band} at ${fmt(health.health_score, 0)}${trendBit}.` });
+    }
+    const valued = effectiveness.filter((row) => (row.value || 0) > 0);
+    if (valued[0]) {
+      const lead = `${valued[0].label} (${money(valued[0].value)})`;
+      lines.push({
+        role: 'Value',
+        text: valued[1]
+          ? `Value concentrates in ${lead} and ${valued[1].label} (${money(valued[1].value)}).`
+          : `Value concentrates in ${lead}.`,
+      });
+    }
+    if (weakestAxis) {
+      lines.push({
+        role: 'Maturity',
+        text: `Blocker: ${weakestAxis.axis} at ${fmt(weakestAxis.score, 0)} vs L${nextMaturity} target ${maturityTarget}.`,
+      });
+    }
+    if (health?.unrealized_value_usd != null && health.unrealized_value_usd > 0) {
+      lines.push({ role: 'Recover', text: `Recover ${money(health.unrealized_value_usd)} unrealized value.` });
+    } else if (health?.unrealized_value_usd === 0) {
+      lines.push({ role: 'Recover', text: 'No unrealized value against current potential.' });
+    }
+    return lines.slice(0, 4);
+  })();
+  const relStep = (() => {
+    const n = timeline.length;
+    if (n <= 2) return 1;
+    const slot = relChartW > 0 && relChartW < 420 ? 68 : 54;
+    const width = relChartW || 360;
+    const fit = Math.max(2, Math.floor(width / slot));
+    if (n <= fit) return 1;
+    return Math.ceil(n / fit);
+  })();
+  const showPointLabels = relChartW >= 560;
+
   const conclusionBand =
     battle.conclusion === 'DEV LEADING' ? 'amber' : battle.conclusion === 'QA LEADING' ? 'green' : battle.conclusion === 'QA GAP' ? 'red' : 'neutral';
 
@@ -835,7 +892,7 @@ export function AIUtilizationPage2({
 
   return (
     <div className="ai-p2 h-full min-h-0 min-w-0 overflow-hidden" data-ai-p2-root>
-      {/* Line 1 = identity + health · Line 2 = money/ownership + contributors summary. Maturity lives in QA panel. */}
+      {/* Compact health command. Collapsed = two lines. View Team reveals the top 3 only. */}
       <section className="glass-panel rounded-xl ai-p2-head min-w-0 shrink-0" data-ai-p2-head>
         <div className="ai-p2-head-row1">
           <button type="button" className="ai-crumb shrink-0" onClick={onBack} aria-label="Back to portfolio">
@@ -851,42 +908,43 @@ export function AIUtilizationPage2({
             className="ai-p2-head-identity min-w-0"
             title={health?.teams?.length ? health.teams.slice(0, 3).join(' · ') : undefined}
           >
-            <b className="ai-p2-head-project truncate">{project}</b>
+            <b className="ai-p2-head-project">{project}</b>
           </div>
           <span className={`ai-chip shrink-0 ${BAND[bandOf(health?.band)]}`}>{health?.band_label || health?.band || 'n/a'}</span>
           <span className={`ai-chip shrink-0 ${BAND[deltaBand]}`}>
             {delta == null ? 'Trend n/a' : `${delta > 0 ? '+' : ''}${fmt(delta, 0)} pts`}
           </span>
-          <span className="ai-chip shrink-0 truncate max-w-[9rem]" title="Project recommendation">{recommendation}</span>
+          <span className="ai-p2-head-kpis" aria-label="Value, recoverable, and risk count">
+            <span className="ai-p2-head-kpi">
+              <span className="ai-p2-head-kpi-k">Value</span>
+              <b>{money(health?.value_usd ?? health?.ai_value_usd)}</b>
+            </span>
+            <span className="ai-p2-head-kpi">
+              <span className="ai-p2-head-kpi-k">Recoverable</span>
+              <b>{money(health?.unrealized_value_usd)}</b>
+            </span>
+            <span className="ai-p2-head-kpi ai-p2-head-risk">
+              <span className="ai-p2-head-kpi-k">Risks</span>
+              <b>{health?.risk_count ?? projectRisks.length}</b>
+            </span>
+          </span>
         </div>
         <div className="ai-p2-head-row2">
-          <span className="ai-p2-head-meta truncate">
-            Manager {health?.manager || card?.manager || '—'}
-            {' · '}Team {health?.headcount_scope ?? '—'}
-            {health?.denominator_inferred ? ' · inferred' : ''}
-            {' · '}Value {money(health?.value_usd)}
-            {' · '}Unrealized {money(health?.unrealized_value_usd)}
-            {(health?.risk_count ?? projectRisks.length) > 0 ? (
-              <>
-                {' · '}
-                <span className="ai-p2-head-risk">{health?.risk_count ?? projectRisks.length} risks</span>
-              </>
-            ) : null}
+          <span className="ai-p2-head-meta" title={health?.manager || card?.manager || undefined}>
+            Manager {oneManager(health?.manager || card?.manager)}
           </span>
-          {contributors.length > 0 && (
-            <span className="ai-p2-head-contrib shrink-0" aria-label="Top contributors summary">
-              <span className="ai-p2-head-contrib-text" title="Project AI value (proxy for top contributor contribution)">
-                Contributors {contributors.length} · {money(topContributorValue)}
-              </span>
+          <span className="ai-p2-head-contrib shrink-0" aria-label="Contributors">
+            <span className="ai-p2-head-contrib-text">Contributors: {contributors.length}</span>
+            {contributors.length > 0 && (
               <button type="button" className="ai-crumb ai-p2-head-team-toggle" onClick={() => setShowTeam((v) => !v)}>
                 {showTeam ? 'Hide Team' : 'View Team →'}
               </button>
-            </span>
-          )}
+            )}
+          </span>
         </div>
-        {showTeam && contributors.length > 0 && (
-          <div className="ai-p2-head-team" aria-label="Project team contributors">
-            {contributors.slice(0, 12).map((risk) => (
+        {showTeam && topTeam.length > 0 && (
+          <div className="ai-p2-head-team" aria-label="Top 3 contributors">
+            {topTeam.map((risk) => (
               <RiskPersonChip key={`${risk.type}-${risk.person}-${risk.employee_number}`} risk={risk} onSelectEmployee={onSelectEmployee} />
             ))}
           </div>
@@ -913,6 +971,18 @@ export function AIUtilizationPage2({
               </span>
             ))}
           </div>
+          <div className="ai-battle-foot">
+            {battle.contribution && battle.contribution.basis === 'value' && (
+              <div className="ai-battle-split" title={`Dev ${money(battle.devValue)} · QA ${money(battle.qaValue)}`}>
+                <span className="ai-battle-split-val">Dev {money(battle.devValue)}</span>
+                <span className="ai-battle-split-bar" aria-hidden="true">
+                  <i style={{ width: `${battle.contribution.devPct}%` }} />
+                </span>
+                <span className="ai-battle-split-val">QA {money(battle.qaValue)}</span>
+              </div>
+            )}
+            <p className="ai-battle-rec" title={battle.recommend || mgrRec}>{battle.recommend || mgrRec}</p>
+          </div>
         </section>
 
         <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col">
@@ -936,7 +1006,7 @@ export function AIUtilizationPage2({
               return (
                 <span
                   key={row.label}
-                  className="ai-uc-row"
+                  className={`ai-uc-row${row.tag === 'Highest ROI' || row.tag === 'Fastest Growing' || row.rec === 'Scale' ? ' is-emphasis' : ''}`}
                   style={{ '--uc-bar': `${barPct}%` } as React.CSSProperties}
                   title={row.tag ? `${row.label} · ${row.tag}` : row.label}
                 >
@@ -950,7 +1020,7 @@ export function AIUtilizationPage2({
                   <span className="ai-uc-trend">{row.count ? row.trend : '—'}</span>
                   <span className="ai-uc-num ai-uc-value">{row.count ? money(row.value) : 'n/a'}</span>
                   <span className="ai-uc-rec">
-                    <span className={`ai-chip ${BAND[recBand(row.rec)]}`}>{row.rec}</span>
+                    <span className={`ai-chip ${BAND[recBand(row.rec)]}`} title={row.rec === 'Scale' ? 'Recommended Scale' : row.rec}>{row.rec}</span>
                   </span>
                 </span>
               );
@@ -1017,7 +1087,7 @@ export function AIUtilizationPage2({
               <div className="ai-p2-qa-bars-list">
                 {maturityAxes.map((row) => {
                   const band = scoreBand(row.score);
-                  const isBlocker = Boolean(weakestAxis && row.key === weakestAxis.key);
+                  const isBlocker = topConstraints.some((axis) => axis.key === row.key);
                   return (
                     <div
                       key={row.key}
@@ -1035,37 +1105,26 @@ export function AIUtilizationPage2({
               </div>
             </div>
 
-            <div className="ai-p2-qa-decision" title={maturityInsight}>
-              {weakestAxis && (
+            <div className="ai-p2-qa-decision" data-qa-decision title={maturityInsight}>
+              {topConstraints.length > 0 && (
                 <div className="ai-p2-qa-block">
-                  <span className="ai-p2-eyebrow">Biggest constraint</span>
-                  <p
-                    className="ai-p2-qa-block-line"
-                    title={`${weakestAxis.axis} · ${fmt(weakestAxis.score, 0)} → ${maturityTarget} · Gap ${fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)}`}
-                  >
-                    <strong>{weakestAxis.axis}</strong>
-                    {' · '}
-                    {fmt(weakestAxis.score, 0)} → {maturityTarget}
-                    {' · Gap '}
-                    {fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)}
-                  </p>
-                  <p className="ai-p2-qa-block-impact" title={axisImpact(weakestAxis.axis)}>
-                    {axisImpact(weakestAxis.axis)}
-                  </p>
+                  <span className="ai-p2-eyebrow">Top constraints</span>
+                  <div className="ai-p2-qa-constraints">
+                    {topConstraints.map((axis) => (
+                      <span
+                        key={axis.key}
+                        className={`ai-chip ${BAND[scoreBand(axis.score)]}`}
+                        title={`${axis.axis} · ${fmt(axis.score, 0)} → ${maturityTarget} · ${axisImpact(axis.axis)}`}
+                      >
+                        {axis.axis}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
               <div className="ai-p2-qa-rec">
                 <span className="ai-p2-eyebrow">One action</span>
                 <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
-                <div className="ai-p2-qa-rec-meta" aria-label="Recommendation meta">
-                  {weakestAxis && (
-                    <span className="ai-p2-qa-rec-chip">
-                      Expected Gain ~{fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)} pts
-                    </span>
-                  )}
-                  <span className="ai-p2-qa-rec-chip">Priority high</span>
-                  <span className="ai-p2-qa-rec-chip">Impact L{nextMaturity}</span>
-                </div>
               </div>
             </div>
           </div>
@@ -1074,12 +1133,11 @@ export function AIUtilizationPage2({
 
       <div className="ai-p2-low ai-p2-low-3">
         <section className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0 overflow-hidden flex flex-col">
-          {/* Single-line head; weights on 2×2 tiles only. */}
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <div className="ai-p2-card-titles min-w-0">
-              <span className="ai-p2-card-title truncate">Manager score · {card?.manager || health?.manager || '—'}</span>
+              <span className="ai-p2-card-title truncate">Manager score · {oneManager(card?.manager || health?.manager)}</span>
             </div>
-            <span className={`ai-chip shrink-0 ${BAND[card?.grade === 'A+' || card?.grade === 'A' ? 'green' : card?.grade === 'B' ? 'amber' : 'red']}`}>
+            <span className={`ai-chip shrink-0 ${BAND[card?.grade === 'A+' || card?.grade === 'A' ? 'green' : card?.grade === 'B' ? 'amber' : card ? 'red' : 'neutral']}`}>
               {card?.grade || 'n/a'}{card?.score == null ? '' : ` ${fmt(card.score, 0)}`}
             </span>
           </div>
@@ -1087,12 +1145,7 @@ export function AIUtilizationPage2({
             <div className="ai-p2-mgr-body custom-scrollbar">
               <div className="ai-p2-mgr-tiles" aria-label="Manager score components">
                 {managerComponents.map((comp) => (
-                  <ScoreTile
-                    key={comp.key}
-                    label={comp.label}
-                    weight={comp.weight}
-                    score={comp.score}
-                  />
+                  <ScoreTile key={comp.key} label={comp.label} weight={comp.weight} score={comp.score} />
                 ))}
               </div>
               <div className="ai-p2-mgr-rec">
@@ -1107,7 +1160,7 @@ export function AIUtilizationPage2({
 
         <section className="glass-panel rounded-xl ai-p2-card ai-p2-rel min-h-0 min-w-0 overflow-hidden flex flex-col" data-rel-panel>
           <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <span className="ai-p2-card-title">Release intelligence</span>
+            <span className="ai-p2-card-title">Release journey</span>
             <div className="ai-p2-rel-head-meta min-w-0">
               <span
                 className="ai-p2-rel-meta truncate"
@@ -1159,14 +1212,38 @@ export function AIUtilizationPage2({
                 </div>
               )}
             </div>
-            <div className="ai-p2-rel-chart flex-1 min-h-0">
+            <div className="ai-p2-rel-chart flex-1 min-h-0" ref={relChartRef}>
               {timeline.length === 0 ? (
                 <p className="ai-p2-empty">No releases for this project.</p>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={timeline} margin={{ top: 10, right: 2, left: 0, bottom: 0 }}>
+                  <ComposedChart data={timeline} margin={{ top: showPointLabels ? 10 : 4, right: 2, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.12} />
-                    <XAxis dataKey="release" tick={{ fontSize: 8 }} hide={timeline.length > 5} />
+                    <XAxis
+                      dataKey="release"
+                      interval={0}
+                      tickLine={false}
+                      axisLine={false}
+                      height={14}
+                      tick={(props) => {
+                        const index = Number(props.index ?? 0);
+                        const last = timeline.length - 1;
+                        const show = index === 0 || index === last || index % relStep === 0;
+                        if (!show) return <g />;
+                        return (
+                          <text
+                            x={Number(props.x ?? 0)}
+                            y={Number(props.y ?? 0) + 9}
+                            textAnchor="middle"
+                            fill="currentColor"
+                            fontSize={8}
+                            fontWeight={650}
+                          >
+                            {String(props.payload?.value ?? '')}
+                          </text>
+                        );
+                      }}
+                    />
                     <YAxis yAxisId="left" hide domain={[0, 100]} />
                     <YAxis yAxisId="right" orientation="right" hide />
                     <Tooltip />
@@ -1187,9 +1264,12 @@ export function AIUtilizationPage2({
                       stroke="#0284c7"
                       strokeWidth={2}
                       name="Adoption %"
-                      dot={{ r: 3, onClick: (p: { payload?: AIReleaseTrendRow }) => p.payload && onOpenRelease(p.payload.release) }}
+                      dot={{ r: 2.5, onClick: (state) => {
+                        const payload = (state as { payload?: AIReleaseTrendRow } | undefined)?.payload;
+                        if (payload?.release) onOpenRelease(payload.release);
+                      } }}
                     >
-                      <LabelList dataKey="health" content={ReleaseHealthLabel} />
+                      {showPointLabels ? <LabelList dataKey="health" content={ReleaseHealthLabel} /> : null}
                     </Line>
                     <Line yAxisId="right" type="monotone" dataKey="value" stroke="#047857" strokeDasharray="4 3" strokeWidth={1.25} dot={false} name="Value $" />
                   </ComposedChart>
@@ -1219,66 +1299,90 @@ export function AIUtilizationPage2({
           </div>
         </section>
 
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col ai-p2-league-compact" data-league-panel>
-          <div className="ai-p2-league-head" title="Top managers on this project">
-            <span className="ai-p2-league-title">Manager league</span>
-            <span className="ai-p2-league-meta">Top {Math.min(5, league.length)}{league.length > 5 ? ` / ${league.length}` : ''}</span>
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col ai-p2-tree" data-tree-panel>
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <span className="ai-p2-card-title">Value realization</span>
+            <span className="ai-p2-card-sub">Largest block highlighted</span>
           </div>
-          <div className="ai-p2-league-scroll min-h-0 overflow-auto custom-scrollbar" data-league-scroll>
-            <table className="ai-exec-table ai-league-table">
-              <thead>
-                <tr>
-                  <th className="num">#</th>
-                  <th>Manager</th>
-                  <th className="num">Value</th>
-                  <th className="num">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leagueVisible.map((row: AILeagueRow) => (
-                  <tr key={`${row.rank}-${row.manager}`} className={row.rank <= 3 ? 'ai-league-top' : ''}>
-                    <td className="num">{row.rank}</td>
-                    <td className="truncate" title={row.manager}>{shortName(row.manager)}</td>
-                    <td className="num">{money(row.value_usd)}</td>
-                    <td className="num">
-                      <span className={`ai-league-grade ${row.grade === 'A+' || row.grade === 'A' ? 'ai-band-green' : row.grade === 'B' ? 'ai-band-amber' : 'ai-band-red'}`}>
-                        {row.grade} {fmt(row.score, 0)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {league.length === 0 && (
-                  <tr><td colSpan={4}>No manager league rows.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {league.length > 5 && (
-            <button type="button" className="ai-crumb ai-p2-league-more" onClick={() => setShowFullLeague((v) => !v)}>
-              {showFullLeague ? 'Show Top 5' : 'View Full Ranking →'}
-            </button>
+          {valueTree.rows.length === 0 ? (
+            <p className="ai-p2-empty">No positive use-case value for this project.</p>
+          ) : (
+            <div className="ai-p2-tree-body">
+              <ResponsiveContainer width="100%" height="100%">
+                <Treemap
+                  data={valueTree.rows}
+                  dataKey="value"
+                  nameKey="name"
+                  stroke="#f8fafc"
+                  isAnimationActive={false}
+                  content={(node) => <TreeBlock {...node} top={valueTree.top} />}
+                >
+                  <Tooltip
+                    formatter={(value, name, item) => {
+                      const rec = (item?.payload as { rec?: string } | undefined)?.rec;
+                      const label = rec ? `${String(name || '')} · ${rec}` : String(name || '');
+                      return [money(typeof value === 'number' ? value : Number(value)), label];
+                    }}
+                  />
+                </Treemap>
+              </ResponsiveContainer>
+            </div>
           )}
+          {valueTree.quiet.length > 0 && (
+            <p className="ai-p2-tree-quiet" title={valueTree.quiet.join(', ')}>
+              No value: {valueTree.quiet.join(', ')}
+            </p>
+          )}
+          <div className="ai-p2-leak" data-leak-panel data-ai-p2-waterfall>
+            {leak.length === 0 ? (
+              <p className="ai-p2-empty">Leakage n/a — potential and generated are not both on this project.</p>
+            ) : (
+              <div className="ai-p2-leak-body">
+                <div className="ai-p2-leak-chart">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={leak} margin={{ top: 2, right: 2, left: 0, bottom: 0 }} barCategoryGap="22%">
+                      <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} tickLine={false} axisLine={false} height={14} />
+                      <YAxis hide />
+                      <Tooltip
+                        formatter={(_value, _name, item) => {
+                          const raw = (item?.payload as LeakStep | undefined)?.raw;
+                          return [money(raw), (item?.payload as LeakStep | undefined)?.name || ''];
+                        }}
+                      />
+                      <Bar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} />
+                      <Bar dataKey="delta" stackId="w" radius={2} isAnimationActive={false}>
+                        {leak.map((step) => (
+                          <Cell key={step.name} fill={LEAK_FILL[step.sign]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="ai-p2-leak-legend" aria-label="Potential, unrealized, and generated value">
+                  {leak.map((step) => (
+                    <span key={step.name}>
+                      <i data-sign={step.sign} />
+                      {step.name}
+                      <b>{money(step.raw)}</b>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </section>
       </div>
 
-      {/* Project Recommendation Engine (`.ai-p2-narr`) deferred — restore later.
-          Flip SHOW_PROJECT_REC_ENGINE when re-adding the bottom ≤4-action strip. */}
-      {SHOW_PROJECT_REC_ENGINE ? (
-        <section className="ai-p2-narr glass-panel rounded-xl ai-panel flex flex-col overflow-hidden min-h-0 min-w-0 shrink-0">
-          <div className="ai-sec-head" title="Situation-style project actions">
-            <span className="ai-sec-title">Project recommendation engine</span>
-            <span className="ai-sec-meta">≤4</span>
-          </div>
-          <ol className="ai-narr-list ai-narr-list-4">
-            {execActions.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-            {execActions.length === 0 && (
-              <li className="opacity-70">No project recommendations yet.</li>
-            )}
-          </ol>
-        </section>
-      ) : null}
+      <section className="ai-p2-insight glass-panel rounded-xl flex flex-col overflow-hidden min-h-0 min-w-0 shrink-0" aria-label="Executive insight" data-ai-p2-insight>
+        <ol className="ai-narr-list ai-narr-list-4">
+          {executiveInsight.map((line) => (
+            <li key={line.role} title={`${line.role}: ${line.text}`}>{line.text}</li>
+          ))}
+          {executiveInsight.length === 0 && (
+            <li className="opacity-70">No executive insight for this project yet.</li>
+          )}
+        </ol>
+      </section>
     </div>
   );
 }
@@ -1297,11 +1401,7 @@ function ScoreTile({
   const band = scoreBand(score);
   const valueText = score == null || Number.isNaN(score) ? 'n/a' : `${fmt(score, 0)}`;
   return (
-    <div
-      className="ai-p2-score-tile"
-      title={`${safeLabel} ${weight}% · ${valueText} / 100`}
-      data-band={band}
-    >
+    <div className="ai-p2-score-tile" title={`${safeLabel} ${weight}% · ${valueText} / 100`} data-band={band}>
       <div className="ai-p2-score-tile-head">
         <span className="ai-p2-score-tile-label">
           {safeLabel}
