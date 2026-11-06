@@ -4987,12 +4987,16 @@ html.dark .ai-attn-heat-pop {
      Leftover height goes to low (Portfolio benchmark | QA maturity | AI adoption funnel).
      Insight is a thin auto row (≤4 one-line bullets) so the page does not scroll.
      Col 1 stays the Battle track so benchmark width equals Battle width.
-     Col 3 is the narrow Release / funnel track. Width taken from it
-     goes to Battle (col 1) and Use case + QA (col 2).
-     Closed 0.72 / 1.28 / 0.90; Genie 0.78 / 1.22 / 0.90. */
-  --ai-p2-col-1: minmax(0, 0.72fr);
-  --ai-p2-col-2: minmax(0, 1.28fr);
-  --ai-p2-col-3: minmax(0, 0.90fr);
+     Col 2 is Use case + QA. It is narrower than the old 1.28 track so Release
+     and the funnel (col 3) and Battle / benchmark (col 1) can be read.
+     Use-case names stay max-content (tag after the name). Do not use
+     minmax(0, max-content) on that name track.
+     Closed 0.84 / 1.02 / 1.04; Genie 0.88 / 1.08 / 0.94.
+     Genie col 2 is a bit wider than the first cut so the Rec chip stays
+     inside the card after Trend is dropped. */
+  --ai-p2-col-1: minmax(0, 0.84fr);
+  --ai-p2-col-2: minmax(0, 1.02fr);
+  --ai-p2-col-3: minmax(0, 1.04fr);
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
 }
@@ -5014,7 +5018,7 @@ html.dark .ai-attn-heat-pop {
 .ai-p2 > .ai-p2-mid,
 .ai-p2-mid {
   display: grid;
-  /* Battle | UC | Release — shared tracks with low. Release is the narrow col 3. */
+  /* Battle | UC | Release — shared tracks with low. */
   grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
   /* Row height = Battle content. UC and Release stretch to it (see .ai-p2-rel). */
   grid-template-rows: auto;
@@ -5058,7 +5062,7 @@ html.dark .ai-attn-heat-pop {
   padding-left: 0.28rem;
   padding-right: 0.28rem;
 }
-/* Release in narrow mid col 3 — keep the tight horizontal pad so the chart uses the width. */
+/* Release in mid col 3 — keep the tight horizontal pad so the chart uses the width. */
 .ai-p2-card.ai-p2-rel {
   padding-left: 0.28rem;
   padding-right: 0.28rem;
@@ -5456,11 +5460,13 @@ html.dark .ai-p2-score-meter-fill.is-amber { background: #fbbf24; }
 html.dark .ai-p2-score-meter-fill.is-red { background: #fb7185; }
 html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
 
-/* QA maturity scorecard. Default rail is journey+decision | capability bars
-   (used if the card is wide). Live placement is low col 2: see
-   `.ai-p2-low .ai-p2-qa-*`, which stacks the same pieces with a shorter meter
-   and wrapping labels so the narrower track still shows level, score vs target,
-   every capability, the constraint, and one action. Body does not scroll. */
+/* QA maturity scorecard. The side-by-side rail (journey+decision | bars) is
+   the wide-card default. Live placement is low col 2 (~1.02fr, Genie ~1.08fr):
+   `.ai-p2-low .ai-p2-qa-*` stacks score and the constraint/action on top, then
+   a compact list of short ~5.25rem capability meters. That stack is what fits
+   this column — the side-by-side rail overlaps the journey and the bars here,
+   and pinning the decision to the bottom left a hollow under the last meter.
+   Body does not scroll. The action is not line-clamped. */
 .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
   flex: 1 1 0%;
@@ -5745,24 +5751,25 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 .ai-p2-mid .ai-p2-rel-meta {
   max-width: 10rem;
 }
-/* QA in low col 2 (~1.28fr, Genie ~1.22fr), under Use case effectiveness.
-   Stack journey, short capability meters, then the constraint and one action
-   so the card stays readable. Labels wrap instead of clipping.
-   Bars take leftover low-row height; the decision band stays fully visible. */
+/* QA in low col 2 (~1.02fr, Genie ~1.08fr), under Use case effectiveness.
+   The side-by-side journey|bars rail does not fit this width (names + 5.25rem
+   meters collide with the score and the action). Stack instead: score, then
+   the constraint and one action, then a packed capability list. The low-row
+   card is as tall as the benchmark; the benchmark keeps its facts at the top.
+   Stretching these meters across that leftover opened a gap between every
+   score, and pinning the decision to the bottom left a hollow under the list.
+   The action wraps in full — it is not line-clamped. */
 .ai-p2-low .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     "journey"
-    "bars"
-    "decision";
-  /* Bars stay packed. Extra low-row height sits between the scorecard and the
-     decision band, which is pinned to the bottom so the constraint and action
-     stay visible without opening a gap under every axis. */
-  grid-template-rows: auto auto minmax(0, 1fr);
+    "decision"
+    "bars";
+  grid-template-rows: auto auto auto;
   column-gap: 0;
   row-gap: 0.16rem;
-  align-content: stretch;
+  align-content: start;
 }
 .ai-p2-low .ai-p2-qa-head-titles {
   flex-wrap: wrap;
@@ -5783,54 +5790,60 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   width: 100%;
   max-width: 100%;
   height: auto;
+  min-height: 0;
   align-self: start;
-  gap: 0.04rem;
-  padding: 0.08rem 0.28rem 0.1rem;
+  gap: 0.08rem;
+  padding: 0.12rem 0.32rem 0.14rem;
+  overflow: hidden;
 }
 .ai-p2-low .ai-p2-qa-bars-list {
   flex: 0 0 auto;
-  grid-template-columns: minmax(0, max-content) var(--ai-p2-qa-track) max-content;
-  column-gap: 0.36rem;
-  row-gap: 0.2rem;
+  min-height: 0;
+  /* max-content, not minmax(0, max-content): a 0 minimum collapses the name.
+     align-content start: space-between / space-evenly on a tall track left a
+     band under the last meter. */
+  grid-template-columns: max-content var(--ai-p2-qa-track) max-content;
+  column-gap: 0.42rem;
+  row-gap: 0.28rem;
   align-content: start;
+  align-items: center;
   justify-content: start;
 }
 .ai-p2-low .ai-p2-qa-bar-label {
   font-size: 10px;
   line-height: 1.15;
-  white-space: normal;
-  overflow-wrap: break-word;
-  max-width: 9.25rem;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
 }
 .ai-p2-low .ai-p2-qa-bar .ai-p2-qa-meter {
   height: 3.5px;
 }
 .ai-p2-low .ai-p2-qa-decision {
-  align-self: end;
+  align-self: start;
   height: auto;
   justify-content: flex-start;
-  padding: 0.12rem 0.26rem;
-  gap: 0.1rem;
+  padding: 0.12rem 0.28rem;
+  gap: 0.08rem;
 }
 .ai-p2-low .ai-p2-qa-rec-text {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
+  white-space: normal;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
 }
-/* Genie-narrow fallback for a wide QA rail. The live card is low col 2 and
-   stacks (`.ai-p2-low .ai-p2-qa-body` wins on specificity). Do not restore a
-   minmax floor on the bars column — it overflowed the card and clipped scores. */
+.ai-p2-low .ai-p2-qa-meta {
+  overflow: visible;
+  text-overflow: clip;
+}
+/* Density only. Do not put the journey and the bars back beside each other
+   in this column — `.ai-p2-low .ai-p2-qa-body` owns the stack. A max-content
+   bars column with a minmax floor overflowed the card and clipped scores. */
 @container (max-width: 1180px) {
   .ai-p2-qa-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
-    grid-template-areas:
-      "journey bars"
-      "decision bars";
-    grid-template-rows: auto minmax(0, 1fr);
-    column-gap: 0.35rem;
-    row-gap: 0.06rem;
+    row-gap: 0.1rem;
   }
   .ai-p2-qa-bars {
     min-height: 0;
@@ -5882,7 +5895,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   fill: color-mix(in srgb, var(--text) 78%, var(--muted));
 }
 /* Release head: title stays intact; project·count + Improve/Trend wrap
-   instead of clipping. The card sits in the narrow mid col 3. */
+   instead of clipping. The card sits in mid col 3. */
 .ai-p2-rel .ai-p2-card-head-battle {
   flex-wrap: wrap;
   row-gap: 0.04rem;
@@ -6648,10 +6661,9 @@ html.dark .ai-rec-engine li {
     display: none;
   }
   .ai-p2-qa-rec-text {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: block;
+    overflow: visible;
+    white-space: normal;
   }
   .ai-p2-rel-chart {
     min-height: 2rem;
@@ -6663,11 +6675,12 @@ html.dark .ai-rec-engine li {
    on a 768-tall laptop. Insight stays the thin 4th row. */
 @container (max-width: 1180px) {
   .ai-util-fit[data-page="2"] > .ai-p2 {
-    /* Col 1 stays a bit wider than the closed 0.72 — the pane is tighter.
-       Portfolio benchmark shares the Battle track. Release and the funnel stay the narrow col 3. */
-    --ai-p2-col-1: minmax(0, 0.78fr);
-    --ai-p2-col-2: minmax(0, 1.22fr);
-    --ai-p2-col-3: minmax(0, 0.90fr);
+    /* Battle stays on col 1. Col 2 is wide enough for the use-case name, tag,
+       and Rec chip once Trend is hidden. Col 3 keeps Release and the funnel
+       wider than the old 0.90 track. */
+    --ai-p2-col-1: minmax(0, 0.88fr);
+    --ai-p2-col-2: minmax(0, 1.08fr);
+    --ai-p2-col-3: minmax(0, 0.94fr);
     grid-template-rows: auto auto minmax(0, 1fr) auto;
     gap: 0.28rem;
   }
