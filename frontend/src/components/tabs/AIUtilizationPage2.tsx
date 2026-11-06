@@ -962,8 +962,8 @@ export function AIUtilizationPage2({
         </section>
 
         <section className="glass-panel rounded-xl ai-p2-card ai-p2-qa min-h-0 min-w-0 overflow-hidden flex flex-col">
-          <div className="ai-p2-card-head">
-            <div className="ai-p2-card-titles min-w-0">
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <div className="ai-p2-qa-head-titles min-w-0">
               <span className="ai-p2-card-title">QA maturity</span>
               <span className="ai-p2-card-sub">
                 Current: L{maturity} {MATURITY_LABEL[maturity] || ''} → Next: L{nextMaturity}{' '}

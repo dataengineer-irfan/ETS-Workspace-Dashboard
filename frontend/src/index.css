@@ -4978,9 +4978,8 @@ html.dark .ai-attn-heat-pop {
 }
 .ai-p2 {
   /* header | mid (Battle|UC|QA) | low — mid is content-sized (`auto`)
-     so Battle (~9 rows) + UC (~8 rows) hug tightly (no empty navy).
-     QA stretches to that mid height and scrolls inside the card
-     (journey + bars + constraint lead; rec/summary follow).
+     from the Battle card (full Dev vs QA list). UC and QA match that
+     height and fit their existing rows inside it (no mid-body scroll).
      Leftover height goes to low (Manager|Release|League).
      Narr strip (`.ai-p2-narr`) deferred — restored later as 4th `auto` row.
      Shared mid/low column tracks so Manager width === Battle width.
@@ -5012,7 +5011,7 @@ html.dark .ai-attn-heat-pop {
   display: grid;
   /* Battle | UC | QA — shared tracks with low. QA is the wide col 3. */
   grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
-  /* Row height = max(Battle, UC). QA does not inflate it (see .ai-p2-qa). */
+  /* Row height = Battle content. UC and QA stretch to it (see .ai-p2-qa). */
   grid-template-rows: auto;
   align-items: stretch;
   gap: 0.45rem;
@@ -5110,11 +5109,11 @@ html.dark .ai-attn-heat-pop {
   margin-top: 0.35rem;
 }
 /* Use case effectiveness — full ranked strip always visible (no More/Less).
-   # · name(+tag) · Usage · Hours · Trend · Value · Rec + thin CSS value bar;
-   dense row gap so 8 rows fit without mid-body scroll; Genie = compact density.
+   # · name(+tag) · Usage · Hours · Trend · Value · Rec + thin CSS value bar.
    One shared column set (header + rows via subgrid). Name is content-tight
    so leftover width spreads across the metric tracks — not a hole after the tag.
-   flex: none — strip hugs ~8 rows (no empty stretch); mid row tracks this content. */
+   The strip fills the Battle-matched card (even row rhythm, no empty navy
+   under the last row). It does not widen the page columns. */
 .ai-uc-strip {
   display: grid;
   grid-template-columns:
@@ -5128,7 +5127,8 @@ html.dark .ai-attn-heat-pop {
   column-gap: 0.5rem;
   row-gap: 0.06rem;
   align-items: center;
-  flex: 0 0 auto;
+  align-content: space-evenly;
+  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
   min-height: 0;
@@ -5414,27 +5414,28 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
   overflow: hidden;
 }
 
-/* QA maturity: decision-first scorecard. Wide: journey + decision | bars.
-   Capability meters are supporting evidence — a short capped track
-   (~5.25rem, 3.5px tall), not a full-bleed 1fr rail. Leftover width goes
-   to the left decision rail (journey + constraint + one action).
-   Genie keeps the same two-column rail so leftover height is not crushed. */
+/* QA maturity: one scorecard, Battle-matched height.
+   Left rail (1fr) is journey + constraint + one action.
+   Right rail hugs the capability table: name max-content, meter fixed
+   ~5.25rem / 3.5px, score. A 1fr name track left a hole before the meter;
+   a 16rem minimum clipped the scores when the card narrowed.
+   Rows share the body height evenly. Body does not scroll. */
 .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
   flex: 1 1 0%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(16.75rem, 1.3fr) minmax(16.25rem, 17.75rem);
+  grid-template-columns: minmax(0, 1fr) max-content;
   grid-template-areas:
     "journey bars"
     "decision bars";
   grid-template-rows: auto minmax(0, 1fr);
-  align-content: start;
-  column-gap: 0.7rem;
-  row-gap: 0.2rem;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding-top: 0.04rem;
+  align-content: stretch;
+  align-items: stretch;
+  column-gap: 0.5rem;
+  row-gap: 0.12rem;
+  overflow: hidden;
+  padding-top: 0.02rem;
 }
 .ai-p2-qa-journey {
   grid-area: journey;
@@ -5514,41 +5515,45 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
 .ai-p2-qa-bars {
   grid-area: bars;
   order: 3;
+  width: max-content;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: 0.04rem;
   overflow: hidden;
-  padding: 0.06rem 0.1rem 0.06rem;
+  padding: 0.06rem 0.28rem 0.06rem 0.32rem;
   border-radius: 0.35rem;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
 }
 .ai-p2-qa-bars-label {
   flex-shrink: 0;
-  padding: 0 0.04rem;
+  padding: 0 0.02rem;
   font-size: 8px;
   line-height: 1.15;
+  white-space: nowrap;
 }
 .ai-p2-qa-bars-list {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 0.04rem;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: max-content var(--ai-p2-qa-track) max-content;
+  column-gap: 0.42rem;
+  align-content: space-evenly;
+  align-items: center;
+  justify-content: start;
 }
 .ai-p2-qa-bar {
   display: grid;
-  grid-template-columns: minmax(8.6rem, 1fr) var(--ai-p2-qa-track) 1.45rem;
-  grid-template-areas: "label meter val";
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  column-gap: 0.32rem;
-  row-gap: 0;
   min-width: 0;
   min-height: 0;
-  padding: 0.05rem 0.06rem;
+  padding: 0.02rem 0;
   border-radius: 0.22rem;
 }
 .ai-p2-qa-bar.is-blocker {
@@ -5558,22 +5563,19 @@ html.dark .ai-p2-qa-bar.is-blocker {
   background: color-mix(in srgb, #fb7185 12%, transparent);
 }
 .ai-p2-qa-bar-label {
-  grid-area: label;
   font-size: 10px;
   font-weight: 650;
   color: var(--text);
   line-height: 1.2;
   min-width: 0;
+  justify-self: start;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
 }
 .ai-p2-qa-bar-track {
-  grid-area: meter;
   display: block;
   width: var(--ai-p2-qa-track);
   max-width: var(--ai-p2-qa-track);
-  justify-self: end;
+  justify-self: stretch;
   min-width: 0;
 }
 .ai-p2-qa-bar .ai-p2-qa-meter {
@@ -5586,8 +5588,7 @@ html.dark .ai-p2-qa-bar.is-blocker {
   height: 7px;
 }
 .ai-p2-qa-bar-val {
-  grid-area: val;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, Consolas, monospace;
@@ -5605,7 +5606,9 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   order: 2;
   display: flex;
   flex-direction: column;
-  gap: 0.12rem;
+  justify-content: space-evenly;
+  gap: 0.1rem;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   z-index: 1;
@@ -5618,16 +5621,28 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 .ai-p2-qa-rec {
   min-width: 0;
 }
+.ai-p2-qa-head-titles {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.ai-p2-qa-head-titles .ai-p2-card-title {
+  flex: 0 0 auto;
+}
+.ai-p2-qa-head-titles .ai-p2-card-sub {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .ai-p2-qa-block-line {
-  margin: 0.04rem 0 0;
+  margin: 0.02rem 0 0;
   font-size: 11px;
   font-weight: 700;
-  line-height: 1.28;
+  line-height: 1.25;
   color: var(--text);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 .ai-p2-qa-block-impact,
 .ai-p2-qa-rec-text {
@@ -5636,25 +5651,18 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   font-weight: 550;
   line-height: 1.22;
   color: var(--muted);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.ai-p2-qa-block-impact {
-  -webkit-line-clamp: 2;
 }
 .ai-p2-qa-rec-text {
   font-size: 11px;
   font-weight: 650;
   color: var(--text);
-  -webkit-line-clamp: 2;
 }
 .ai-p2-qa-rec-meta {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.12rem;
-  margin-top: 0.06rem;
+  margin-top: 0.04rem;
   min-width: 0;
 }
 .ai-p2-qa-rec-chip {
@@ -5673,10 +5681,10 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* QA in mid col 3. Battle/UC set the auto row. height:0 + min-height:100%
-   keeps the scorecard from inflating mid; the card stretches to that row
-   and the body scrolls (head stays fixed). Journey + capabilities share a
-   row; constraint + one action stay in the decision band (not below-fold). */
+/* QA in mid col 3. Battle sets the auto row. height:0 + min-height:100%
+   keeps the scorecard from inflating mid; the card stretches to that row.
+   Journey, every capability, the constraint, and one action fit inside
+   (no body scroll). Capability column hugs name + short meter + score. */
 .ai-p2-mid > .ai-p2-qa {
   height: 0;
   min-height: 100%;
@@ -5684,13 +5692,13 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow: hidden;
 }
 .ai-p2-mid .ai-p2-qa-body {
-  row-gap: 0.14rem;
-  column-gap: 0.6rem;
-  padding-top: 0.02rem;
-  grid-template-columns: minmax(16.5rem, 1.35fr) minmax(16rem, 17.5rem);
+  row-gap: 0.1rem;
+  column-gap: 0.45rem;
+  padding-top: 0;
+  grid-template-columns: minmax(0, 1fr) max-content;
 }
 .ai-p2-mid .ai-p2-qa-journey {
-  gap: 0.04rem;
+  gap: 0.02rem;
   padding-top: 0;
 }
 .ai-p2-mid .ai-p2-qa-score {
@@ -5698,18 +5706,13 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 }
 .ai-p2-mid .ai-p2-qa-bars {
   gap: 0.02rem;
-  padding: 0.04rem 0.08rem 0.04rem;
-}
-.ai-p2-mid .ai-p2-qa-bars-list {
-  gap: 0.02rem;
+  padding: 0.04rem 0.26rem 0.04rem 0.3rem;
 }
 .ai-p2-mid .ai-p2-qa-bar {
-  column-gap: 0.28rem;
-  row-gap: 0;
-  padding: 0.04rem 0.04rem;
+  padding: 0.01rem 0;
 }
 .ai-p2-mid .ai-p2-qa-bar-label {
-  font-size: 9.5px;
+  font-size: 10px;
   line-height: 1.15;
 }
 .ai-p2-mid .ai-p2-qa-bar .ai-p2-qa-meter {
@@ -5728,42 +5731,37 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   margin-top: 0.04rem;
   gap: 0.08rem;
 }
-/* Genie-narrow: keep journey+decision | bars. Stacking left ~25px leftover
-   and crushed the meters; the QA card is still the wide col 3. */
+/* Genie-narrow: same journey+decision | hugged bars. Do not restore a
+   minmax floor on the bars column — it overflowed the card and clipped scores. */
 @container (max-width: 1180px) {
   .ai-p2-qa-body {
     display: grid;
-    grid-template-columns: minmax(14.5rem, 1.2fr) minmax(14.5rem, 16.5rem);
+    grid-template-columns: minmax(0, 1fr) max-content;
     grid-template-areas:
       "journey bars"
       "decision bars";
     grid-template-rows: auto minmax(0, 1fr);
-    column-gap: 0.4rem;
-    row-gap: 0.08rem;
+    column-gap: 0.35rem;
+    row-gap: 0.06rem;
   }
   .ai-p2-qa-bars {
-    flex: none;
     min-height: 0;
     overflow: hidden;
-    padding: 0.04rem 0.08rem 0.04rem;
-    gap: 0.02rem;
+    padding: 0.03rem 0.2rem 0.03rem 0.22rem;
+    gap: 0.01rem;
   }
   .ai-p2-qa-score {
     font-size: 14px;
   }
   .ai-p2-qa-bars-label {
-    font-size: 8px;
+    font-size: 7.5px;
   }
   .ai-p2-qa-bars-list {
-    gap: 0.02rem;
-    overflow: hidden;
+    column-gap: 0.32rem;
   }
   .ai-p2-qa-bar {
-    grid-template-columns: minmax(8.4rem, 1fr) var(--ai-p2-qa-track) 1.4rem;
-    grid-template-areas: "label meter val";
-    column-gap: 0.28rem;
-    row-gap: 0;
-    padding: 0.03rem 0.04rem;
+    grid-template-columns: subgrid;
+    padding: 0.01rem 0;
   }
   .ai-p2-qa-bar-label {
     font-size: 9.5px;
@@ -5774,22 +5772,19 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     height: 3.5px;
   }
   .ai-p2-qa-decision {
-    padding: 0.08rem 0.16rem 0.08rem;
-    gap: 0.04rem;
-  }
-  .ai-p2-qa-rec-text {
-    -webkit-line-clamp: 2;
-  }
-  .ai-p2-qa-block-impact {
-    -webkit-line-clamp: 1;
+    padding: 0.06rem 0.14rem 0.05rem;
+    gap: 0.03rem;
   }
   .ai-p2-qa-rec-meta {
     gap: 0.08rem;
-    margin-top: 0.04rem;
+    margin-top: 0.03rem;
   }
   .ai-p2-qa-rec-chip {
-    padding: 0.02rem 0.18rem;
-    font-size: 8px;
+    padding: 0.01rem 0.14rem;
+    font-size: 7.5px;
+  }
+  .ai-p2-qa-scale {
+    min-height: 0.5rem;
   }
   .ai-p2-qa-meta {
     font-size: 8.5px;
@@ -6303,9 +6298,9 @@ html.dark .ai-rec-engine li {
   overflow: hidden;
   height: 100%;
 }
-/* Mid cards: stretch to shared content height (not a tall fr track).
-   height:auto lets Battle/UC define the row. QA overrides height so it
-   stretches to that row and scrolls (see .ai-p2-mid > .ai-p2-qa). */
+/* Mid cards: stretch to the Battle row (not a tall fr track).
+   height:auto lets Battle define the row. QA overrides height so it
+   stretches to that row without inflating it (see .ai-p2-mid > .ai-p2-qa). */
 .ai-p2-mid > * {
   height: auto;
   align-self: stretch;
@@ -6347,7 +6342,7 @@ html.dark .ai-rec-engine li {
 }
 /* Genie-docked Page 2: keep true 3-col mid (Battle | UC | QA).
    Prior 2+1 stamped Battle/UC at ~134px — unreadable. Mid stays content-`auto`
-   (compact Battle/UC density, no More); QA stretches to that height and scrolls.
+   (Battle sets the height; UC and QA match it and fit, no body scroll).
    UC Trend hides so Rec stays. Low stays 3-col Manager | Release | League
    (same fractions). Release callouts/chips stay dense for col 2.
    Narr strip deferred — no 4th auto row until restored. */
