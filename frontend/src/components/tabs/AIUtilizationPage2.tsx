@@ -1169,7 +1169,11 @@ export function AIUtilizationPage2({
             <span className="ai-p2-card-title">Dev vs QA battle</span>
             <span className={`ai-chip shrink-0 ${BAND[conclusionBand]}`} title="Battle outcome">{battle.conclusion}</span>
           </div>
-          <div className="ai-battle-compare min-h-0" data-battle-compare>
+          <div
+            className="ai-battle-compare min-h-0"
+            data-battle-compare
+            style={{ '--p2-rows': Math.max(1, battle.rows.length) } as React.CSSProperties}
+          >
             <div className="ai-battle-axis" aria-hidden="true">
               <span className="ai-battle-axis-dev">Dev</span>
               <span className="ai-battle-axis-key" />
@@ -1195,7 +1199,11 @@ export function AIUtilizationPage2({
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">Use case effectiveness</span>
           </div>
-          <div className="ai-uc-strip min-h-0" data-uc-strip>
+          <div
+            className="ai-uc-strip min-h-0"
+            data-uc-strip
+            style={{ '--p2-rows': Math.max(1, ucStrip.rows.length) } as React.CSSProperties}
+          >
             <div className="ai-uc-axis" aria-hidden="true">
               <span className="ai-uc-axis-rank">#</span>
               <span className="ai-uc-axis-name">Use case</span>
@@ -1257,7 +1265,10 @@ export function AIUtilizationPage2({
               </div>
             </div>
           </div>
-          <div className="ai-p2-rel-body">
+          <div
+            className="ai-p2-rel-body"
+            style={{ '--rel-chart-max': relChartW > 0 ? `${Math.round(relChartW / 1.15)}px` : undefined } as React.CSSProperties}
+          >
             <div
               className="ai-p2-rel-callouts"
               aria-label="Best worst and current release"

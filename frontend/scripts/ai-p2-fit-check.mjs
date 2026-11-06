@@ -13,6 +13,7 @@
  *   3. noscroll - page, app shell, .ai-p2 root and every card body have no scroll or clipped overflow
  *   4. ellipsis - no text-overflow ellipsis / line-clamp / overflow-hidden clipped text
  *   5. even     - sibling rows of the same table (use cases, capabilities, funnel, benchmark) share one height
+ *      rows     - use-case and battle rows stay at or under their row cap, and no gap between consecutive rows exceeds one row
  *   6. slack    - no card leaves a large empty band under its content
  *   7. type     - one type scale: sizes 9.5 / 10 / 11.5 / 13px only, and equal size + weight for the
  *                 same role (row labels, row figures) in every card
@@ -159,7 +160,7 @@ const MEASURE = () => {
   const root = document.querySelector('[data-ai-p2-root]');
   if (!root) return { error: 'Page 2 root missing' };
   if (!document.documentElement.classList.contains('dark')) return { error: 'html.dark is not set (dark mode required)' };
-  const fails = { contain: [], overlap: [], noscroll: [], ellipsis: [], even: [], slack: [], type: [] };
+  const fails = { contain: [], overlap: [], noscroll: [], ellipsis: [], even: [], rows: [], slack: [], type: [] };
   const cards = [...root.querySelectorAll(':scope > section, :scope > .ai-p2-mid > section, :scope > .ai-p2-low > section')];
   const nameOf = (el) => {
     const t = el.querySelector('.ai-p2-card-title');
@@ -343,6 +344,21 @@ const MEASURE = () => {
   spread('Funnel', heights('.ai-p2-adopt-row'));
   spread('Battle', heights('.ai-battle-row'));
 
+  /* 5b. dense tables: no row above its cap, no gap between consecutive rows above one row height */
+  const capOf = (name) => parseFloat(getComputedStyle(root).getPropertyValue(name));
+  const denseTable = (label, sel, cap) => {
+    const list = [...root.querySelectorAll(sel)].filter(visible).map((el) => el.getBoundingClientRect()).sort((a, b) => a.top - b.top);
+    for (let i = 0; i < list.length; i += 1) {
+      if (list[i].height > cap + 0.5) fails.rows.push(`${label} row ${i + 1} is ${px(list[i].height)}px, cap ${cap}px`);
+      if (i > 0) {
+        const gap = list[i].top - list[i - 1].bottom;
+        if (gap > list[i].height + 0.5) fails.rows.push(`${label} gap before row ${i + 1} is ${px(gap)}px, taller than a row (${px(list[i].height)}px)`);
+      }
+    }
+  };
+  denseTable('Use case', '.ai-uc-row', capOf('--p2-uc-row-max'));
+  denseTable('Battle', '.ai-battle-row', capOf('--p2-battle-row-max'));
+
   /* 7b. same role = same type */
   const roles = {
     'row label (10/600)': ['.ai-uc-label', '.ai-battle-key', '.ai-p2-qa-cap-name', '.ai-p2-qa-step-name', '.ai-p2-qa-none', '.ai-p2-mgr-metrics', '.ai-p2-adopt-label', '.ai-p2-qa-rec-text', '.ai-p2-adopt-insight', '.ai-battle-rec', '.ai-p2-rel-insight', '.ai-p2-insight li'],
@@ -452,7 +468,7 @@ for (const item of planned) {
 }
 await browser.close();
 
-const checks = ['contain', 'overlap', 'noscroll', 'ellipsis', 'even', 'slack', 'type'];
+const checks = ['contain', 'overlap', 'noscroll', 'ellipsis', 'even', 'rows', 'slack', 'type'];
 const pad = (s, n) => String(s).padEnd(n);
 console.log(`\n${pad('project / shape', 24)}${SIZES.map(([k]) => pad(k, 16)).join('')}`);
 for (const id of [...new Set(rows.map((r) => r.id))]) {

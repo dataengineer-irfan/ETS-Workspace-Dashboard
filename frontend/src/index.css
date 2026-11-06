@@ -4924,6 +4924,13 @@ html.dark .ai-attn-heat-pop {
 }
 
 /* True narrow canvas only: stack mid and bottom bands. */
+/* Short laptop viewports (browser chrome and taskbar taken off): the low row stays at its content
+   height so the mid tables keep their rows readable instead of going down to the floors. */
+@media (max-height: 740px) {
+  .ai-util-fit[data-page="2"] > .ai-p2 {
+    grid-template-rows: auto minmax(min-content, 1fr) auto auto;
+  }
+}
 @container (max-width: 720px) {
   .ai-util-fit {
     grid-template-rows: auto minmax(7.5rem, 1.35fr) minmax(0, 1.1fr) auto;
@@ -5016,7 +5023,7 @@ html.dark .ai-attn-heat-pop {
   --ai-p2-col-1: minmax(0, 0.84fr);
   --ai-p2-col-2: minmax(0, 1.16fr);
   --ai-p2-col-3: minmax(0, 0.94fr);
-  grid-template-rows: auto minmax(min-content, 1fr) auto auto;
+  grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, 11.75rem) auto;
   grid-template-columns: minmax(0, 1fr);
 }
 .ai-p3 {
@@ -5086,6 +5093,9 @@ html.dark .ai-attn-heat-pop {
   --p2-gap: 0.3rem;
   --p2-row: 13px;
   --p2-row-dense: 12px;
+  --p2-axis-h: 1rem;
+  --p2-uc-row-max: 32px;
+  --p2-battle-row-max: 28px;
   --p2-panel-pad: 0.14rem 0.4rem 0.16rem;
 }
 .ai-p2-card {
@@ -5160,21 +5170,37 @@ html.dark .ai-attn-heat-pop {
   border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
   background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
 }
-/* Tables share one row rhythm: axis row `auto`, data rows equal `1fr`. */
+/* Tables stay dense: axis row of fixed height, data rows `minmax(floor, 1fr)` inside a panel whose
+   max-height is exactly axis + rows x cap. On a short screen the panel shrinks and the rows go
+   down to their floors; on a tall one the panel stops growing, so no row is above its cap and
+   rows are never pulled apart. Height left over becomes equal padding above and below the
+   table (and the Battle foot) inside the card. */
 .ai-battle-compare,
 .ai-uc-strip {
+  --p2-row-max: var(--p2-uc-row-max);
   display: grid;
+  grid-template-rows: var(--p2-axis-h);
   grid-auto-rows: minmax(var(--p2-row), 1fr);
   align-content: stretch;
-}
-.ai-battle-compare,
-.ai-uc-strip {
-  grid-template-rows: auto;
   flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(var(--p2-rows, 8) * var(--p2-row-max) + var(--p2-axis-h) + 0.3rem + 2px);
   padding: var(--p2-panel-pad);
 }
 .ai-battle-compare {
+  --p2-row-max: var(--p2-battle-row-max);
   grid-auto-rows: minmax(var(--p2-row-dense), 1fr);
+  margin-top: auto;
+}
+.ai-battle-foot { margin-bottom: auto; }
+.ai-uc-strip { margin-block: auto; }
+.ai-battle-row,
+.ai-uc-row {
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--border) 55%, transparent);
+}
+.ai-battle-row:last-child,
+.ai-uc-row:last-child {
+  box-shadow: none;
 }
 .ai-battle-axis,
 .ai-uc-axis {
@@ -5475,7 +5501,7 @@ html.dark .ai-p2-mgr .ai-p2-mgr-vpu[data-tone="red"] { color: #fb7185; }
   position: relative;
   display: block;
   width: 100%;
-  height: 8px;
+  height: 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 48%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 35%, transparent);
@@ -5657,7 +5683,7 @@ html.dark .ai-p2-qa-step.is-current .ai-p2-qa-step-tag { color: #7dd3fc; }
   align-content: center;
   align-items: center;
   column-gap: 0.3rem;
-  row-gap: 0.1rem;
+  row-gap: 0.16rem;
   min-width: 0;
   padding: 0.04rem 0.3rem 0.04rem 0.5rem;
   border-radius: 0.3rem;
@@ -5696,7 +5722,7 @@ html.dark .ai-p2-qa-cap[data-band="red"] { --cap-color: #fb7185; }
   grid-row: 2;
   position: relative;
   display: block;
-  height: 6px;
+  height: 8px;
   margin-right: 2px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 55%, transparent);
@@ -5822,7 +5848,7 @@ html.dark .ai-p2-qa-fill.is-red { background: #fb7185; }
 }
 .ai-p2-adopt-track {
   display: block;
-  height: 5px;
+  height: 8px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 48%, transparent);
   overflow: hidden;
@@ -5948,10 +5974,11 @@ html.dark .ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
 .ai-p2-rel-body {
   flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(2.6rem, 1fr) auto auto;
+  display: flex;
+  flex-direction: column;
   row-gap: var(--p2-gap);
 }
+.ai-p2-rel-body > * { flex: 0 0 auto; }
 .ai-p2-rel-callouts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6027,6 +6054,10 @@ html.dark .ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
   overflow-wrap: break-word;
 }
 .ai-p2-rel-chart {
+  /* The plot takes the track the body gives it: from 2.6rem on a short screen up to
+     `--rel-chart-max` (set from the plot width, ~1.15 : 1), so it is never a tall sliver. */
+  flex: 1 1 2.6rem !important;
+  max-height: var(--rel-chart-max, 2.6rem);
   /* The plot takes whatever height the callouts, insight and chips leave. It is
      clipped to this box so it cannot paint over them. */
   min-height: 0;
@@ -6395,7 +6426,7 @@ html.dark .ai-rec-engine li {
     --ai-p2-col-1: minmax(0, 0.88fr);
     --ai-p2-col-2: minmax(0, 1.08fr);
     --ai-p2-col-3: minmax(0, 0.94fr);
-    grid-template-rows: auto minmax(min-content, 1fr) auto auto;
+    grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, 11.75rem) auto;
     gap: 0.28rem;
   }
   .ai-p2-mid {
