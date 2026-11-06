@@ -5766,11 +5766,20 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
    The side-by-side journey|bars rail does not fit this width (names + 5.25rem
    meters collide with the score and the action). Stack instead: score, then
    the constraint and one action, then the capability list. The low-row card
-   matches the benchmark and the funnel. Leftover height (including what the
-   shorter project header returns) is shared inside this stack: a little more
-   air between the score, the constraint, and the action, and equal tracks for
-   the capability rows so the card does not end in an empty band. The action
-   wraps in full — it is not line-clamped. */
+   matches the benchmark and the funnel. Minimum padding is tight enough that
+   a short low row (the card can be ~12rem) still holds the level line, the
+   score, the constraint, the full action, and all six capability rows.
+   Leftover height is shared on equal capability tracks so the card does not
+   end in an empty band. Nothing in this stack uses overflow to hide a row.
+   The action wraps in full — it is not line-clamped. */
+.ai-p2-low .ai-p2-qa {
+  padding-top: 0.12rem;
+  padding-bottom: 0.08rem;
+}
+.ai-p2-low .ai-p2-qa .ai-p2-card-head {
+  padding-bottom: 0.02rem;
+  margin-bottom: 0.02rem;
+}
 .ai-p2-low .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
   grid-template-columns: minmax(0, 1fr);
@@ -5778,11 +5787,14 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     "journey"
     "decision"
     "bars";
-  grid-template-rows: auto auto minmax(0, 1fr);
+  /* min-content floor: the bars row must not collapse and clip the lower axes.
+     1fr still takes leftover height when the low row is tall. */
+  grid-template-rows: auto auto minmax(min-content, 1fr);
   column-gap: 0;
-  row-gap: 0.42rem;
+  row-gap: 0.1rem;
   align-content: stretch;
   align-items: stretch;
+  overflow: visible;
 }
 .ai-p2-low .ai-p2-qa-head-titles {
   flex-wrap: wrap;
@@ -5794,45 +5806,62 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   text-overflow: clip;
 }
 .ai-p2-low .ai-p2-qa-journey {
-  gap: 0.12rem;
+  gap: 0.02rem;
 }
 .ai-p2-low .ai-p2-qa-score {
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1;
+}
+.ai-p2-low .ai-p2-qa-scale {
+  min-height: 0.46rem;
 }
 .ai-p2-low .ai-p2-qa-bars {
   width: 100%;
   max-width: 100%;
   height: auto;
-  min-height: 0;
+  min-height: min-content;
   align-self: stretch;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 0.16rem;
-  padding: 0.16rem 0.32rem 0.14rem;
-  overflow: hidden;
+  gap: 0.04rem;
+  padding: 0.04rem 0.28rem 0.03rem;
+  /* Visible: a hidden box was clipping Test Case Generation and below
+     once the low row was shorter than the stacked score + action. */
+  overflow: visible;
+}
+.ai-p2-low .ai-p2-qa-bars-label {
+  font-size: 7.5px;
+  line-height: 1.05;
 }
 .ai-p2-low .ai-p2-qa-bars-list {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: min-content;
   /* max-content, not minmax(0, max-content): a 0 minimum collapses the name.
-     Equal 1fr tracks share the card's leftover height. min-content floor keeps
-     a name from collapsing when the low row is short. */
+     Equal 1fr tracks share leftover height. The min-content floor keeps every
+     axis inside the card when the low row is short. */
   grid-template-columns: max-content var(--ai-p2-qa-track) max-content;
   column-gap: 0.42rem;
-  row-gap: 0.12rem;
+  row-gap: 0;
   grid-auto-rows: minmax(min-content, 1fr);
   align-content: stretch;
   align-items: center;
   justify-content: start;
+  overflow: visible;
+}
+.ai-p2-low .ai-p2-qa-bar {
+  padding: 0;
 }
 .ai-p2-low .ai-p2-qa-bar-label {
   font-size: 10px;
-  line-height: 1.15;
+  line-height: 1.05;
   white-space: nowrap;
   overflow: visible;
   text-overflow: clip;
   max-width: none;
+}
+.ai-p2-low .ai-p2-qa-bar-val {
+  line-height: 1.05;
 }
 .ai-p2-low .ai-p2-qa-bar .ai-p2-qa-meter {
   height: 3.5px;
@@ -5840,9 +5869,23 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 .ai-p2-low .ai-p2-qa-decision {
   align-self: stretch;
   height: auto;
-  justify-content: space-between;
-  padding: 0.18rem 0.32rem;
-  gap: 0.28rem;
+  justify-content: flex-start;
+  padding: 0.05rem 0.28rem;
+  gap: 0.04rem;
+  overflow: visible;
+}
+.ai-p2-low .ai-p2-qa-decision .ai-p2-eyebrow {
+  font-size: 8px;
+  line-height: 1.05;
+}
+.ai-p2-low .ai-p2-qa-constraints {
+  margin-top: 0;
+  gap: 0.06rem;
+}
+.ai-p2-low .ai-p2-qa-constraints .ai-chip {
+  padding: 0.01rem 0.18rem;
+  font-size: 8.5px;
+  line-height: 1.1;
 }
 .ai-p2-low .ai-p2-qa-rec-text {
   display: block;
@@ -5850,10 +5893,43 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   white-space: normal;
   -webkit-line-clamp: unset;
   line-clamp: unset;
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.15;
 }
 .ai-p2-low .ai-p2-qa-meta {
   overflow: visible;
   text-overflow: clip;
+}
+/* The pane (main is the size container) is tall enough that the low row
+   can spare a little padding. Do not put container-type on the QA card:
+   a nested size container made the ≤1366px rules hide the scale and the
+   capability label inside a card that is only ~500px wide. */
+@container (min-height: 640px) {
+  .ai-p2-low .ai-p2-qa-body {
+    row-gap: 0.28rem;
+  }
+  .ai-p2-low .ai-p2-qa-journey {
+    gap: 0.08rem;
+  }
+  .ai-p2-low .ai-p2-qa-score {
+    font-size: 15px;
+    line-height: 1.05;
+  }
+  .ai-p2-low .ai-p2-qa-scale {
+    min-height: 0.62rem;
+  }
+  .ai-p2-low .ai-p2-qa-decision {
+    padding: 0.12rem 0.28rem;
+    gap: 0.12rem;
+  }
+  .ai-p2-low .ai-p2-qa-bars {
+    gap: 0.08rem;
+    padding: 0.1rem 0.28rem 0.08rem;
+  }
+  .ai-p2-low .ai-p2-qa-bars-list {
+    row-gap: 0.06rem;
+  }
 }
 /* Density only. Do not put the journey and the bars back beside each other
    in this column — `.ai-p2-low .ai-p2-qa-body` owns the stack. A max-content
