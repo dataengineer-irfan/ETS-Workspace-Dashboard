@@ -2,8 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import {
   Area,
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   ComposedChart,
@@ -14,11 +12,9 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
-  Treemap,
   XAxis,
   YAxis,
 } from 'recharts';
-import type { TreemapNode } from 'recharts';
 import type {
   AIHealthRow,
   AIReleaseTrendRow,
@@ -196,37 +192,55 @@ function finiteNum(value: number | null | undefined): number | null {
   return value;
 }
 
-type LeakStep = { name: string; base: number; delta: number; sign: 'up' | 'down' | 'total'; raw: number };
+type AdoptStage = { key: string; label: string; count: number | null };
 
 /**
- * Honest 3-step leakage: Potential → Unrealized → Generated.
- * Potential is `potential_value_usd`, or current + unrealized when that field
- * is absent (same identity the API uses). No Automation / Evidence / Coverage
- * dollar split — those components are not in the payload.
+ * Workforce funnel for the drilled project. Counts come only from fields
+ * already on the payload. Power users are omitted: nothing in health, people,
+ * or contribution rows defines that stage or a threshold for it.
+ * A null count is n/a (no evidence). A real zero stays 0.
  */
-function leakageSteps(health: AIHealthRow | undefined): LeakStep[] {
-  if (!health) return [];
-  const current = finiteNum(health.value_usd ?? health.ai_value_usd);
-  const leakage = finiteNum(health.unrealized_value_usd);
-  let potential = finiteNum(health.potential_value_usd);
-  if (potential == null && current != null && leakage != null) {
-    potential = current + Math.max(0, leakage);
-  }
-  if (potential == null || leakage == null || current == null) return [];
-  const drop = Math.max(0, leakage);
-  const pot = Math.max(0, potential);
+function adoptionStages(
+  health: AIHealthRow | undefined,
+  domains: { users_enabled: number | null }[],
+  contributorCount: number,
+): AdoptStage[] {
+  const evidence = !!health && (
+    (health.people_tagged ?? 0) > 0
+    || (health.rows ?? 0) > 0
+    || (health.active_users ?? 0) > 0
+    || (health.headcount_scope ?? 0) > 0
+  );
+  const present = (value: number | null) => {
+    if (value == null) return null;
+    if (value === 0 && !evidence) return null;
+    return value;
+  };
+  const enabledVals = domains
+    .map((row) => finiteNum(row.users_enabled))
+    .filter((n): n is number => n != null);
+  const enabled = enabledVals.length ? enabledVals.reduce((sum, n) => sum + n, 0) : null;
   return [
-    { name: 'Potential', base: 0, delta: pot, sign: 'up', raw: potential },
-    { name: 'Unrealized', base: Math.max(0, pot - drop), delta: drop, sign: 'down', raw: leakage },
-    { name: 'Generated', base: 0, delta: Math.max(0, current), sign: 'total', raw: current },
+    { key: 'team', label: 'Team', count: present(health ? finiteNum(health.headcount_scope) : null) },
+    { key: 'enabled', label: 'Enabled', count: enabled },
+    { key: 'active', label: 'Active', count: present(health ? finiteNum(health.active_users) : null) },
+    { key: 'contributors', label: 'Contributors', count: contributorCount },
   ];
 }
 
-const LEAK_FILL: Record<LeakStep['sign'], string> = {
-  up: '#64748b',
-  down: '#be123c',
-  total: '#047857',
-};
+/** Drop-off % = (previous − current) / previous. Null when either side is missing or previous is 0. */
+function adoptionDrop(previous: number | null, current: number | null): number | null {
+  if (previous == null || current == null || previous <= 0) return null;
+  return ((previous - current) / previous) * 100;
+}
+
+function fmtDrop(drop: number | null): string {
+  if (drop == null) return 'n/a';
+  const rounded = Math.round(drop);
+  if (rounded === 0 && drop > 0) return '<1%';
+  if (rounded === 0 && drop < 0) return '−<1%';
+  return `${rounded}%`;
+}
 
 type ContributionShare = {
   devPct: number;
@@ -274,44 +288,6 @@ function ContributionDonut({ contribution }: { contribution: ContributionShare |
       <span className="ai-p2-donut-share">QA {fmt(contribution.qaPct, 0)}%</span>
       <span className="ai-p2-donut-basis">{contribution.basis}</span>
     </div>
-  );
-}
-
-function TreeBlock(props: TreemapNode & { top?: number; rec?: string }) {
-  const { x, y, width, height, name, value, depth } = props;
-  if (depth !== 1 || width < 1 || height < 1) return <g />;
-  const numeric = typeof value === 'number' ? value : Number(value);
-  const top = Number.isFinite(props.top) && numeric === props.top;
-  const label = String(name || '');
-  const rec = String(props.rec || 'Monitor');
-  const font = 10;
-  const textFits = label.length > 0 && label.length * (font * 0.56) + 10 <= width && height >= 16;
-  const valueFits = textFits && height >= 32;
-  return (
-    <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={top ? '#047857' : '#0f766e'}
-        fillOpacity={top ? 1 : 0.72}
-        stroke={top ? '#022c22' : 'rgba(248,250,252,0.7)'}
-        strokeWidth={top ? 2 : 1}
-        rx={2}
-      />
-      <title>{`${label} · ${money(Number.isFinite(numeric) ? numeric : null)} · ${rec}`}</title>
-      {textFits && (
-        <text x={x + 5} y={y + (valueFits ? 14 : Math.min(height - 4, 13))} fill="#f8fafc" fontSize={font} fontWeight={750}>
-          {label}
-        </text>
-      )}
-      {valueFits && (
-        <text x={x + 5} y={y + 28} fill="#ecfdf5" fontSize={10} fontWeight={700}>
-          {money(numeric)}
-        </text>
-      )}
-    </g>
   );
 }
 
@@ -861,15 +837,30 @@ export function AIUtilizationPage2({
     });
   })();
 
-  const leak = leakageSteps(health);
-  const valueTree = useMemo(() => {
-    const rows = effectiveness
-      .filter((row) => (row.value || 0) > 0)
-      .map((row) => ({ name: row.label, value: row.value || 0, rec: row.rec }));
-    const top = rows.reduce((max, row) => Math.max(max, row.value), 0);
-    const quiet = effectiveness.filter((row) => (row.value || 0) <= 0).map((row) => row.label);
-    return { rows, top, quiet };
-  }, [effectiveness]);
+  const adoption = useMemo(() => {
+    const stages = adoptionStages(health, domains, contributors.length);
+    const drops = stages.map((stage, index) => (
+      index === 0 ? null : adoptionDrop(stages[index - 1].count, stage.count)
+    ));
+    let leakAt = -1;
+    let bestDrop = 0;
+    let bestAbs = 0;
+    drops.forEach((drop, index) => {
+      if (drop == null || drop <= 0) return;
+      const prev = stages[index - 1].count ?? 0;
+      const abs = prev - (stages[index].count ?? 0);
+      if (drop > bestDrop + 1e-9 || (Math.abs(drop - bestDrop) < 1e-9 && abs > bestAbs)) {
+        leakAt = index;
+        bestDrop = drop;
+        bestAbs = abs;
+      }
+    });
+    const insight = leakAt < 0
+      ? 'No adoption drop between these stages.'
+      : `Biggest drop is ${stages[leakAt - 1].label} → ${stages[leakAt].label}: ${fmt(stages[leakAt - 1].count)} to ${fmt(stages[leakAt].count)}`;
+    const max = Math.max(...stages.map((stage) => stage.count ?? 0), 1);
+    return { stages, drops, leakAt, insight, max };
+  }, [health, domains, contributors.length]);
   const executiveInsight = (() => {
     const lines: { role: string; text: string }[] = [];
     if (health?.health_score != null) {
@@ -1336,77 +1327,41 @@ export function AIUtilizationPage2({
           </div>
         </section>
 
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col ai-p2-tree" data-tree-panel>
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col ai-p2-adopt-card" data-ai-p2-funnel>
           <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <span className="ai-p2-card-title">Value realization</span>
-            <span className="ai-p2-card-sub">Largest block highlighted</span>
+            <span className="ai-p2-card-title">AI adoption funnel</span>
           </div>
-          {valueTree.rows.length === 0 ? (
-            <p className="ai-p2-empty">No positive use-case value for this project.</p>
-          ) : (
-            <div className="ai-p2-tree-body">
-              <ResponsiveContainer width="100%" height="100%">
-                <Treemap
-                  data={valueTree.rows}
-                  dataKey="value"
-                  nameKey="name"
-                  stroke="#f8fafc"
-                  isAnimationActive={false}
-                  content={(node) => <TreeBlock {...node} top={valueTree.top} />}
+          <div className="ai-p2-adopt" aria-label="AI adoption funnel">
+            {adoption.stages.map((stage, index) => {
+              const drop = adoption.drops[index];
+              const leak = index === adoption.leakAt;
+              const width = stage.count != null && stage.count > 0
+                ? Math.max(8, (stage.count / adoption.max) * 100)
+                : 0;
+              return (
+                <div
+                  key={stage.key}
+                  className={`ai-p2-adopt-row${leak ? ' is-leak' : ''}`}
+                  data-funnel-stage={stage.key}
+                  data-funnel-count={stage.count == null ? 'n/a' : String(stage.count)}
+                  data-funnel-drop={index === 0 ? '' : (drop == null ? 'n/a' : fmtDrop(drop))}
+                  data-largest-drop={leak ? 'true' : 'false'}
                 >
-                  <Tooltip
-                    formatter={(value, name, item) => {
-                      const rec = (item?.payload as { rec?: string } | undefined)?.rec;
-                      const label = rec ? `${String(name || '')} · ${rec}` : String(name || '');
-                      return [money(typeof value === 'number' ? value : Number(value)), label];
-                    }}
-                  />
-                </Treemap>
-              </ResponsiveContainer>
-            </div>
-          )}
-          {valueTree.quiet.length > 0 && (
-            <p className="ai-p2-tree-quiet" title={valueTree.quiet.join(', ')}>
-              No value: {valueTree.quiet.join(', ')}
-            </p>
-          )}
-          <div className="ai-p2-leak" data-leak-panel data-ai-p2-waterfall>
-            {leak.length === 0 ? (
-              <p className="ai-p2-empty">Leakage n/a — potential and generated are not both on this project.</p>
-            ) : (
-              <div className="ai-p2-leak-body">
-                <div className="ai-p2-leak-chart">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={leak} margin={{ top: 2, right: 2, left: 0, bottom: 0 }} barCategoryGap="22%">
-                      <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} tickLine={false} axisLine={false} height={14} />
-                      <YAxis hide />
-                      <Tooltip
-                        formatter={(_value, _name, item) => {
-                          const raw = (item?.payload as LeakStep | undefined)?.raw;
-                          return [money(raw), (item?.payload as LeakStep | undefined)?.name || ''];
-                        }}
-                      />
-                      <Bar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} />
-                      <Bar dataKey="delta" stackId="w" radius={2} isAnimationActive={false}>
-                        {leak.map((step) => (
-                          <Cell key={step.name} fill={LEAK_FILL[step.sign]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <span className="ai-p2-adopt-label" title={stage.key === 'enabled' ? 'AI enabled' : stage.key === 'active' ? 'Active users' : stage.label}>
+                    {stage.label}
+                  </span>
+                  <span className="ai-p2-adopt-track" aria-hidden="true">
+                    <span className="ai-p2-adopt-bar" style={{ width: `${width}%` }} />
+                  </span>
+                  <b className="ai-p2-adopt-count">{fmt(stage.count)}</b>
+                  <span className="ai-p2-adopt-drop">
+                    {index === 0 ? '' : fmtDrop(drop)}
+                  </span>
                 </div>
-                <div className="ai-p2-leak-legend" aria-label="Potential, unrealized, and generated value">
-                  {leak.map((step) => (
-                    <span key={step.name}>
-                      <i data-sign={step.sign} />
-                      {step.name}
-                      <b>{money(step.raw)}</b>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+              );
+            })}
           </div>
+          <p className="ai-p2-adopt-insight" data-ai-p2-funnel-insight>{adoption.insight}</p>
         </section>
       </div>
 

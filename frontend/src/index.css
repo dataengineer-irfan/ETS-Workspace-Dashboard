@@ -4982,7 +4982,7 @@ html.dark .ai-attn-heat-pop {
 .ai-p2 {
   /* Laptop fit (1440×900, also 1366×768 and Genie): header | mid | low | insight.
      Mid is content-sized from the Battle card. UC and QA match that height.
-     Leftover height goes to low (Manager | release journey | value treemap + leakage).
+     Leftover height goes to low (Manager | release journey | AI adoption funnel).
      Insight is a thin auto row (≤4 one-line bullets) so the page does not scroll.
      Col 1 stays the Battle track so Manager width equals Battle width. */
   --ai-p2-col-1: minmax(0, 0.56fr);
@@ -5034,7 +5034,7 @@ html.dark .ai-attn-heat-pop {
   overflow: hidden;
 }
 .ai-p2-low.ai-p2-low-3 {
-  /* Manager | Release journey | Value realization — same tracks as mid (Battle | UC | QA). */
+  /* Manager | Release journey | AI adoption funnel — same tracks as mid (Battle | UC | QA). */
   grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
 }
 
@@ -6353,88 +6353,84 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ai-p2-leak-body {
-  flex: 1 1 0%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.08rem;
+/* AI adoption funnel — CSS bars in the old value-realization card. No new chart library. */
+.ai-p2-adopt-card {
+  gap: 0.1rem;
 }
-.ai-p2-leak-chart {
+.ai-p2-adopt {
   flex: 1 1 auto;
-  min-height: 2.8rem;
-}
-.ai-p2-leak-legend {
+  min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.02rem;
-  flex-shrink: 0;
+  justify-content: space-evenly;
+  gap: 0.12rem;
 }
-.ai-p2-leak-legend span {
+.ai-p2-adopt-row {
+  flex: 1 1 0;
   display: grid;
-  grid-template-columns: 0.45rem minmax(0, 1fr) auto;
+  grid-template-columns: 6.15rem minmax(0, 1fr) 2.35rem 2.55rem;
   align-items: center;
-  gap: 0.2rem;
-  font-size: 9px;
-  font-weight: 650;
-  color: var(--muted);
-  line-height: 1.15;
+  gap: 0.28rem;
+  min-width: 0;
+  min-height: 1.2rem;
 }
-.ai-p2-leak-legend b {
+.ai-p2-adopt-label {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
   color: var(--text);
+  white-space: nowrap;
+}
+.ai-p2-adopt-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 0.7rem;
+  max-height: 1.65rem;
+  min-width: 0;
+}
+.ai-p2-adopt-bar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: #0284c7;
+  clip-path: polygon(0 10%, 100% 22%, 100% 78%, 0 90%);
+}
+.ai-p2-adopt-count {
+  font-size: 12px;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--text);
+  text-align: right;
+  white-space: nowrap;
+}
+.ai-p2-adopt-drop {
+  font-size: 11px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+.ai-p2-adopt-row.is-leak .ai-p2-adopt-bar {
+  background: #be123c;
+}
+.ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
+  color: #be123c;
   font-weight: 800;
 }
-.ai-p2-leak-legend i {
-  width: 0.38rem;
-  height: 0.38rem;
-  border-radius: 1px;
-  background: #64748b;
-}
-.ai-p2-leak-legend i[data-sign="up"] { background: #64748b; }
-.ai-p2-leak-legend i[data-sign="down"] { background: #be123c; }
-.ai-p2-leak-legend i[data-sign="total"] { background: #047857; }
-.ai-p2-tree {
-  gap: 0.08rem;
-}
-.ai-p2-tree-body {
-  flex: 1 1 0%;
-  min-height: 2.4rem;
-}
-.ai-p2-tree-quiet {
+.ai-p2-adopt-insight {
   margin: 0;
-  font-size: 9px;
-  font-weight: 600;
-  line-height: 1.15;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   flex-shrink: 0;
-}
-.ai-p2-tree .ai-p2-leak {
-  flex: 0 0 auto;
-  min-height: 0;
-}
-.ai-p2-tree .ai-p2-leak-body {
-  flex: 0 0 auto;
-  gap: 0.04rem;
-}
-.ai-p2-tree .ai-p2-leak-chart {
-  flex: 0 0 4.8rem;
-  min-height: 4.4rem;
-}
-.ai-p2-tree .ai-p2-leak-legend {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.08rem 0.4rem;
-}
-.ai-p2-tree .ai-p2-leak-legend span {
-  display: inline-flex;
-  gap: 0.16rem;
-  font-size: 10px;
-  width: auto;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+  color: var(--text);
+  white-space: nowrap;
 }
 .ai-p2-donut-row {
   display: flex;
@@ -6468,9 +6464,6 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 .ai-p2-qa-constraints .ai-chip {
   font-size: 9px;
   padding: 0.04rem 0.22rem;
-}
-.ai-p2-tree .ai-p2-card-sub {
-  white-space: nowrap;
 }
 .ai-p2-insight {
   min-height: 0;
@@ -6576,8 +6569,7 @@ html.dark .ai-rec-engine li {
 }
 /* Content below ~1600px (docked Genie on 1920, laptop ~1440): fewer chart labels. */
 @container (max-width: 1600px) {
-  .ai-p2-rel-label,
-  .ai-p2-tree-quiet {
+  .ai-p2-rel-label {
     display: none;
   }
   .ai-p2-score-tile-wt,
@@ -6601,7 +6593,6 @@ html.dark .ai-rec-engine li {
   .ai-p2-qa-block-impact,
   .ai-p2-qa-scale,
   .ai-p2-qa-bars-label,
-  .ai-p2-tree .ai-p2-card-sub,
   .ai-p2-rel-insight,
   .ai-p2-rel-meta {
     display: none;
@@ -6623,7 +6614,7 @@ html.dark .ai-rec-engine li {
 @container (max-width: 1180px) {
   .ai-util-fit[data-page="2"] > .ai-p2 {
     /* Col 1 stays a bit wider than the closed 0.56 — the pane is tighter.
-       Manager shares the Battle track. Treemap + leakage stay the wide col 3. */
+       Manager shares the Battle track. The adoption funnel stays the wide col 3. */
     --ai-p2-col-1: minmax(0, 0.66fr);
     --ai-p2-col-2: minmax(0, 1.12fr);
     --ai-p2-col-3: minmax(0, 1.32fr);
