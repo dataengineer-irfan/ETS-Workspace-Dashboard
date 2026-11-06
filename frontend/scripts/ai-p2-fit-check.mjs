@@ -125,6 +125,20 @@ const SHAPES = {
       ]);
     }
   },
+  'top-level': (k, p) => {
+    const h = k.health.find((r) => r.project === p);
+    if (h) h.maturity_level = 5;
+    const rec = (k.project_recommendations || []).find((r) => r.project === p);
+    if (rec) rec.next_maturity_level = 5;
+  },
+  'all-at-target': (k, p) => {
+    const r = k.maturity_radar.find((x) => x.project === p);
+    if (r) r.axes = r.axes.map((a) => ({ ...a, score: 92 }));
+  },
+  'long-axis-name': (k, p) => {
+    const r = k.maturity_radar.find((x) => x.project === p);
+    if (r) r.axes = r.axes.map((a, i) => (i === 0 ? { ...a, axis: 'Cross Functional Quality Governance Automation' } : a));
+  },
   'no-axes': (k, p) => {
     k.maturity_radar = k.maturity_radar.filter((r) => r.project !== p);
   },
@@ -325,17 +339,16 @@ const MEASURE = () => {
     if (list.length > 1 && Math.max(...list) - Math.min(...list) > 1.5) fails.even.push(`${label} rows differ: ${list.map(px).join(', ')}`);
   };
   spread('Use case', heights('.ai-uc-row'));
-  spread('QA capability', heights('.ai-p2-qa-bar'));
+  spread('QA capability', heights('.ai-p2-qa-cap'));
   spread('Funnel', heights('.ai-p2-adopt-row'));
-  spread('Benchmark bars', heights('.ai-p2-mgr-bar'));
   spread('Battle', heights('.ai-battle-row'));
 
   /* 7b. same role = same type */
   const roles = {
-    'row label (10/600)': ['.ai-uc-label', '.ai-battle-key', '.ai-p2-qa-bar-label', '.ai-p2-adopt-label', '.ai-p2-mgr-bar-label', '.ai-p2-qa-rec-text', '.ai-p2-adopt-insight', '.ai-battle-rec', '.ai-p2-rel-insight', '.ai-p2-insight li'],
-    'row figure (10/700)': ['.ai-uc-num', '.ai-uc-trend', '.ai-battle-val', '.ai-p2-qa-bar-val', '.ai-p2-adopt-count', '.ai-p2-adopt-drop', '.ai-p2-mgr-bar-score', '.ai-p2-donut-share'],
-    'primary number (13/800)': ['.ai-p2-mgr-rank b', '.ai-p2-mgr-health b', '.ai-p2-qa-score'],
-    'meta (9.5/600)': ['.ai-p2-card-sub', '.ai-p2-eyebrow', '.ai-p2-qa-meta', '.ai-p2-adopt-people', '.ai-p2-donut-basis', '.ai-uc-axis', '.ai-battle-axis', '.ai-p2-rel-callout-meta'],
+    'row label (10/600)': ['.ai-uc-label', '.ai-battle-key', '.ai-p2-qa-cap-name', '.ai-p2-qa-step-name', '.ai-p2-qa-none', '.ai-p2-mgr-metrics', '.ai-p2-adopt-label', '.ai-p2-qa-rec-text', '.ai-p2-adopt-insight', '.ai-battle-rec', '.ai-p2-rel-insight', '.ai-p2-insight li'],
+    'row figure (10/700)': ['.ai-uc-num', '.ai-uc-trend', '.ai-battle-val', '.ai-p2-qa-cap-score', '.ai-p2-adopt-drop', '.ai-p2-mgr-vpu', '.ai-p2-donut-share'],
+    'primary number (13/800)': ['.ai-p2-mgr-rank b', '.ai-p2-mgr-health b', '.ai-p2-qa-score', '.ai-p2-adopt-count'],
+    'meta (9.5/600)': ['.ai-p2-card-sub', '.ai-p2-eyebrow', '.ai-p2-qa-meta', '.ai-p2-qa-step-tag', '.ai-p2-qa-cap-status', '.ai-p2-adopt-people', '.ai-p2-donut-basis', '.ai-uc-axis', '.ai-battle-axis', '.ai-p2-rel-callout-meta'],
     'title (11.5/750)': ['.ai-p2-card-title'],
   };
   for (const [role, sels] of Object.entries(roles)) {

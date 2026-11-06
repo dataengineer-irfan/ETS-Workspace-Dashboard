@@ -202,7 +202,7 @@ type PortfolioBenchmark = {
   valueTone: BenchTone | null;
   status: { label: string; tone: BenchTone } | null;
   title: string;
-  bars: { key: string; label: string; score: number; tone: BenchTone }[];
+  scale: { lo: number; hi: number };
 };
 
 function buildPortfolioBenchmark(rows: AIHealthRow[], project: string): PortfolioBenchmark | null {
@@ -249,12 +249,11 @@ function buildPortfolioBenchmark(rows: AIHealthRow[], project: string): Portfoli
     titleParts.push(`Release trend ${trend > 0 ? '+' : ''}${fmt(trend, 1)} pts`);
   }
 
-  const bars = [
-    { key: 'project', label: 'This project', score: health },
-    { key: 'top', label: 'Top quartile', score: topQuartile },
-    { key: 'average', label: 'Average', score: average },
-    { key: 'bottom', label: 'Bottom quartile', score: bottomQuartile },
-  ].map((bar) => ({ ...bar, tone: healthToneOf(bar.score) }));
+  const marks = [health, topQuartile, average, bottomQuartile];
+  const spread = Math.max(...marks) - Math.min(...marks);
+  const pad = Math.max(3, spread * 0.12);
+  const lo = Math.max(0, Math.floor(Math.min(...marks) - pad));
+  const hi = Math.min(100, Math.ceil(Math.max(...marks) + pad));
 
   return {
     rank,
@@ -270,43 +269,43 @@ function buildPortfolioBenchmark(rows: AIHealthRow[], project: string): Portfoli
     valueTone: valueToneOf(valueDeltaPct),
     status: benchmarkStatus(health, rank, total),
     title: titleParts.join(' · '),
-    bars,
+    scale: { lo, hi: hi > lo ? hi : lo + 1 },
   };
 }
 
-function scoreBand(score: number | null | undefined): Band {
-  if (score == null || Number.isNaN(score)) return 'neutral';
-  if (score >= 80) return 'green';
-  if (score >= 60) return 'amber';
-  return 'red';
+type QaStatus = { label: string; band: Band };
+
+/** Plain status of a capability against the next-level target. Near = within 10 pts. */
+function capabilityStatus(score: number, target: number): QaStatus {
+  if (score >= target) return { label: 'At target', band: 'green' };
+  if (score >= target - 10) return { label: 'Near target', band: 'amber' };
+  return { label: 'Below target', band: 'red' };
 }
 
-/** Horizontal 0–100 meter with a next-level target tick (overflow visible so the tick can sit on the track). */
-function QaMeter({
-  value,
+/** Bar runs from 0 to the target: a full bar is at target, the line at its end is the target. */
+function QaTargetBar({
+  score,
   target,
   band,
   label,
 }: {
-  value: number;
+  score: number;
   target: number;
   band: Band;
   label: string;
 }) {
-  const fill = Math.max(0, Math.min(100, value));
-  const tick = Math.max(1.5, Math.min(98.5, target));
+  const fill = target > 0 ? Math.max(0, Math.min(100, (score / target) * 100)) : 0;
   return (
-    <div
-      className="ai-p2-score-meter ai-p2-qa-meter"
+    <span
+      className="ai-p2-qa-track"
       role="meter"
       aria-label={label}
       aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(value)}
+      aria-valuemax={target}
+      aria-valuenow={Math.round(score)}
     >
-      <span className={`ai-p2-score-meter-fill is-${band}`} style={{ width: `${fill}%` }} />
-      <span className="ai-p2-qa-tick" style={{ left: `${tick}%` }} title={`Target ${Math.round(target)}`} />
-    </div>
+      <span className={`ai-p2-qa-fill is-${band}`} style={{ width: `${fill}%` }} />
+    </span>
   );
 }
 
@@ -878,9 +877,17 @@ export function AIUtilizationPage2({
       : Math.min(100, (maturityScore / maturityTarget) * 100);
   const maturityTrack = maturityStatus(maturityReadiness, maturityGap);
   const weakestAxis = maturityAxes[0] ?? null;
-  const topConstraints = (maturityAxes.filter((axis) => axis.score < maturityTarget).slice(0, 2).length
-    ? maturityAxes.filter((axis) => axis.score < maturityTarget).slice(0, 2)
-    : weakestAxis ? [weakestAxis] : []);
+  const belowTarget = maturityAxes.filter((axis) => axis.score < maturityTarget);
+  const topConstraints = belowTarget.slice(0, 2);
+  const atTopLevel = nextMaturity <= maturity;
+  const maturityGapWords = (() => {
+    if (maturityGap == null) return 'Capability scores not available';
+    const ready = maturityReadiness != null ? ` · ${fmt(maturityReadiness, 0)}% ready` : '';
+    if (maturityGap <= 0) return `Target met${ready}`;
+    return atTopLevel
+      ? `${fmt(maturityGap, 0)} pts to hold the L${maturity} target${ready}`
+      : `${fmt(maturityGap, 0)} pts to reach L${nextMaturity}${ready}`;
+  })();
   const maturityRec = (() => {
     const bullets = (projRec?.bullets ?? []).filter(Boolean);
     const fromGap = bullets.find((b) => {
@@ -1384,6 +1391,14 @@ export function AIUtilizationPage2({
         >
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">Portfolio benchmark</span>
+            {benchmark?.status && (
+              <span
+                className={`ai-chip ${BAND[benchmark.status.tone]}`}
+                data-benchmark-status={benchmark.status.label}
+              >
+                {benchmark.status.label}
+              </span>
+            )}
           </div>
           {benchmark ? (
             <div className="ai-p2-mgr-body">
@@ -1398,14 +1413,10 @@ export function AIUtilizationPage2({
                   <span>of {benchmark.total}</span>
                 </p>
                 <p className="ai-p2-mgr-health" data-benchmark-health={benchmark.health}>
+                  <i className="ai-p2-mgr-dot" data-tone={benchmark.healthTone} aria-hidden="true" />
                   <b data-tone={benchmark.healthTone}>{fmt(benchmark.health, 1)}</b>
                   <span>Health</span>
                 </p>
-              </div>
-              <div className="ai-p2-mgr-metrics">
-                <span>Portfolio avg <b data-benchmark-average={benchmark.average}>{fmt(benchmark.average, 1)}</b></span>
-                <span>Top quartile <b data-benchmark-top={benchmark.topQuartile}>{fmt(benchmark.topQuartile, 1)}</b></span>
-                <span>Bottom quartile <b data-benchmark-bottom={benchmark.bottomQuartile}>{fmt(benchmark.bottomQuartile, 1)}</b></span>
                 <span
                   className="ai-p2-mgr-vpu"
                   data-tone={benchmark.valueTone || undefined}
@@ -1417,25 +1428,33 @@ export function AIUtilizationPage2({
                     : `${money(benchmark.valuePerUser)}/user${benchmark.valueDeltaPct == null ? '' : ` ${vsAverageLabel(benchmark.valueDeltaPct)}`}`}
                 </span>
               </div>
-              <div className="ai-p2-mgr-bars" aria-label="This project, top quartile, portfolio average, and bottom quartile">
-                {benchmark.bars.map((bar) => {
-                  const width = Math.max(0, Math.min(100, bar.score));
-                  return (
-                    <div key={bar.key} className={`ai-p2-mgr-bar${bar.key === 'project' ? ' is-project' : ''}`}>
-                      <span className="ai-p2-mgr-bar-label">{bar.label}</span>
-                      <span className="ai-p2-mgr-bar-track" aria-hidden="true">
-                        <i data-tone={bar.tone} style={{ width: `${width}%` }} />
-                      </span>
-                      <span className="ai-p2-mgr-bar-score" data-tone={bar.tone}>{fmt(bar.score, 1)}</span>
-                    </div>
-                  );
-                })}
+              {(() => {
+                const span = benchmark.scale.hi - benchmark.scale.lo;
+                const at = (score: number) => `${Math.max(0, Math.min(100, ((score - benchmark.scale.lo) / span) * 100))}%`;
+                const bandLeft = Math.max(0, Math.min(100, ((benchmark.bottomQuartile - benchmark.scale.lo) / span) * 100));
+                const bandRight = Math.max(0, Math.min(100, ((benchmark.topQuartile - benchmark.scale.lo) / span) * 100));
+                return (
+                  <div
+                    className="ai-p2-mgr-range"
+                    role="img"
+                    aria-label="This project against the portfolio: bottom quartile, average, and top quartile"
+                  >
+                    <span className="ai-p2-mgr-range-track">
+                      <span
+                        className="ai-p2-mgr-range-band"
+                        style={{ left: `${bandLeft}%`, width: `${Math.max(0.5, bandRight - bandLeft)}%` }}
+                      />
+                      <span className="ai-p2-mgr-range-avg" style={{ left: at(benchmark.average) }} />
+                      <span className="ai-p2-mgr-range-me" data-tone={benchmark.healthTone} style={{ left: at(benchmark.health) }} />
+                    </span>
+                  </div>
+                );
+              })()}
+              <div className="ai-p2-mgr-metrics">
+                <span>Bottom quartile <b data-benchmark-bottom={benchmark.bottomQuartile}>{fmt(benchmark.bottomQuartile, 1)}</b></span>
+                <span>Portfolio avg <b data-benchmark-average={benchmark.average}>{fmt(benchmark.average, 1)}</b></span>
+                <span>Top quartile <b data-benchmark-top={benchmark.topQuartile}>{fmt(benchmark.topQuartile, 1)}</b></span>
               </div>
-              {benchmark.status && (
-                <p className="ai-p2-mgr-status" data-benchmark-status={benchmark.status.label}>
-                  <span className={`ai-chip ${BAND[benchmark.status.tone]}`}>{benchmark.status.label}</span>
-                </p>
-              )}
             </div>
           ) : (
             <p className="ai-p2-empty">No health score for this project.</p>
@@ -1447,8 +1466,7 @@ export function AIUtilizationPage2({
             <div className="ai-p2-qa-head-titles min-w-0">
               <span className="ai-p2-card-title">QA maturity</span>
               <span className="ai-p2-card-sub">
-                Current: L{maturity} {MATURITY_LABEL[maturity] || ''} → Next: L{nextMaturity}{' '}
-                {MATURITY_LABEL[nextMaturity] || ''}
+                Bar = score, line = L{nextMaturity} target ({maturityTarget})
               </span>
             </div>
             <span className={`ai-chip shrink-0 ${BAND[maturityTrack.band]}`} title="Maturity trajectory">
@@ -1456,88 +1474,81 @@ export function AIUtilizationPage2({
             </span>
           </div>
           <div className="ai-p2-qa-body">
-            <div className="ai-p2-qa-journey">
-              <span className="ai-p2-qa-score">
-                {maturityScore == null ? 'n/a' : fmt(maturityScore, 0)}
-                {maturityScore != null && <span> vs {maturityTarget}</span>}
-              </span>
-              <QaMeter
-                value={maturityScore ?? 0}
-                target={maturityTarget}
-                band={scoreBand(maturityScore)}
-                label={`QA maturity ${maturityScore == null ? 'n/a' : Math.round(maturityScore)} versus L${nextMaturity} target ${maturityTarget}`}
-              />
-              <span
-                className="ai-p2-qa-meta"
-                title={`L${nextMaturity} target ${maturityTarget}${maturityReadiness != null ? ` · Ready ${fmt(maturityReadiness, 0)}%` : ''}${maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}`}
-              >
-                {maturityReadiness != null ? `Ready ${fmt(maturityReadiness, 0)}%` : 'Ready n/a'}
-                {maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}
-              </span>
-              <div className="ai-p2-qa-scale" aria-hidden="true">
-                <span>0</span>
-                <span
-                  className="ai-p2-qa-scale-target"
-                  style={{ left: `${Math.max(10, Math.min(90, maturityTarget))}%` }}
-                >
-                  L{nextMaturity} · {maturityTarget}
-                </span>
-                <span>100</span>
+            <div className="ai-p2-qa-journey" aria-label="Maturity level">
+              <div className="ai-p2-qa-step is-current" data-qa-step="current">
+                <span className="ai-p2-qa-step-name">L{maturity} {MATURITY_LABEL[maturity] || ''}</span>
+                <span className="ai-p2-qa-step-tag">You are here</span>
               </div>
+              <div className="ai-p2-qa-progress">
+                <span className="ai-p2-qa-score-line">
+                  <span className="ai-p2-qa-score">
+                    {maturityScore == null ? 'n/a' : fmt(maturityScore, 0)}
+                    <span> of {maturityTarget}</span>
+                  </span>
+                  <span className="ai-p2-qa-meta">{maturityGapWords}</span>
+                </span>
+                {!atTopLevel && (
+                  <span className="ai-p2-qa-step-link" aria-hidden="true">
+                    <i style={{ width: `${maturityReadiness == null ? 0 : Math.max(0, Math.min(100, maturityReadiness))}%` }} />
+                  </span>
+                )}
+              </div>
+              {!atTopLevel && (
+                <div className="ai-p2-qa-step is-next" data-qa-step="next">
+                  <span className="ai-p2-qa-step-name">L{nextMaturity} {MATURITY_LABEL[nextMaturity] || ''}</span>
+                  <span className="ai-p2-qa-step-tag">Target</span>
+                </div>
+              )}
+            </div>
+
+            <div className="ai-p2-qa-caps" aria-label="Capabilities, weakest first">
+              {maturityAxes.length === 0 && (
+                <p className="ai-p2-empty">No maturity axis scores for this project.</p>
+              )}
+              {maturityAxes.map((row) => {
+                const status = capabilityStatus(row.score, maturityTarget);
+                return (
+                  <div
+                    key={row.key}
+                    className="ai-p2-qa-cap"
+                    data-band={status.band}
+                    title={`${row.axis} ${fmt(row.score, 0)} of ${maturityTarget} · ${status.label}`}
+                  >
+                    <span className="ai-p2-qa-cap-name">{row.axis}</span>
+                    <span className="ai-p2-qa-cap-score">{fmt(row.score, 0)}</span>
+                    <QaTargetBar score={row.score} target={maturityTarget} band={status.band} label={`${row.axis} ${fmt(row.score, 0)} of ${maturityTarget}`} />
+                    <span className="ai-p2-qa-cap-status">{status.label}</span>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="ai-p2-qa-decision" data-qa-decision title={maturityInsight}>
-              {topConstraints.length > 0 && (
-                <div className="ai-p2-qa-block">
-                  <span className="ai-p2-eyebrow">Top constraints</span>
+              {maturityAxes.length > 0 && (
+                <>
+                  <span className="ai-p2-eyebrow">Blocker</span>
                   <div className="ai-p2-qa-constraints">
+                    {topConstraints.length === 0 && (
+                      <span className="ai-p2-qa-none">None — every capability is at target</span>
+                    )}
                     {topConstraints.map((axis) => (
                       <span
                         key={axis.key}
-                        className={`ai-chip ${BAND[scoreBand(axis.score)]}`}
-                        title={`${axis.axis} · ${fmt(axis.score, 0)} → ${maturityTarget} · ${axisImpact(axis.axis)}`}
+                        className={`ai-chip ${BAND[capabilityStatus(axis.score, maturityTarget).band]}`}
+                        title={`${axis.axis} · ${fmt(axis.score, 0)} of ${maturityTarget} · ${axisImpact(axis.axis)}`}
                       >
                         {axis.axis}
                       </span>
                     ))}
                   </div>
-                </div>
+                </>
               )}
-              <div className="ai-p2-qa-rec">
-                <span className="ai-p2-eyebrow">One action</span>
-                <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
-              </div>
-            </div>
-
-            <div className="ai-p2-qa-bars" aria-label="Capability scorecard">
-              <span className="ai-p2-eyebrow ai-p2-qa-bars-label">
-                Capabilities · weakest first · tick = L{nextMaturity}
-              </span>
-              {maturityAxes.length === 0 && (
-                <p className="ai-p2-empty">No maturity axis scores for this project.</p>
-              )}
-              <div className="ai-p2-qa-bars-list">
-                {maturityAxes.map((row) => {
-                  const band = scoreBand(row.score);
-                  const isBlocker = topConstraints.some((axis) => axis.key === row.key);
-                  return (
-                    <div
-                      key={row.key}
-                      className={`ai-p2-qa-bar${isBlocker ? ' is-blocker' : ''}`}
-                      title={`${row.axis} ${fmt(row.score, 0)} · L${nextMaturity} target ${maturityTarget}`}
-                    >
-                      <span className="ai-p2-qa-bar-label">{row.axis}</span>
-                      <span className="ai-p2-qa-bar-track">
-                        <QaMeter value={row.score} target={maturityTarget} band={band} label={row.axis} />
-                      </span>
-                      <span className="ai-p2-qa-bar-val" data-band={band}>{fmt(row.score, 0)}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              <span className="ai-p2-eyebrow">Next action</span>
+              <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
             </div>
           </div>
         </section>
+
         <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 ai-p2-adopt-card" data-ai-p2-funnel>
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">AI adoption funnel</span>
@@ -1547,7 +1558,7 @@ export function AIUtilizationPage2({
               const drop = adoption.drops[index];
               const leak = index === adoption.leakAt;
               const width = stage.count != null && stage.count > 0
-                ? Math.max(8, (stage.count / adoption.max) * 100)
+                ? Math.max(4, (stage.count / adoption.max) * 100)
                 : 0;
               return (
                 <div
@@ -1561,12 +1572,12 @@ export function AIUtilizationPage2({
                   <span className="ai-p2-adopt-label" title={stage.key === 'enabled' ? 'AI enabled' : stage.key === 'active' ? 'Active users' : stage.label}>
                     {stage.label}
                   </span>
+                  <span className="ai-p2-adopt-line">
+                    <b className="ai-p2-adopt-count">{fmt(stage.count)}</b>
+                    {index > 0 && <span className="ai-p2-adopt-drop">▼ {fmtDrop(drop)}</span>}
+                  </span>
                   <span className="ai-p2-adopt-track" aria-hidden="true">
                     <span className="ai-p2-adopt-bar" style={{ width: `${width}%` }} />
-                  </span>
-                  <b className="ai-p2-adopt-count">{fmt(stage.count)}</b>
-                  <span className="ai-p2-adopt-drop">
-                    {index === 0 ? '' : fmtDrop(drop)}
                   </span>
                 </div>
               );
@@ -1582,9 +1593,16 @@ export function AIUtilizationPage2({
                 title="People producing value. Not an adoption drop."
               >
                 <span className="ai-p2-adopt-label">Contributors</span>
-                <span className="ai-p2-adopt-people">producing value</span>
-                <b className="ai-p2-adopt-count">{fmt(adoption.contributors.count)}</b>
-                <span className="ai-p2-adopt-drop" />
+                <span className="ai-p2-adopt-line">
+                  <b className="ai-p2-adopt-count">{fmt(adoption.contributors.count)}</b>
+                  <span className="ai-p2-adopt-people">producing value</span>
+                </span>
+                <span className="ai-p2-adopt-track" aria-hidden="true">
+                  <span
+                    className="ai-p2-adopt-bar"
+                    style={{ width: `${adoption.contributors.count != null && adoption.contributors.count > 0 ? Math.min(100, Math.max(4, (adoption.contributors.count / adoption.max) * 100)) : 0}%` }}
+                  />
+                </span>
               </div>
             )}
           </div>
