@@ -4982,9 +4982,12 @@ html.dark .ai-attn-heat-pop {
   gap: 0.32rem;
 }
 .ai-p2 {
-  /* Laptop fit (1440×900, also 1366×768 and Genie): header | mid | low | insight.
-     Mid is content-sized from the Battle card. UC and Release match that height.
-     Leftover height goes to low (Portfolio benchmark | QA maturity | AI adoption funnel).
+  /* Laptop fit (1440×900, also 1366×768, the same laptops minus browser chrome, and Genie):
+     header | mid | low | insight. Mid is never shorter than its tallest card
+     (`minmax(min-content, 0.9fr)`); low takes the rest (`minmax(0, 1.1fr)`). On a short
+     laptop viewport mid sits at its content height and low gets what is left; on a tall one
+     the extra height is shared 0.9 : 1.1 and every table row stretches (rows are
+     `minmax(floor, 1fr)`), so neither row ends in an empty band.
      Insight is a thin auto row (≤4 one-line bullets) so the page does not scroll.
      Col 1 stays the Battle track so benchmark width equals Battle width.
      Col 2 is Use case + QA. It is narrower than the old 1.28 track so Release
@@ -4996,9 +4999,10 @@ html.dark .ai-attn-heat-pop {
      inside the card after Trend is dropped.
      Type scale matches the use-case table (existing font stack). Titles
      11.5/750. Primary numbers (rank, health, QA score vs target, header
-     $, funnel counts) 13/800 tabular. Row labels 10/600 — QA labels stay
-     at that size. Row figures 10/700 tabular. Secondary meta and chips
-     9.5/600, never below 9px. */
+     $) 13/800 tabular. Row labels 10/600 — QA, funnel and battle labels
+     stay at that size. Row figures 10/700 tabular — use-case figures,
+     battle values, QA scores, funnel counts and drop %. Secondary meta and
+     chips 9.5/600, never below 9px. */
   --ai-p2-fs-title: 11.5px;
   --ai-p2-fw-title: 750;
   --ai-p2-fs-primary: 13px;
@@ -5012,7 +5016,7 @@ html.dark .ai-attn-heat-pop {
   --ai-p2-col-1: minmax(0, 0.84fr);
   --ai-p2-col-2: minmax(0, 1.02fr);
   --ai-p2-col-3: minmax(0, 1.04fr);
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(min-content, 0.9fr) minmax(0, 1.1fr) auto;
   grid-template-columns: minmax(0, 1fr);
 }
 .ai-p3 {
@@ -5023,6 +5027,8 @@ html.dark .ai-attn-heat-pop {
 .ai-p3 > * {
   min-height: 0;
   min-width: 0;
+}
+.ai-p3 > * {
   overflow: hidden;
 }
 .ai-p2-low,
@@ -5038,13 +5044,13 @@ html.dark .ai-attn-heat-pop {
   /* Row height = Battle content. UC and Release stretch to it (see .ai-p2-rel). */
   grid-template-rows: auto;
   align-items: stretch;
-  gap: 0.45rem;
+  gap: 0.32rem;
   height: auto;
-  /* Beat `.ai-p2 > * { min-height: 0 }` so mid won't clip Battle/UC rows. */
+  /* Beat `.ai-p2 > * { min-height: 0 }` so mid never sits below its tallest card. */
   min-height: min-content;
   min-width: 0;
-  overflow: hidden;
-  align-self: start;
+  overflow: visible;
+  align-self: stretch;
 }
 .ai-p2-low,
 .ai-p3-mid,
@@ -5057,58 +5063,49 @@ html.dark .ai-attn-heat-pop {
   min-width: 0;
   overflow: hidden;
 }
+.ai-p2-low {
+  gap: 0.32rem;
+  overflow: visible;
+}
 .ai-p2-low.ai-p2-low-3 {
   /* Portfolio benchmark | QA maturity | AI adoption funnel — same tracks as mid (Battle | UC | Release). */
   grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
 }
 
-/* —— Page 2: calm glass cards (one accent language via ai-chip + BAND) —— */
+/* —— Page 2: calm glass cards (one accent language via ai-chip + BAND) ——
+   Fit rule: every card is a flex column (head, then one body that takes the rest).
+   Bodies are grids whose data rows are `minmax(var(--p2-row), 1fr)`, so 6 or 8 rows,
+   2 or 6 capabilities, 3 or 4 funnel stages all share the card height evenly instead of
+   one pixel layout that only fits one project. Blocks inside a card are separated by
+   one gap token. Nothing is clipped: cards and bodies are overflow: visible, and
+   scripts/ai-p2-fit-check.mjs fails on any box that leaves its card. */
+.ai-p2 {
+  --p2-pad-x: 0.5rem;
+  --p2-pad-y: 0.38rem;
+  --p2-gap: 0.3rem;
+  --p2-row: 13px;
+  --p2-row-dense: 12px;
+  --p2-panel-pad: 0.14rem 0.4rem 0.16rem;
+}
 .ai-p2-card {
   position: relative;
-  padding: 0.32rem 0.45rem 0.28rem;
-}
-/* Battle only — horizontal pad was holding the column wider than Defect Prevention + 1,342.2 h. */
-.ai-p2-card:has(.ai-battle-compare) {
-  padding-left: 0.32rem;
-  padding-right: 0.32rem;
-}
-/* UC only — horizontal pad was spare beside the content-tight strip. */
-.ai-p2-card:has(.ai-uc-strip) {
-  padding-left: 0.28rem;
-  padding-right: 0.28rem;
-}
-/* Release in mid col 3 — keep the tight horizontal pad so the chart uses the width. */
-.ai-p2-card.ai-p2-rel {
-  padding-left: 0.28rem;
-  padding-right: 0.28rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--p2-gap);
+  padding: var(--p2-pad-y) var(--p2-pad-x);
+  overflow: visible;
 }
 .ai-p2-card-head {
   display: flex;
-  align-items: flex-start;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.4rem;
-  padding-bottom: 0.16rem;
-  margin-bottom: 0.14rem;
+  gap: 0.1rem 0.4rem;
+  padding-bottom: 0.2rem;
+  margin: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   min-width: 0;
-  flex-shrink: 0;
-}
-/* Battle / UC: title (+ optional status chip) on one row; drop subtitle height into metric list. */
-.ai-p2-card-head-battle {
-  align-items: center;
-  padding-bottom: 0.06rem;
-  margin-bottom: 0.06rem;
-  gap: 0.3rem;
-}
-/* Mid row only: shorter head chrome so the content-sized track can shrink.
-   Low-row cards keep the shared card padding and use the returned height. */
-.ai-p2-mid > .ai-p2-card {
-  padding-top: 0.12rem;
-  padding-bottom: 0.08rem;
-}
-.ai-p2-mid .ai-p2-card-head-battle {
-  padding-bottom: 0.02rem;
-  margin-bottom: 0.02rem;
 }
 .ai-p2-card-titles {
   display: flex;
@@ -5132,32 +5129,153 @@ html.dark .ai-attn-heat-pop {
 .ai-p2-eyebrow {
   display: block;
   font-size: var(--ai-p2-fs-meta);
-  font-weight: 700;
+  font-weight: var(--ai-p2-fw-meta);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  line-height: 1.15;
   color: var(--muted);
 }
 .ai-p2 .ai-chip {
   font-size: var(--ai-p2-fs-meta);
-  font-weight: 700;
+  font-weight: var(--ai-p2-fw-meta);
+}
+.ai-p2-card-head .ai-chip {
+  padding-top: 0.02rem;
+  padding-bottom: 0.02rem;
 }
 .ai-p2-empty {
-  font-size: 11px;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   color: var(--muted);
-  margin-top: 0.35rem;
+  margin: 0;
 }
-/* Use case effectiveness — full ranked strip always visible (no More/Less).
-   # · name(+tag) · Usage · Hours · Trend · Value · Rec + thin CSS value bar.
-   One shared column set (header + rows via subgrid). The name track is
-   `max-content` (not `minmax(0, max-content)` — a 0 minimum collapses the
-   label and parks the tag on the ellipsis). Leftover width spreads across
-   the metric tracks only after the name+tag have their content width.
-   Metric tracks are `minmax(min-content, 1fr)` so a tight card compresses
-   Usage/Hours/Trend/Value/Rec down to the figure or Rec chip before a name
-   clips. The strip fills the Battle-matched card (even row rhythm, no empty
-   navy under the last row). It does not widen the page columns. */
-.ai-uc-strip {
+/* One panel look for every table-like body. */
+.ai-battle-compare,
+.ai-uc-strip,
+.ai-p2-qa-decision,
+.ai-p2-qa-bars,
+.ai-p2-adopt {
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
+}
+/* Tables share one row rhythm: axis row `auto`, data rows equal `1fr`. */
+.ai-battle-compare,
+.ai-uc-strip,
+.ai-p2-mgr-bars,
+.ai-p2-qa-bars-list,
+.ai-p2-adopt {
   display: grid;
+  grid-auto-rows: minmax(var(--p2-row), 1fr);
+  align-content: stretch;
+}
+.ai-battle-compare,
+.ai-uc-strip {
+  grid-template-rows: auto;
+  flex: 1 1 auto;
+  padding: var(--p2-panel-pad);
+}
+.ai-battle-compare {
+  grid-auto-rows: minmax(var(--p2-row-dense), 1fr);
+}
+.ai-battle-axis,
+.ai-uc-axis {
+  align-self: end;
+  padding-bottom: 0.1rem;
+  margin-bottom: 0.06rem;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  color: var(--muted);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+/* Dev vs QA battle: Dev | metric | QA. */
+.ai-battle-axis,
+.ai-battle-row {
+  display: grid;
+  grid-template-columns: minmax(3.4rem, 0.9fr) minmax(0, 1.5fr) minmax(3.4rem, 0.9fr);
+  align-items: center;
+  column-gap: 0.3rem;
+  min-width: 0;
+}
+.ai-battle-axis-dev { text-align: right; }
+.ai-battle-axis-qa { text-align: left; }
+.ai-battle-key {
+  min-width: 0;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
+  line-height: 1.15;
+  text-align: center;
+  color: var(--muted);
+}
+.ai-battle-val {
+  min-width: 0;
+  font-size: var(--ai-p2-fs-figure);
+  font-weight: var(--ai-p2-fw-figure);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--text);
+  white-space: nowrap;
+}
+.ai-battle-val.is-dev { text-align: right; }
+.ai-battle-val.is-qa { text-align: left; }
+.ai-battle-foot {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.6rem;
+  min-width: 0;
+  padding: 0 0.1rem;
+}
+.ai-battle-foot > :only-child {
+  grid-column: 1 / -1;
+}
+.ai-p2-donut-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.1rem 0.4rem;
+  min-width: 0;
+  min-height: 20px;
+}
+.ai-p2-donut-row .recharts-wrapper {
+  flex: 0 0 auto;
+}
+.ai-p2-donut-share {
+  font-size: var(--ai-p2-fs-figure);
+  font-weight: var(--ai-p2-fw-figure);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--text);
+  white-space: nowrap;
+}
+.ai-p2-donut-basis,
+.ai-p2-donut-na {
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  line-height: 1.15;
+  color: var(--muted);
+}
+.ai-p2-donut-basis { text-transform: lowercase; }
+.ai-battle-rec {
+  margin: 0;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
+  line-height: 1.2;
+  color: var(--text);
+}
+
+/* Use case effectiveness: # · name(+tag) · Usage · Hours · Trend · Value · Rec + thin value bar.
+   The name track is max-content (a 0 minimum collapses the label under the tag); the metric
+   tracks compress to their figure / Rec chip first. */
+.ai-uc-strip {
   grid-template-columns:
     0.95rem
     max-content
@@ -5167,22 +5285,9 @@ html.dark .ai-attn-heat-pop {
     minmax(min-content, 1fr)
     minmax(min-content, 1fr);
   column-gap: 0.5rem;
-  row-gap: 0.02rem;
-  align-items: center;
-  align-content: space-evenly;
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  padding: 0.02rem 0.38rem 0.02rem 0.12rem;
-  border-radius: 0.4rem;
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
 }
 .ai-uc-strip > .ai-p2-empty {
   grid-column: 1 / -1;
-  margin-top: 0.15rem;
 }
 .ai-uc-axis,
 .ai-uc-row {
@@ -5192,17 +5297,6 @@ html.dark .ai-attn-heat-pop {
   align-items: center;
   min-width: 0;
 }
-.ai-uc-axis {
-  font-size: var(--ai-p2-fs-meta);
-  font-weight: 750;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding-bottom: 0.02rem;
-  margin-bottom: 0;
-  line-height: 1.1;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-}
 .ai-uc-axis-rank,
 .ai-uc-axis-num,
 .ai-uc-axis-trend,
@@ -5211,17 +5305,15 @@ html.dark .ai-attn-heat-pop {
 }
 .ai-uc-row {
   position: relative;
+  align-self: stretch;
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
-  line-height: 1.1;
-  /* No horizontal padding — it would inset subgrid tracks off the header. */
-  padding: 0;
-  border-radius: 0.28rem;
+  line-height: 1.15;
 }
 .ai-uc-row::before {
   content: '';
   position: absolute;
-  inset: 0 auto 0 0;
+  inset: 1px auto 1px 0;
   width: var(--uc-bar, 0%);
   max-width: 100%;
   background: color-mix(in srgb, #0284c7 11%, transparent);
@@ -5229,12 +5321,14 @@ html.dark .ai-attn-heat-pop {
   pointer-events: none;
   z-index: 0;
 }
-.ai-uc-axis > *,
+.ai-uc-row.is-emphasis::before {
+  background: color-mix(in srgb, #047857 18%, transparent);
+}
 .ai-uc-row > * {
+  position: relative;
+  z-index: 1;
   min-width: 0;
 }
-/* Beat the blanket min-width: 0. A 0 minimum is what let the name column
-   shrink under max-content and ellipsis the label under the tag. */
 .ai-uc-row > .ai-uc-name,
 .ai-uc-row > .ai-uc-num,
 .ai-uc-row > .ai-uc-trend,
@@ -5245,12 +5339,8 @@ html.dark .ai-attn-heat-pop {
 .ai-uc-axis > .ai-uc-axis-rec {
   min-width: max-content;
 }
-.ai-uc-row > * {
-  position: relative;
-  z-index: 1;
-}
 .ai-uc-rank {
-  font-weight: 750;
+  font-weight: var(--ai-p2-fw-figure);
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: color-mix(in srgb, var(--muted) 45%, var(--text));
@@ -5258,7 +5348,6 @@ html.dark .ai-attn-heat-pop {
 .ai-uc-name {
   justify-self: start;
   width: max-content;
-  max-width: none;
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -5268,65 +5357,41 @@ html.dark .ai-attn-heat-pop {
   flex: 0 0 auto;
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
-  line-height: 1.1;
+  line-height: 1.15;
   white-space: nowrap;
 }
-.ai-uc-row.is-emphasis .ai-uc-label {
-  font-weight: 800;
-}
-.ai-uc-row.is-emphasis::before {
-  background: color-mix(in srgb, #047857 18%, transparent);
-}
-.ai-uc-name .ai-chip {
-  font-size: var(--ai-p2-fs-meta);
-  padding: 0.04rem 0.22rem;
+.ai-uc-name .ai-chip,
+.ai-uc-rec .ai-chip {
   flex: 0 0 auto;
   position: static;
+  padding: 0.03rem 0.22rem;
 }
-.ai-uc-num {
+.ai-uc-num,
+.ai-uc-trend {
   font-size: var(--ai-p2-fs-figure);
   font-weight: var(--ai-p2-fw-figure);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: var(--text);
   white-space: nowrap;
 }
-.ai-uc-value {
-  font-weight: 750;
+.ai-uc-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .ai-uc-trend {
-  font-size: var(--ai-p2-fs-figure);
-  font-weight: var(--ai-p2-fw-label);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
   color: color-mix(in srgb, var(--muted) 40%, var(--text));
-  white-space: nowrap;
 }
 .ai-uc-rec {
   text-align: right;
 }
-.ai-uc-rec .ai-chip {
-  font-size: var(--ai-p2-fs-meta);
-  padding: 0.04rem 0.22rem;
-  flex: 0 0 auto;
-  position: static;
-}
 
-/* Portfolio benchmark (low col 1, under Battle): rank largest, health medium,
-   supporting facts small. Pack the card — no inner scroll. */
-.ai-p2-mgr.ai-p2-card {
-  padding: 0.22rem 0.36rem 0.18rem;
-}
+/* Portfolio benchmark: rank + health, four stats, four bars that share the leftover height. */
 .ai-p2-mgr-body {
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 0.28rem;
-  padding-top: 0.04rem;
-  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  row-gap: var(--p2-gap);
 }
 .ai-p2-mgr-hero {
   display: flex;
@@ -5334,7 +5399,6 @@ html.dark .ai-attn-heat-pop {
   justify-content: space-between;
   gap: 0.35rem;
   min-width: 0;
-  flex-shrink: 0;
 }
 .ai-p2-mgr-rank,
 .ai-p2-mgr-health {
@@ -5343,9 +5407,10 @@ html.dark .ai-attn-heat-pop {
   gap: 0.28rem;
   margin: 0;
   min-width: 0;
-  line-height: 1;
+  line-height: 1.1;
 }
-.ai-p2-mgr-rank b {
+.ai-p2-mgr-rank b,
+.ai-p2-mgr-health b {
   font-size: var(--ai-p2-fs-primary);
   font-weight: var(--ai-p2-fw-primary);
   letter-spacing: -0.03em;
@@ -5355,28 +5420,16 @@ html.dark .ai-attn-heat-pop {
 }
 .ai-p2-mgr-rank span {
   font-size: var(--ai-p2-fs-label);
-  font-weight: 650;
-  white-space: nowrap;
-}
-.ai-p2-mgr-health {
-  flex-shrink: 0;
-}
-.ai-p2-mgr-health b {
-  font-size: var(--ai-p2-fs-primary);
-  font-weight: var(--ai-p2-fw-primary);
-  font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: var(--ai-p2-fw-label);
   white-space: nowrap;
 }
 .ai-p2-mgr-health span {
   font-size: var(--ai-p2-fs-meta);
-  font-weight: 700;
+  font-weight: var(--ai-p2-fw-meta);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
 }
-/* Accent colors match the chip borders and the health meters, so a large
-   rank reads as teal or green instead of two near-black chip texts. */
 .ai-p2-mgr [data-tone="green"] { color: #047857; }
 .ai-p2-mgr [data-tone="teal"] { color: #0f766e; }
 .ai-p2-mgr [data-tone="amber"] { color: #b45309; }
@@ -5386,53 +5439,47 @@ html.dark .ai-p2-mgr [data-tone="teal"] { color: #2dd4bf; }
 html.dark .ai-p2-mgr [data-tone="amber"] { color: #fbbf24; }
 html.dark .ai-p2-mgr [data-tone="red"] { color: #fb7185; }
 .ai-p2-mgr-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.08rem 0.42rem;
-  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.12rem 0.5rem;
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
   line-height: 1.2;
   color: var(--muted);
 }
 .ai-p2-mgr-metrics b {
-  font-weight: 750;
+  font-weight: var(--ai-p2-fw-figure);
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 .ai-p2-mgr-vpu {
   font-variant-numeric: tabular-nums;
-  font-weight: 750;
-  white-space: nowrap;
+  font-weight: var(--ai-p2-fw-figure);
 }
 .ai-p2-mgr-bars {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 0.22rem;
-  flex: 0 0 auto;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  column-gap: 0.5rem;
   min-width: 0;
+  min-height: 0;
 }
 .ai-p2-mgr-bar {
   display: grid;
-  grid-template-columns: 5.55rem minmax(0, 1fr) 2.15rem;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  column-gap: 0.28rem;
+  align-self: stretch;
   min-width: 0;
 }
 .ai-p2-mgr-bar-label {
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
-  line-height: 1.1;
+  line-height: 1.15;
   color: var(--text);
   white-space: nowrap;
 }
-.ai-p2-mgr-bar.is-project .ai-p2-mgr-bar-label {
-  font-weight: 800;
-}
 .ai-p2-mgr-bar-track {
   display: block;
-  height: 6px;
+  height: clamp(6px, 42%, 20px);
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 48%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 35%, transparent);
@@ -5458,16 +5505,18 @@ html.dark .ai-p2-mgr-bar-track > i[data-tone="red"] { background: #fb7185; }
   font-weight: var(--ai-p2-fw-figure);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
+  line-height: 1.15;
   text-align: right;
   white-space: nowrap;
 }
 .ai-p2-mgr-status {
   margin: 0;
-  flex-shrink: 0;
 }
 .ai-p2-mgr-status .ai-chip {
   max-width: 100%;
+  white-space: normal;
 }
+
 .ai-p2-score-meter {
   display: block;
   width: 100%;
@@ -5495,56 +5544,41 @@ html.dark .ai-p2-score-meter-fill.is-amber { background: #fbbf24; }
 html.dark .ai-p2-score-meter-fill.is-red { background: #fb7185; }
 html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
 
-/* QA maturity scorecard. The side-by-side rail (journey+decision | bars) is
-   the wide-card default. Live placement is low col 2 (~1.02fr, Genie ~1.08fr):
-   `.ai-p2-low .ai-p2-qa-*` stacks score and the constraint/action on top, then
-   short ~5.25rem capability meters on equal tracks that use the card height.
-   That stack is what fits this column — the side-by-side rail overlaps the
-   journey and the bars here. Body does not scroll. The action is not line-clamped. */
+/* QA maturity: journey (score · meter · ready/gap), decision (constraints, one action),
+   capabilities (rows share the leftover height). Placement: low col 2. */
+.ai-p2-qa-head-titles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.4rem;
+  min-width: 0;
+}
 .ai-p2-qa-body {
-  --ai-p2-qa-track: 5.25rem;
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  grid-template-areas:
-    "journey bars"
-    "decision bars";
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: stretch;
-  align-items: stretch;
-  column-gap: 0.5rem;
-  row-gap: 0.12rem;
-  overflow: hidden;
-  padding-top: 0.02rem;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  row-gap: var(--p2-gap);
 }
 .ai-p2-qa-journey {
-  grid-area: journey;
-  order: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.08rem;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  column-gap: 0.5rem;
+  row-gap: 0.14rem;
+  align-items: center;
   min-width: 0;
-  padding-top: 0;
-}
-.ai-p2-qa-journey-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.35rem;
-  min-width: 0;
+  padding: 0 0.1rem;
 }
 .ai-p2-qa-score {
   font-size: var(--ai-p2-fs-primary);
   font-weight: var(--ai-p2-fw-primary);
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, Consolas, monospace;
+  line-height: 1.1;
   color: var(--text);
   white-space: nowrap;
-  line-height: 1.05;
 }
 .ai-p2-qa-score span {
-  font-size: var(--ai-p2-fs-primary);
   font-weight: 650;
   color: var(--muted);
   margin-left: 0.16rem;
@@ -5552,24 +5586,22 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
 .ai-p2-qa-meta {
   font-size: var(--ai-p2-fs-meta);
   font-weight: var(--ai-p2-fw-meta);
+  line-height: 1.15;
   color: var(--muted);
   text-align: right;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .ai-p2-score-meter.ai-p2-qa-meter {
   position: relative;
   overflow: visible;
-  height: 4px;
+  height: 5px;
   background: color-mix(in srgb, var(--border) 42%, transparent);
 }
 .ai-p2-qa-tick {
   position: absolute;
   top: -2px;
   width: 1.5px;
-  height: 8px;
+  height: 9px;
   margin-left: -0.75px;
   border-radius: 1px;
   background: color-mix(in srgb, var(--text) 78%, transparent);
@@ -5577,105 +5609,118 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
 }
 .ai-p2-qa-scale {
   position: relative;
-  display: flex;
-  justify-content: space-between;
-  min-height: 0;
+  grid-column: 2;
+  height: 11px;
   font-size: var(--ai-p2-fs-meta);
   font-weight: var(--ai-p2-fw-meta);
+  line-height: 11px;
   color: var(--muted);
-  line-height: 1;
 }
+.ai-p2-qa-scale > span:first-child { position: absolute; left: 0; }
+.ai-p2-qa-scale > span:last-child { position: absolute; right: 0; }
 .ai-p2-qa-scale-target {
   position: absolute;
-  top: 0;
   transform: translateX(-50%);
   font-weight: 750;
   color: color-mix(in srgb, var(--text) 70%, var(--muted));
   white-space: nowrap;
 }
-.ai-p2-qa-bars {
-  grid-area: bars;
-  order: 3;
-  width: max-content;
-  max-width: 100%;
-  min-width: 0;
-  min-height: 0;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  gap: 0.04rem;
-  overflow: hidden;
-  padding: 0.06rem 0.28rem 0.06rem 0.32rem;
-  border-radius: 0.35rem;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
+.ai-p2-qa-decision {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 0.5rem;
+  row-gap: 0.26rem;
+  align-items: center;
+  padding: 0.26rem 0.4rem;
 }
-.ai-p2-qa-bars-label {
-  flex-shrink: 0;
-  padding: 0 0.02rem;
-  font-size: var(--ai-p2-fs-meta);
-  font-weight: var(--ai-p2-fw-meta);
-  line-height: 1.1;
-  white-space: nowrap;
+.ai-p2-qa-block,
+.ai-p2-qa-rec {
+  display: contents;
+}
+.ai-p2-qa-rec .ai-p2-eyebrow {
+  align-self: start;
+}
+.ai-p2-qa-constraints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.ai-p2-qa-constraints .ai-chip {
+  padding: 0.03rem 0.24rem;
+  white-space: normal;
+}
+.ai-p2-qa-rec-text {
+  margin: 0;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
+  line-height: 1.2;
+  color: var(--text);
+}
+.ai-p2-qa-bars {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: 0.2rem;
+  padding: 0.24rem 0.4rem 0.26rem;
 }
 .ai-p2-qa-bars-list {
-  flex: 1 1 auto;
+  grid-template-columns: max-content minmax(3rem, 1fr) 1.5rem;
+  grid-auto-rows: minmax(var(--p2-row-dense), 1fr);
+  column-gap: 0.5rem;
   min-height: 0;
-  display: grid;
-  grid-template-columns: max-content var(--ai-p2-qa-track) max-content;
-  column-gap: 0.42rem;
-  /* space-between: extra height goes between axes. space-evenly left a
-     trailing band under Coverage the same size as the row gap. */
-  align-content: space-between;
-  align-items: center;
-  justify-content: start;
 }
 .ai-p2-qa-bar {
+  position: relative;
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
   align-items: center;
+  align-self: stretch;
   min-width: 0;
-  min-height: 0;
-  padding: 0.02rem 0;
+}
+.ai-p2-qa-bar > * {
+  position: relative;
+  z-index: 1;
+}
+.ai-p2-qa-bar.is-blocker::before {
+  content: '';
+  position: absolute;
+  inset: 1px -0.25rem;
   border-radius: 0.22rem;
-}
-.ai-p2-qa-bar.is-blocker {
   background: color-mix(in srgb, #be123c 10%, transparent);
+  z-index: 0;
 }
-html.dark .ai-p2-qa-bar.is-blocker {
+html.dark .ai-p2-qa-bar.is-blocker::before {
   background: color-mix(in srgb, #fb7185 12%, transparent);
 }
 .ai-p2-qa-bar-label {
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
+  line-height: 1.15;
   color: var(--text);
-  line-height: 1.2;
-  min-width: 0;
-  justify-self: start;
   white-space: nowrap;
 }
 .ai-p2-qa-bar-track {
-  display: block;
-  width: var(--ai-p2-qa-track);
-  max-width: var(--ai-p2-qa-track);
-  justify-self: stretch;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
   min-width: 0;
 }
+.ai-p2-score-meter.ai-p2-qa-meter.ai-p2-qa-bar-meter,
 .ai-p2-qa-bar .ai-p2-qa-meter {
-  width: 100%;
-  max-width: 100%;
-  height: 3.5px;
+  height: clamp(4px, 30%, 9px);
 }
 .ai-p2-qa-bar .ai-p2-qa-tick {
   top: -2px;
-  height: 7px;
+  bottom: -2px;
+  height: auto;
 }
 .ai-p2-qa-bar-val {
   font-size: var(--ai-p2-fs-figure);
   font-weight: var(--ai-p2-fw-figure);
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, Consolas, monospace;
+  line-height: 1.15;
   text-align: right;
   color: #64748b;
 }
@@ -5685,306 +5730,117 @@ html.dark .ai-p2-qa-bar.is-blocker {
 html.dark .ai-p2-qa-bar-val[data-band="green"] { color: #34d399; }
 html.dark .ai-p2-qa-bar-val[data-band="amber"] { color: #fbbf24; }
 html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
-.ai-p2-qa-decision {
-  grid-area: decision;
-  order: 2;
-  display: flex;
-  flex-direction: column;
-  /* Pin Biggest constraint to the top of this pane and the action chips
-     to its bottom padding. space-evenly left a hollow under the chips. */
-  justify-content: space-between;
-  gap: 0.1rem;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  z-index: 1;
-  padding: 0.16rem 0.32rem 0.16rem;
-  border-radius: 0.4rem;
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  background: color-mix(in srgb, var(--panel) 88%, var(--panel-alt));
+
+/* AI adoption funnel: label | bar | count | drop % on one subgrid, rows share the height.
+   Counts and drop % are row figures (same role and size as the use-case figures). */
+.ai-p2-adopt {
+  flex: 1 1 auto;
+  grid-template-columns: max-content minmax(0, 1fr) max-content max-content;
+  column-gap: 0.5rem;
+  padding: 0.12rem 0.5rem;
 }
-.ai-p2-qa-block,
-.ai-p2-qa-rec {
+.ai-p2-adopt-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  align-self: stretch;
   min-width: 0;
 }
-.ai-p2-qa-head-titles {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 0.35rem;
-  min-width: 0;
+.ai-p2-adopt-row.is-people {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--border) 65%, transparent);
 }
-.ai-p2-qa-head-titles .ai-p2-card-title {
-  flex: 0 0 auto;
-}
-.ai-p2-qa-head-titles .ai-p2-card-sub {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ai-p2-qa-block-line {
-  margin: 0.02rem 0 0;
+.ai-p2-adopt-label {
   font-size: var(--ai-p2-fs-label);
-  font-weight: 700;
-  line-height: 1.25;
+  font-weight: var(--ai-p2-fw-label);
+  line-height: 1.15;
   color: var(--text);
+  white-space: nowrap;
 }
-.ai-p2-qa-block-impact,
-.ai-p2-qa-rec-text {
-  margin: 0.02rem 0 0;
+.ai-p2-adopt-people {
   font-size: var(--ai-p2-fs-meta);
   font-weight: var(--ai-p2-fw-meta);
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--muted);
+  white-space: nowrap;
 }
-.ai-p2-qa-rec-text {
-  font-size: var(--ai-p2-fs-label);
-  font-weight: var(--ai-p2-fw-label);
+.ai-p2-adopt-track {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 56%;
+  min-height: 7px;
+  max-height: 30px;
+}
+.ai-p2-adopt-bar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: #0284c7;
+}
+.ai-p2-adopt-count,
+.ai-p2-adopt-drop {
+  font-size: var(--ai-p2-fs-figure);
+  font-weight: var(--ai-p2-fw-figure);
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  line-height: 1.15;
+  text-align: right;
+  white-space: nowrap;
+}
+.ai-p2-adopt-count {
   color: var(--text);
 }
-.ai-p2-qa-rec-meta {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.12rem;
-  margin-top: 0.04rem;
-  min-width: 0;
-}
-.ai-p2-qa-rec-chip {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  padding: 0.04rem 0.24rem;
-  border-radius: 0.3rem;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  background: color-mix(in srgb, var(--panel-alt) 70%, transparent);
-  font-size: var(--ai-p2-fs-meta);
-  font-weight: 650;
-  line-height: 1.15;
+.ai-p2-adopt-drop {
+  min-width: 2.2ch;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-/* Release in mid col 3. Battle sets the auto row. height:0 + min-height:100%
-   keeps the journey from inflating mid; the card stretches to that row.
-   Callouts, chart, and chips stay inside (no body scroll). */
-.ai-p2-mid > .ai-p2-rel {
-  height: 0;
-  min-height: 100%;
-  align-self: stretch;
-  overflow: hidden;
+.ai-p2-adopt-row.is-leak .ai-p2-adopt-bar {
+  background: #be123c;
 }
-.ai-p2-mid .ai-p2-rel-body {
-  gap: 0.08rem;
+.ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
+  color: #be123c;
 }
-.ai-p2-mid .ai-p2-rel-chart {
-  /* Yield to callouts, the insight line, and chips. The plot uses what remains. */
-  min-height: 0;
+html.dark .ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
+  color: #fb7185;
 }
-.ai-p2-mid .ai-p2-rel-meta {
-  max-width: 10rem;
-}
-/* QA in low col 2 (~1.02fr, Genie ~1.08fr), under Use case effectiveness.
-   Stack: level + score vs target, then the constraint and the full action,
-   then every capability. The body is a column locked to the card. Journey
-   and the decision stay content-sized; the six rows share whatever height
-   is left as minmax(0, 1fr). A min-content floor made that list taller than
-   the card, and overflow:hidden then cut QA Coverage and Coverage. Gap and
-   padding stay tight so a short low row still holds all six names. Meters
-   stay ~5.25rem wide. The action wraps in full — it is not line-clamped.
-   Labels stay at the use-case label size. */
-.ai-p2-low .ai-p2-qa {
-  padding-top: 0.08rem;
-  padding-bottom: 0.06rem;
-}
-.ai-p2-low .ai-p2-qa .ai-p2-card-head {
-  padding-bottom: 0;
-  margin-bottom: 0.04rem;
-  gap: 0.28rem;
-}
-.ai-p2-low .ai-p2-qa-body {
-  --ai-p2-qa-track: 5.25rem;
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 0%;
-  min-height: 0;
-  gap: 0.06rem;
-  overflow: hidden;
-  padding-top: 0;
-}
-.ai-p2-low .ai-p2-qa-head-titles {
-  flex-wrap: wrap;
-  row-gap: 0;
-}
-.ai-p2-low .ai-p2-qa-head-titles .ai-p2-card-sub {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  line-height: 1.15;
-}
-.ai-p2-low .ai-p2-qa-journey {
+.ai-p2-adopt-insight {
   flex: 0 0 auto;
-  gap: 0.02rem;
-}
-.ai-p2-low .ai-p2-qa-score {
-  font-size: var(--ai-p2-fs-primary);
-  line-height: 1;
-}
-.ai-p2-low .ai-p2-qa-scale {
-  min-height: 0;
-  line-height: 1.05;
-}
-.ai-p2-low .ai-p2-qa-journey .ai-p2-qa-meter {
-  height: 3px;
-}
-.ai-p2-low .ai-p2-qa-bars {
-  flex: 1 1 0%;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  min-height: 0;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 0.02rem;
-  padding: 0.02rem 0.2rem 0.02rem;
-  overflow: hidden;
-}
-.ai-p2-low .ai-p2-qa-bars-label {
-  font-size: var(--ai-p2-fs-meta);
-  line-height: 1.05;
-}
-.ai-p2-low .ai-p2-qa-bars-list {
-  flex: 1 1 0%;
-  min-height: 0;
-  height: auto;
-  /* max-content, not minmax(0, max-content): a 0 minimum collapses the name.
-     Row tracks are minmax(0, 1fr) so they share the card and can shrink.
-     min-content here pushed the last two names outside overflow:hidden. */
-  grid-template-columns: max-content var(--ai-p2-qa-track) max-content;
-  column-gap: 0.35rem;
-  row-gap: 0;
-  grid-auto-rows: minmax(0, 1fr);
-  align-content: stretch;
-  align-items: center;
-  justify-content: start;
-  overflow: hidden;
-}
-.ai-p2-low .ai-p2-qa-bar {
-  min-height: 0;
-  padding: 0;
-  overflow: hidden;
-}
-.ai-p2-low .ai-p2-qa-bar-label {
-  font-size: var(--ai-p2-fs-label);
-  font-weight: var(--ai-p2-fw-label);
-  line-height: 1.05;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
-  max-width: none;
-}
-.ai-p2-low .ai-p2-qa-bar-val {
-  line-height: 1.05;
-}
-.ai-p2-low .ai-p2-qa-bar .ai-p2-qa-meter {
-  height: 3.5px;
-}
-.ai-p2-low .ai-p2-qa-decision {
-  flex: 0 0 auto;
-  align-self: stretch;
-  height: auto;
-  justify-content: flex-start;
-  padding: 0.04rem 0.2rem;
-  gap: 0.02rem;
-  overflow: hidden;
-}
-.ai-p2-low .ai-p2-qa-decision .ai-p2-eyebrow {
-  font-size: var(--ai-p2-fs-meta);
-  line-height: 1.05;
-}
-.ai-p2-low .ai-p2-qa-constraints {
-  margin-top: 0;
-  gap: 0.06rem;
-}
-.ai-p2-low .ai-p2-qa-constraints .ai-chip {
-  padding: 0.02rem 0.22rem;
-  font-size: var(--ai-p2-fs-meta);
-  line-height: 1.1;
-}
-.ai-p2-low .ai-p2-qa-rec-text {
-  display: block;
-  overflow: visible;
-  white-space: normal;
-  -webkit-line-clamp: unset;
-  line-clamp: unset;
   margin: 0;
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
-  line-height: 1.15;
+  line-height: 1.2;
+  color: var(--text);
 }
-.ai-p2-low .ai-p2-qa-meta {
+
+/* Executive insight: one line per bullet at laptop widths, each sized to its text; wraps
+   instead of truncating when the pane is narrower. */
+.ai-p2-insight {
+  min-height: 0;
+  max-height: none;
+  padding: 0.18rem 0.4rem !important;
   overflow: visible;
-  text-overflow: clip;
-  font-size: var(--ai-p2-fs-meta);
 }
-/* Density only. Do not put the journey and the bars back beside each other
-   in this column — `.ai-p2-low .ai-p2-qa-body` owns the stack. A max-content
-   bars column with a minmax floor overflowed the card and clipped scores. */
-@container (max-width: 1180px) {
-  .ai-p2-qa-body {
-    row-gap: 0.1rem;
-  }
-  .ai-p2-qa-bars {
-    min-height: 0;
-    overflow: hidden;
-    padding: 0.03rem 0.2rem 0.03rem 0.22rem;
-    gap: 0.01rem;
-  }
-  .ai-p2-qa-score {
-    font-size: var(--ai-p2-fs-primary);
-  }
-  .ai-p2-qa-bars-label {
-    font-size: var(--ai-p2-fs-meta);
-  }
-  .ai-p2-qa-bars-list {
-    column-gap: 0.32rem;
-  }
-  .ai-p2-qa-bar {
-    grid-template-columns: subgrid;
-    padding: 0.01rem 0;
-  }
-  .ai-p2-qa-bar-label {
-    font-size: var(--ai-p2-fs-label);
-    font-weight: var(--ai-p2-fw-label);
-    line-height: 1.12;
-    white-space: nowrap;
-  }
-  .ai-p2-qa-bar .ai-p2-qa-meter {
-    height: 3.5px;
-  }
-  .ai-p2-qa-decision {
-    padding: 0.06rem 0.14rem 0.05rem;
-    gap: 0.03rem;
-  }
-  .ai-p2-qa-rec-meta {
-    gap: 0.08rem;
-    margin-top: 0.03rem;
-  }
-  .ai-p2-qa-rec-chip {
-    padding: 0.01rem 0.14rem;
-    font-size: var(--ai-p2-fs-meta);
-  }
-  .ai-p2-qa-scale {
-    min-height: 0;
-  }
-  .ai-p2-qa-meta {
-    font-size: var(--ai-p2-fs-meta);
-  }
+.ai-p2-insight .ai-narr-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.16rem 0.3rem;
+  padding: 0;
+  overflow: visible;
 }
+.ai-p2-insight .ai-narr-list li {
+  display: block;
+  flex: 1 1 auto;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
+  line-height: 1.2;
+  padding: 0.05rem 0.28rem 0.05rem 0.38rem;
+  border-left-color: color-mix(in srgb, var(--border) 35%, #047857);
+}
+
 .ai-p2-rel-label {
   fill: color-mix(in srgb, var(--text) 78%, var(--muted));
 }
@@ -6012,7 +5868,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   line-height: 1.2;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-  max-width: 6.5rem;
+  overflow-wrap: anywhere;
 }
 .ai-p2-rel-deltas {
   display: inline-flex;
@@ -6030,27 +5886,24 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 /* Release intelligence — narrow mid col 3. Roles once (merged Best·Now), chart = trend, chips = picker.
    Callout and chip labels still wrap instead of clipping. Chart fills leftover Battle height. */
 .ai-p2-rel-body {
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.06rem;
-  overflow: hidden;
-  padding-top: 0;
+  display: grid;
+  grid-template-rows: auto minmax(2.6rem, 1fr) auto auto;
+  row-gap: var(--p2-gap);
 }
 .ai-p2-rel-callouts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.12rem;
-  flex-shrink: 0;
+  gap: 0.25rem;
 }
 .ai-p2-rel-callout {
   display: flex;
   flex-direction: column;
-  gap: 0.01rem;
+  gap: 0.06rem;
   min-width: 0;
   text-align: left;
-  padding: 0.04rem 0.1rem 0.04rem;
+  padding: 0.14rem 0.3rem 0.16rem;
   border-radius: 0.35rem;
   border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
   background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
@@ -6098,7 +5951,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 }
 .ai-p2-rel-callout-name {
   font-size: var(--ai-p2-fs-label);
-  font-weight: 650;
+  font-weight: var(--ai-p2-fw-label);
   letter-spacing: -0.01em;
   line-height: 1.15;
   white-space: normal;
@@ -6114,9 +5967,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow-wrap: break-word;
 }
 .ai-p2-rel-chart {
-  /* Fill leftover card height. The plot is clipped to this box so it cannot
-     paint over the insight line or the release chips. */
-  flex: 1 1 0%;
+  /* The plot takes whatever height the callouts, insight and chips leave. It is
+     clipped to this box so it cannot paint over them. */
   min-height: 0;
   margin: 0;
   position: relative;
@@ -6129,33 +5981,25 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   height: 100% !important;
 }
 .ai-p2-rel-insight {
-  flex-shrink: 0;
   margin: 0;
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
   line-height: 1.2;
   color: var(--muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 .ai-p2-rel-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.1rem;
-  padding-top: 0.04rem;
+  gap: 0.18rem;
+  padding-top: var(--p2-gap);
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  flex-shrink: 0;
-  overflow: hidden;
 }
 .ai-p2-rel-chips .ai-chip {
-  font-size: var(--ai-p2-fs-meta);
-  padding: 0.03rem 0.2rem;
+  padding: 0.03rem 0.24rem;
   line-height: 1.15;
 }
 .ai-p2-rel-chips .ai-chip.is-current {
-  font-weight: 800;
+  font-weight: 700;
 }
 .ai-p2-rel-chips .ai-chip.is-best:not(.is-current) {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, #047857 40%, transparent);
@@ -6384,306 +6228,6 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     min-height: 4.25rem;
     max-height: 5.75rem;
   }
-  .ai-battle-key {
-    white-space: normal;
-    text-overflow: unset;
-    line-height: 1.15;
-  }
-  .ai-battle-compare {
-    gap: 0.02rem;
-    padding: 0.02rem 0.04rem 0;
-  }
-  .ai-battle-row {
-    font-size: var(--ai-p2-fs-label);
-    line-height: 1.1;
-    padding: 0;
-  }
-  .ai-uc-strip {
-    /* Drop the Trend track under Genie. Name stays max-content (full label +
-       tag, no ellipsis). Remaining metrics share leftover width and compress
-       to their figures / Rec chip before a name clips — no center hole. */
-    grid-template-columns:
-      0.9rem
-      max-content
-      minmax(min-content, 1fr)
-      minmax(min-content, 1fr)
-      minmax(min-content, 1fr)
-      minmax(min-content, 1fr);
-    column-gap: 0.42rem;
-    row-gap: 0.02rem;
-    padding: 0.02rem 0.32rem 0.02rem 0.1rem;
-  }
-  .ai-uc-row {
-    font-size: var(--ai-p2-fs-label);
-    line-height: 1.1;
-    padding: 0;
-  }
-  .ai-uc-axis-trend,
-  .ai-uc-trend {
-    display: none;
-  }
-}
-/* Dev | metric | QA — aligned compare; full metric list always visible (no More/Less).
-   Tight gap, padding, and line-height so the content-sized mid row stays short
-   and the low row (QA) receives that height. No inner scroll.
-   flex: none — strip hugs rows (no empty stretch); mid row tracks this content. */
-.ai-battle-compare {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 auto;
-  gap: 0.02rem;
-  min-height: 0;
-  overflow: hidden;
-  padding: 0.02rem 0.04rem 0;
-  border-radius: 0.4rem;
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
-}
-.ai-battle-axis,
-.ai-battle-row {
-  display: grid;
-  /* 3.25rem floor keeps `1,342.2 h` (~52px) fully visible. */
-  grid-template-columns: minmax(3.25rem, 0.9fr) minmax(0, 1.55fr) minmax(3.25rem, 0.9fr);
-  align-items: baseline;
-  gap: 0.14rem;
-  min-width: 0;
-}
-.ai-battle-axis {
-  font-size: var(--ai-p2-fs-meta);
-  font-weight: 750;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding-bottom: 0.02rem;
-  margin-bottom: 0;
-  line-height: 1.1;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-}
-.ai-battle-axis-dev {
-  text-align: right;
-}
-.ai-battle-axis-qa {
-  text-align: left;
-}
-.ai-battle-row {
-  font-size: var(--ai-p2-fs-label);
-  line-height: 1.1;
-  padding: 0;
-}
-.ai-battle-key {
-  font-size: var(--ai-p2-fs-label);
-  font-weight: var(--ai-p2-fw-label);
-  color: var(--muted);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-}
-.ai-battle-val {
-  font-size: var(--ai-p2-fs-figure);
-  font-weight: var(--ai-p2-fw-figure);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ai-battle-val.is-dev {
-  text-align: right;
-}
-.ai-battle-val.is-qa {
-  text-align: left;
-}
-.ai-battle-foot {
-  display: flex;
-  flex-direction: column;
-  gap: 0.02rem;
-  margin-top: 0.02rem;
-  flex-shrink: 0;
-  min-width: 0;
-}
-.ai-battle-split {
-  display: grid;
-  grid-template-columns: auto minmax(2.2rem, 1fr) auto;
-  align-items: center;
-  gap: 0.22rem;
-  min-width: 0;
-}
-.ai-battle-split-val {
-  font-size: var(--ai-p2-fs-meta);
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, Consolas, monospace;
-  color: var(--text);
-  white-space: nowrap;
-}
-.ai-battle-split-bar {
-  display: block;
-  height: 5px;
-  border-radius: 99px;
-  background: color-mix(in srgb, #0284c7 28%, var(--border));
-  overflow: hidden;
-}
-.ai-battle-split-bar > i {
-  display: block;
-  height: 100%;
-  background: #047857;
-}
-.ai-battle-rec {
-  margin: 0;
-  font-size: var(--ai-p2-fs-label);
-  font-weight: 650;
-  line-height: 1.15;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* AI adoption funnel — CSS bars in the old value-realization card. No new chart library. */
-.ai-p2-adopt-card {
-  gap: 0.1rem;
-}
-.ai-p2-adopt {
-  flex: 1 1 0%;
-  min-height: 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  gap: 0.2rem;
-  overflow: hidden;
-}
-.ai-p2-adopt-row {
-  flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: 6.15rem minmax(0, 1fr) 2.35rem 2.55rem;
-  align-items: center;
-  gap: 0.28rem;
-  min-width: 0;
-  min-height: 0;
-}
-.ai-p2-adopt-row.is-people {
-  flex: 0 0 auto;
-}
-.ai-p2-adopt-label {
-  font-size: var(--ai-p2-fs-label);
-  font-weight: var(--ai-p2-fw-label);
-  line-height: 1.15;
-  color: var(--text);
-  white-space: nowrap;
-}
-.ai-p2-adopt-people {
-  font-size: var(--ai-p2-fs-meta);
-  font-weight: var(--ai-p2-fw-meta);
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.ai-p2-adopt-track {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 1.15rem;
-  min-height: 0;
-  max-height: 1.15rem;
-  min-width: 0;
-}
-.ai-p2-adopt-bar {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-  background: #0284c7;
-  clip-path: polygon(0 10%, 100% 22%, 100% 78%, 0 90%);
-}
-.ai-p2-adopt-count {
-  font-size: var(--ai-p2-fs-primary);
-  font-weight: var(--ai-p2-fw-primary);
-  font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--text);
-  text-align: right;
-  white-space: nowrap;
-}
-.ai-p2-adopt-drop {
-  font-size: var(--ai-p2-fs-meta);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--muted);
-  text-align: right;
-  white-space: nowrap;
-}
-.ai-p2-adopt-row.is-leak .ai-p2-adopt-bar {
-  background: #be123c;
-}
-.ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
-  color: #be123c;
-  font-weight: 800;
-}
-.ai-p2-adopt-insight {
-  margin: 0;
-  flex-shrink: 0;
-  font-size: var(--ai-p2-fs-label);
-  font-weight: var(--ai-p2-fw-label);
-  line-height: 1.2;
-  color: var(--text);
-  white-space: nowrap;
-}
-.ai-p2-donut-row {
-  display: flex;
-  align-items: center;
-  gap: 0.28rem;
-  min-width: 0;
-  min-height: 28px;
-}
-.ai-p2-donut-share {
-  font-size: 10px;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  white-space: nowrap;
-}
-.ai-p2-donut-basis,
-.ai-p2-donut-na {
-  font-size: 10px;
-  font-weight: 650;
-  color: var(--muted);
-}
-.ai-p2-donut-basis {
-  text-transform: lowercase;
-}
-.ai-p2-qa-constraints {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.12rem;
-  margin-top: 0.04rem;
-}
-.ai-p2-qa-constraints .ai-chip {
-  font-size: var(--ai-p2-fs-meta);
-  padding: 0.04rem 0.22rem;
-}
-.ai-p2-insight {
-  min-height: 0;
-  max-height: 1.85rem;
-  padding: 0.16rem 0.4rem !important;
-  overflow: hidden;
-}
-.ai-p2-insight .ai-narr-list {
-  padding: 0;
-  gap: 0.28rem;
-  align-items: center;
-}
-.ai-p2-insight .ai-narr-list li {
-  -webkit-line-clamp: 1;
-  font-size: var(--ai-p2-fs-label);
-  line-height: 1.2;
-  padding: 0.04rem 0.28rem 0.04rem 0.38rem;
-  border-left-color: color-mix(in srgb, var(--border) 35%, #047857);
 }
 /* Legacy unmarked segments (non–Page-2); labeled stepper uses .ai-maturity-step. */
 .ai-p2 .ai-maturity:not(.ai-maturity-labeled) > span:not(:last-child) {
@@ -6718,8 +6262,6 @@ html.dark .ai-rec-engine li {
 .ai-league-focus td {
   background: color-mix(in srgb, #0284c7 10%, transparent);
 }
-.ai-p2-mid > *,
-.ai-p2-low > *,
 .ai-p3-mid > *,
 .ai-p3-low > * {
   min-height: 0;
@@ -6727,10 +6269,15 @@ html.dark .ai-rec-engine li {
   overflow: hidden;
   height: 100%;
 }
-/* Mid cards: stretch to the Battle row (not a tall fr track).
-   height:auto lets Battle define the row. Release overrides height so it
-   stretches to that row without inflating it (see .ai-p2-mid > .ai-p2-rel). */
+.ai-p2-low > * {
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+}
+/* Mid cards stretch to the tallest card in the row (Battle, UC or Release, whichever
+   needs the most height). Low cards share what is left. */
 .ai-p2-mid > * {
+  min-width: 0;
   height: auto;
   align-self: stretch;
 }
@@ -6775,18 +6322,6 @@ html.dark .ai-rec-engine li {
     display: none;
   }
 }
-/* Below a 1440 laptop pane the same type scale stays. Do not drop the release
-   insight or the QA scale — those lines have to remain inside the card. */
-@container (max-width: 1366px) {
-  .ai-p2-qa-rec-text {
-    display: block;
-    overflow: visible;
-    white-space: normal;
-  }
-  .ai-p2-rel-chart {
-    min-height: 0;
-  }
-}
 
 /* Genie-docked Page 2 (~1180px content, also the 1100 laptop case):
    true 3-col mid and low. No 12.75rem floor — that forced a page scroll
@@ -6799,11 +6334,8 @@ html.dark .ai-rec-engine li {
     --ai-p2-col-1: minmax(0, 0.88fr);
     --ai-p2-col-2: minmax(0, 1.08fr);
     --ai-p2-col-3: minmax(0, 0.94fr);
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(min-content, 0.9fr) minmax(0, 1.1fr) auto;
     gap: 0.28rem;
-  }
-  .ai-p2-qa-rec-meta {
-    display: none;
   }
   .ai-p2-mid {
     grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
@@ -6815,23 +6347,27 @@ html.dark .ai-rec-engine li {
   .ai-p2-low.ai-p2-low-3 {
     grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
   }
-  .ai-p2-mgr.ai-p2-card {
-    padding: 0.16rem 0.28rem 0.12rem;
+  .ai-uc-strip {
+    /* Drop the Trend track under Genie so Rec stays inside the card. */
+    grid-template-columns:
+      0.9rem
+      max-content
+      minmax(min-content, 1fr)
+      minmax(min-content, 1fr)
+      minmax(min-content, 1fr)
+      minmax(min-content, 1fr);
+    column-gap: 0.3rem;
   }
-  .ai-p2-mgr-body {
-    gap: 0.14rem;
-    padding-top: 0;
-    overflow: hidden;
+  .ai-uc-axis-trend,
+  .ai-uc-trend {
+    display: none;
   }
-  .ai-p2-mgr-rank b,
-  .ai-p2-mgr-health b {
-    font-size: var(--ai-p2-fs-primary);
-  }
-  .ai-p2-mgr-bars {
-    gap: 0.12rem;
-  }
-  .ai-p2-mgr-bar-track {
-    height: 5px;
+  .ai-p2-qa-bars-list,
+  .ai-p2-mgr-bars,
+  .ai-p2-adopt,
+  .ai-p2-qa-journey,
+  .ai-p2-qa-decision {
+    column-gap: 0.36rem;
   }
   .ai-p3-mid,
   .ai-p3-low {
@@ -6840,31 +6376,6 @@ html.dark .ai-rec-engine li {
   .ai-p3-kpis {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     max-height: none;
-  }
-  .ai-p2-rel-chart {
-    min-height: 0;
-  }
-  .ai-p2-rel-chips {
-    overflow: hidden;
-  }
-  .ai-p2-rel-chips .ai-chip {
-    font-size: var(--ai-p2-fs-meta);
-    padding: 0.03rem 0.16rem;
-  }
-  .ai-p2-rel-callout {
-    padding: 0.06rem 0.1rem 0.06rem;
-  }
-  .ai-p2-rel-callout-name {
-    font-size: var(--ai-p2-fs-label);
-  }
-  .ai-p2-rel-callout-meta {
-    font-size: var(--ai-p2-fs-meta);
-  }
-  .ai-p2-rel-meta {
-    max-width: 4.5rem;
-  }
-  .ai-p2-rel-body {
-    gap: 0.06rem;
   }
 }
 @container (max-width: 720px) {

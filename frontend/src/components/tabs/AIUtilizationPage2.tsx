@@ -444,15 +444,15 @@ function ContributionDonut({ contribution }: { contribution: ContributionShare |
       data-ai-p2-donut
       title={`Dev ${fmt(contribution.devPct, 0)}% · QA ${fmt(contribution.qaPct, 0)}% of ${contribution.basis}`}
     >
-      <PieChart width={28} height={28}>
+      <PieChart width={20} height={20}>
         <Pie
           data={slices}
           dataKey="value"
           nameKey="name"
-          cx={14}
-          cy={14}
-          innerRadius={7}
-          outerRadius={13}
+          cx={10}
+          cy={10}
+          innerRadius={5}
+          outerRadius={9.5}
           stroke="none"
           isAnimationActive={false}
         >
@@ -1042,12 +1042,12 @@ export function AIUtilizationPage2({
     }
     const valued = effectiveness.filter((row) => (row.value || 0) > 0);
     if (valued[0]) {
-      const lead = `${valued[0].label} (${money(valued[0].value)})`;
+      const lead = `${valued[0].label} ${money(valued[0].value)}`;
       lines.push({
         role: 'Value',
         text: valued[1]
-          ? `Value concentrates in ${lead} and ${valued[1].label} (${money(valued[1].value)}).`
-          : `Value concentrates in ${lead}.`,
+          ? `Top value: ${lead}, ${valued[1].label} ${money(valued[1].value)}.`
+          : `Top value: ${lead}.`,
       });
     }
     if (weakestAxis) {
@@ -1073,6 +1073,11 @@ export function AIUtilizationPage2({
     return Math.ceil(n / fit);
   })();
   const showPointLabels = relChartW >= 560;
+  /* Adoption axis stops just above the tallest point so the plot uses the card height. */
+  const relAdoptCeil = (() => {
+    const peak = Math.max(0, ...timeline.map((row) => row.health ?? 0));
+    return Math.min(100, Math.max(20, Math.ceil((peak * 1.15) / 10) * 10));
+  })();
 
   const conclusionBand =
     battle.conclusion === 'DEV LEADING' ? 'amber' : battle.conclusion === 'QA LEADING' ? 'green' : battle.conclusion === 'QA GAP' ? 'red' : 'neutral';
@@ -1152,7 +1157,7 @@ export function AIUtilizationPage2({
       </section>
 
       <div className="ai-p2-mid">
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col">
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">Dev vs QA battle</span>
             <span className={`ai-chip shrink-0 ${BAND[conclusionBand]}`} title="Battle outcome">{battle.conclusion}</span>
@@ -1179,7 +1184,7 @@ export function AIUtilizationPage2({
           </div>
         </section>
 
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col">
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">Use case effectiveness</span>
           </div>
@@ -1225,12 +1230,12 @@ export function AIUtilizationPage2({
           </div>
         </section>
 
-        <section className="glass-panel rounded-xl ai-p2-card ai-p2-rel min-h-0 min-w-0 overflow-hidden flex flex-col" data-rel-panel>
+        <section className="glass-panel rounded-xl ai-p2-card ai-p2-rel min-h-0 min-w-0" data-rel-panel>
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">Release journey</span>
             <div className="ai-p2-rel-head-meta min-w-0">
               <span
-                className="ai-p2-rel-meta truncate"
+                className="ai-p2-rel-meta"
                 title={`${project} · ${timeline.length} release${timeline.length === 1 ? '' : 's'} · sequence order`}
               >
                 {project} · {timeline.length}
@@ -1295,7 +1300,7 @@ export function AIUtilizationPage2({
                       tick={(props) => {
                         const index = Number(props.index ?? 0);
                         const last = timeline.length - 1;
-                        const show = index === 0 || index === last || index % relStep === 0;
+                        const show = index === 0 || index === last || (index % relStep === 0 && last - index >= relStep);
                         if (!show) return <g />;
                         const anchor = index === 0 ? 'start' : index === last ? 'end' : 'middle';
                         return (
@@ -1312,8 +1317,9 @@ export function AIUtilizationPage2({
                         );
                       }}
                     />
-                    <YAxis yAxisId="left" hide domain={[0, 100]} />
-                    <YAxis yAxisId="right" orientation="right" hide />
+                    <YAxis yAxisId="left" hide domain={[0, relAdoptCeil]} />
+                    <YAxis yAxisId="hours" hide domain={[0, 'dataMax']} />
+                    <YAxis yAxisId="value" hide domain={[0, 'dataMax']} />
                     <Tooltip />
                     {currentRelease?.release && (
                       <ReferenceLine
@@ -1324,7 +1330,7 @@ export function AIUtilizationPage2({
                         strokeDasharray="3 3"
                       />
                     )}
-                    <Area yAxisId="right" type="monotone" dataKey="hours_saved" fill="#0d948828" stroke="#0d9488" strokeWidth={1.25} name="Hours" />
+                    <Area yAxisId="hours" type="monotone" dataKey="hours_saved" fill="#0d948828" stroke="#0d9488" strokeWidth={1.25} name="Hours" />
                     <Line
                       yAxisId="left"
                       type="monotone"
@@ -1339,7 +1345,7 @@ export function AIUtilizationPage2({
                     >
                       {showPointLabels ? <LabelList dataKey="health" content={ReleaseHealthLabel} /> : null}
                     </Line>
-                    <Line yAxisId="right" type="monotone" dataKey="value" stroke="#047857" strokeDasharray="4 3" strokeWidth={1.25} dot={false} name="Value $" />
+                    <Line yAxisId="value" type="monotone" dataKey="value" stroke="#047857" strokeDasharray="4 3" strokeWidth={1.25} dot={false} name="Value $" />
                   </ComposedChart>
                 </ResponsiveContainer>
               )}
@@ -1371,7 +1377,7 @@ export function AIUtilizationPage2({
 
       <div className="ai-p2-low ai-p2-low-3">
         <section
-          className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0 overflow-hidden flex flex-col"
+          className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0"
           data-ai-p2-benchmark
           title={benchmark?.title}
           aria-label={benchmark ? `Portfolio benchmark. ${benchmark.title}` : 'Portfolio benchmark'}
@@ -1436,7 +1442,7 @@ export function AIUtilizationPage2({
           )}
         </section>
 
-        <section className="glass-panel rounded-xl ai-p2-card ai-p2-qa min-h-0 min-w-0 overflow-hidden flex flex-col">
+        <section className="glass-panel rounded-xl ai-p2-card ai-p2-qa min-h-0 min-w-0">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <div className="ai-p2-qa-head-titles min-w-0">
               <span className="ai-p2-card-title">QA maturity</span>
@@ -1449,27 +1455,25 @@ export function AIUtilizationPage2({
               {maturityTrack.label}
             </span>
           </div>
-          <div className="ai-p2-qa-body custom-scrollbar">
+          <div className="ai-p2-qa-body">
             <div className="ai-p2-qa-journey">
-              <div className="ai-p2-qa-journey-row">
-                <span className="ai-p2-qa-score">
-                  {maturityScore == null ? 'n/a' : fmt(maturityScore, 0)}
-                  {maturityScore != null && <span> vs {maturityTarget}</span>}
-                </span>
-                <span
-                  className="ai-p2-qa-meta"
-                  title={`L${nextMaturity} target ${maturityTarget}${maturityReadiness != null ? ` · Ready ${fmt(maturityReadiness, 0)}%` : ''}${maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}`}
-                >
-                  {maturityReadiness != null ? `Ready ${fmt(maturityReadiness, 0)}%` : 'Ready n/a'}
-                  {maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}
-                </span>
-              </div>
+              <span className="ai-p2-qa-score">
+                {maturityScore == null ? 'n/a' : fmt(maturityScore, 0)}
+                {maturityScore != null && <span> vs {maturityTarget}</span>}
+              </span>
               <QaMeter
                 value={maturityScore ?? 0}
                 target={maturityTarget}
                 band={scoreBand(maturityScore)}
                 label={`QA maturity ${maturityScore == null ? 'n/a' : Math.round(maturityScore)} versus L${nextMaturity} target ${maturityTarget}`}
               />
+              <span
+                className="ai-p2-qa-meta"
+                title={`L${nextMaturity} target ${maturityTarget}${maturityReadiness != null ? ` · Ready ${fmt(maturityReadiness, 0)}%` : ''}${maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}`}
+              >
+                {maturityReadiness != null ? `Ready ${fmt(maturityReadiness, 0)}%` : 'Ready n/a'}
+                {maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}
+              </span>
               <div className="ai-p2-qa-scale" aria-hidden="true">
                 <span>0</span>
                 <span
@@ -1479,6 +1483,29 @@ export function AIUtilizationPage2({
                   L{nextMaturity} · {maturityTarget}
                 </span>
                 <span>100</span>
+              </div>
+            </div>
+
+            <div className="ai-p2-qa-decision" data-qa-decision title={maturityInsight}>
+              {topConstraints.length > 0 && (
+                <div className="ai-p2-qa-block">
+                  <span className="ai-p2-eyebrow">Top constraints</span>
+                  <div className="ai-p2-qa-constraints">
+                    {topConstraints.map((axis) => (
+                      <span
+                        key={axis.key}
+                        className={`ai-chip ${BAND[scoreBand(axis.score)]}`}
+                        title={`${axis.axis} · ${fmt(axis.score, 0)} → ${maturityTarget} · ${axisImpact(axis.axis)}`}
+                      >
+                        {axis.axis}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="ai-p2-qa-rec">
+                <span className="ai-p2-eyebrow">One action</span>
+                <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
               </div>
             </div>
 
@@ -1509,32 +1536,9 @@ export function AIUtilizationPage2({
                 })}
               </div>
             </div>
-
-            <div className="ai-p2-qa-decision" data-qa-decision title={maturityInsight}>
-              {topConstraints.length > 0 && (
-                <div className="ai-p2-qa-block">
-                  <span className="ai-p2-eyebrow">Top constraints</span>
-                  <div className="ai-p2-qa-constraints">
-                    {topConstraints.map((axis) => (
-                      <span
-                        key={axis.key}
-                        className={`ai-chip ${BAND[scoreBand(axis.score)]}`}
-                        title={`${axis.axis} · ${fmt(axis.score, 0)} → ${maturityTarget} · ${axisImpact(axis.axis)}`}
-                      >
-                        {axis.axis}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="ai-p2-qa-rec">
-                <span className="ai-p2-eyebrow">One action</span>
-                <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
-              </div>
-            </div>
           </div>
         </section>
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col ai-p2-adopt-card" data-ai-p2-funnel>
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 ai-p2-adopt-card" data-ai-p2-funnel>
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">AI adoption funnel</span>
           </div>
@@ -1588,7 +1592,7 @@ export function AIUtilizationPage2({
         </section>
       </div>
 
-      <section className="ai-p2-insight glass-panel rounded-xl flex flex-col overflow-hidden min-h-0 min-w-0 shrink-0" aria-label="Executive insight" data-ai-p2-insight>
+      <section className="ai-p2-insight glass-panel rounded-xl min-h-0 min-w-0 shrink-0" aria-label="Executive insight" data-ai-p2-insight>
         <ol className="ai-narr-list ai-narr-list-4">
           {executiveInsight.map((line) => (
             <li key={line.role} title={`${line.role}: ${line.text}`}>{line.text}</li>
