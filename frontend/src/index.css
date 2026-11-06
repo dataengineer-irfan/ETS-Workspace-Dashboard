@@ -5110,20 +5110,24 @@ html.dark .ai-attn-heat-pop {
 }
 /* Use case effectiveness — full ranked strip always visible (no More/Less).
    # · name(+tag) · Usage · Hours · Trend · Value · Rec + thin CSS value bar.
-   One shared column set (header + rows via subgrid). Name is content-tight
-   so leftover width spreads across the metric tracks — not a hole after the tag.
-   The strip fills the Battle-matched card (even row rhythm, no empty navy
-   under the last row). It does not widen the page columns. */
+   One shared column set (header + rows via subgrid). The name track is
+   `max-content` (not `minmax(0, max-content)` — a 0 minimum collapses the
+   label and parks the tag on the ellipsis). Leftover width spreads across
+   the metric tracks only after the name+tag have their content width.
+   Metric tracks are `minmax(min-content, 1fr)` so a tight card compresses
+   Usage/Hours/Trend/Value/Rec down to the figure or Rec chip before a name
+   clips. The strip fills the Battle-matched card (even row rhythm, no empty
+   navy under the last row). It does not widen the page columns. */
 .ai-uc-strip {
   display: grid;
   grid-template-columns:
     0.95rem
-    minmax(0, max-content)
-    minmax(3.15rem, 1fr)
-    minmax(3.15rem, 1fr)
-    minmax(3.15rem, 1fr)
-    minmax(3.15rem, 1fr)
-    minmax(3.15rem, 1fr);
+    max-content
+    minmax(min-content, 1fr)
+    minmax(min-content, 1fr)
+    minmax(min-content, 1fr)
+    minmax(min-content, 1fr)
+    minmax(min-content, 1fr);
   column-gap: 0.5rem;
   row-gap: 0.06rem;
   align-items: center;
@@ -5189,6 +5193,18 @@ html.dark .ai-attn-heat-pop {
 .ai-uc-row > * {
   min-width: 0;
 }
+/* Beat the blanket min-width: 0. A 0 minimum is what let the name column
+   shrink under max-content and ellipsis the label under the tag. */
+.ai-uc-row > .ai-uc-name,
+.ai-uc-row > .ai-uc-num,
+.ai-uc-row > .ai-uc-trend,
+.ai-uc-row > .ai-uc-rec,
+.ai-uc-axis > .ai-uc-axis-name,
+.ai-uc-axis > .ai-uc-axis-num,
+.ai-uc-axis > .ai-uc-axis-trend,
+.ai-uc-axis > .ai-uc-axis-rec {
+  min-width: max-content;
+}
 .ai-uc-row > * {
   position: relative;
   z-index: 1;
@@ -5201,26 +5217,24 @@ html.dark .ai-attn-heat-pop {
 }
 .ai-uc-name {
   justify-self: start;
-  max-width: 100%;
-  min-width: 0;
+  width: max-content;
+  max-width: none;
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 0.28rem;
 }
 .ai-uc-label {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .ai-uc-name .ai-chip {
   font-size: 9px;
   padding: 0.04rem 0.22rem;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  position: static;
 }
 .ai-uc-num {
   font-weight: 700;
@@ -5229,8 +5243,6 @@ html.dark .ai-attn-heat-pop {
   text-align: right;
   color: var(--text);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .ai-uc-value {
   font-weight: 750;
@@ -5244,12 +5256,13 @@ html.dark .ai-attn-heat-pop {
   white-space: nowrap;
 }
 .ai-uc-rec {
-  min-width: 0;
   text-align: right;
 }
 .ai-uc-rec .ai-chip {
   font-size: 9px;
   padding: 0.04rem 0.22rem;
+  flex: 0 0 auto;
+  position: static;
 }
 
 /* Manager score (low col 1): calm dense hug; no empty tile stretch.
@@ -6168,15 +6181,16 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     padding: 0.01rem 0;
   }
   .ai-uc-strip {
-    /* Drop the Trend track under Genie. Remaining metrics still share leftover
-       width — name stays max-content so the center hole does not come back. */
+    /* Drop the Trend track under Genie. Name stays max-content (full label +
+       tag, no ellipsis). Remaining metrics share leftover width and compress
+       to their figures / Rec chip before a name clips — no center hole. */
     grid-template-columns:
       0.9rem
-      minmax(0, max-content)
-      minmax(3rem, 1fr)
-      minmax(3rem, 1fr)
-      minmax(3rem, 1fr)
-      minmax(3rem, 1fr);
+      max-content
+      minmax(min-content, 1fr)
+      minmax(min-content, 1fr)
+      minmax(min-content, 1fr)
+      minmax(min-content, 1fr);
     column-gap: 0.42rem;
     row-gap: 0.04rem;
     padding: 0.06rem 0.32rem 0.02rem 0.1rem;
