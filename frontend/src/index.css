@@ -3314,11 +3314,13 @@ html.dark .ai-health-row .ai-health-delta-band,
 .dark .ai-conf-high { background: rgba(5, 150, 105, 0.18); color: #6ee7b7; }
 .dark .ai-conf-neutral { background: rgba(100, 116, 139, 0.18); color: #cbd5e1; }
 .ai-band-green { background: #ecfdf5; color: #064e3b; border-left-color: #047857; }
+.ai-band-teal { background: #f0fdfa; color: #134e4a; border-left-color: #0d9488; }
 .ai-band-amber { background: #fffbeb; color: #78350f; border-left-color: #b45309; }
 .ai-band-red { background: #fff1f2; color: #881337; border-left-color: #be123c; }
 .ai-band-info { background: #ecfeff; color: #164e63; border-left-color: #0284c7; }
 .ai-band-neutral { background: #f1f5f9; color: #334155; border-left-color: #64748b; }
 .dark .ai-band-green { background: rgba(5, 150, 105, 0.18); color: #6ee7b7; border-left-color: #34d399; }
+.dark .ai-band-teal { background: rgba(13, 148, 136, 0.18); color: #5eead4; border-left-color: #2dd4bf; }
 .dark .ai-band-amber { background: rgba(217, 119, 6, 0.18); color: #fcd34d; border-left-color: #fbbf24; }
 .dark .ai-band-red { background: rgba(225, 29, 72, 0.18); color: #fda4af; border-left-color: #fb7185; }
 .dark .ai-band-info { background: rgba(2, 132, 199, 0.18); color: #7dd3fc; border-left-color: #38bdf8; }
@@ -4982,9 +4984,9 @@ html.dark .ai-attn-heat-pop {
 .ai-p2 {
   /* Laptop fit (1440×900, also 1366×768 and Genie): header | mid | low | insight.
      Mid is content-sized from the Battle card. UC and Release match that height.
-     Leftover height goes to low (Manager | QA maturity | AI adoption funnel).
+     Leftover height goes to low (Portfolio benchmark | QA maturity | AI adoption funnel).
      Insight is a thin auto row (≤4 one-line bullets) so the page does not scroll.
-     Col 1 stays the Battle track so Manager width equals Battle width.
+     Col 1 stays the Battle track so benchmark width equals Battle width.
      Col 3 is the narrow Release / funnel track. Width taken from it
      goes to Battle (col 1) and Use case + QA (col 2).
      Closed 0.72 / 1.28 / 0.90; Genie 0.78 / 1.22 / 0.90. */
@@ -5037,7 +5039,7 @@ html.dark .ai-attn-heat-pop {
   overflow: hidden;
 }
 .ai-p2-low.ai-p2-low-3 {
-  /* Manager | QA maturity | AI adoption funnel — same tracks as mid (Battle | UC | Release). */
+  /* Portfolio benchmark | QA maturity | AI adoption funnel — same tracks as mid (Battle | UC | Release). */
   grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
 }
 
@@ -5274,10 +5276,10 @@ html.dark .ai-attn-heat-pop {
   position: static;
 }
 
-/* Manager score (low col 1): calm dense hug; no empty tile stretch.
-   Prefer no body scroll on normal laptop — Genie may enable overflow-y. */
+/* Portfolio benchmark (low col 1, under Battle): rank largest, health medium,
+   supporting facts small. Pack the card — no inner scroll. */
 .ai-p2-mgr.ai-p2-card {
-  padding: 0.22rem 0.36rem 0.16rem;
+  padding: 0.22rem 0.36rem 0.18rem;
 }
 .ai-p2-mgr-body {
   flex: 1 1 0%;
@@ -5285,102 +5287,147 @@ html.dark .ai-attn-heat-pop {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 0.1rem;
-  padding-top: 0.02rem;
-  overflow-x: hidden;
-  overflow-y: hidden;
-}
-.ai-p2-mgr-tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto auto;
-  gap: 0.1rem;
-  /* Hug 2×2 content — do not grow into leftover low-row navy. */
-  flex: 0 0 auto;
-  min-height: 0;
-}
-.ai-p2-score-tile {
-  min-height: 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 0.06rem;
-  padding: 0.1rem 0.22rem 0.12rem 0.28rem;
-  border-radius: 0.3rem;
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  border-left-width: 3px;
-  border-left-color: color-mix(in srgb, var(--border) 55%, #64748b);
-  background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
+  gap: 0.28rem;
+  padding-top: 0.04rem;
   overflow: hidden;
 }
-.ai-p2-score-tile[data-band="green"] {
-  border-left-color: #047857;
-}
-.ai-p2-score-tile[data-band="amber"] {
-  border-left-color: #b45309;
-}
-.ai-p2-score-tile[data-band="red"] {
-  border-left-color: #be123c;
-}
-.ai-p2-score-tile[data-band="neutral"] {
-  border-left-color: #64748b;
-}
-html.dark .ai-p2-score-tile[data-band="green"] {
-  border-left-color: #34d399;
-}
-html.dark .ai-p2-score-tile[data-band="amber"] {
-  border-left-color: #fbbf24;
-}
-html.dark .ai-p2-score-tile[data-band="red"] {
-  border-left-color: #fb7185;
-}
-html.dark .ai-p2-score-tile[data-band="neutral"] {
-  border-left-color: #94a3b8;
-}
-.ai-p2-score-tile-head {
+.ai-p2-mgr-hero {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.18rem;
+  gap: 0.35rem;
   min-width: 0;
+  flex-shrink: 0;
 }
-.ai-p2-score-tile-label {
-  flex: 1 1 auto;
+.ai-p2-mgr-rank,
+.ai-p2-mgr-health {
+  display: flex;
+  align-items: baseline;
+  gap: 0.28rem;
+  margin: 0;
   min-width: 0;
-  font-size: 9.5px;
+  line-height: 1;
+}
+.ai-p2-mgr-rank b {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ai-p2-mgr-rank span {
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.ai-p2-mgr-health {
+  flex-shrink: 0;
+}
+.ai-p2-mgr-health b {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ai-p2-mgr-health span {
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
-  line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.ai-p2-score-tile-wt {
-  margin-left: 0.14rem;
-  font-size: 8.5px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  color: color-mix(in srgb, var(--muted) 70%, var(--text));
-}
-.ai-p2-score-tile-value {
+/* Accent colors match the chip borders and the health meters, so a large
+   rank reads as teal or green instead of two near-black chip texts. */
+.ai-p2-mgr [data-tone="green"] { color: #047857; }
+.ai-p2-mgr [data-tone="teal"] { color: #0f766e; }
+.ai-p2-mgr [data-tone="amber"] { color: #b45309; }
+.ai-p2-mgr [data-tone="red"] { color: #be123c; }
+html.dark .ai-p2-mgr [data-tone="green"] { color: #34d399; }
+html.dark .ai-p2-mgr [data-tone="teal"] { color: #2dd4bf; }
+html.dark .ai-p2-mgr [data-tone="amber"] { color: #fbbf24; }
+html.dark .ai-p2-mgr [data-tone="red"] { color: #fb7185; }
+.ai-p2-mgr-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.08rem 0.42rem;
   flex-shrink: 0;
-  font-size: 11.5px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--muted);
+}
+.ai-p2-mgr-metrics b {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.ai-p2-mgr-vpu {
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.ai-p2-mgr-bars {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.22rem;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.ai-p2-mgr-bar {
+  display: grid;
+  grid-template-columns: 5.55rem minmax(0, 1fr) 2.15rem;
+  align-items: center;
+  column-gap: 0.28rem;
+  min-width: 0;
+}
+.ai-p2-mgr-bar-label {
+  font-size: 9.5px;
+  font-weight: 650;
+  line-height: 1.1;
+  color: var(--text);
+  white-space: nowrap;
+}
+.ai-p2-mgr-bar.is-project .ai-p2-mgr-bar-label {
+  font-weight: 800;
+}
+.ai-p2-mgr-bar-track {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 48%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 35%, transparent);
+  overflow: hidden;
+}
+.ai-p2-mgr-bar-track > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #64748b;
+  max-width: 100%;
+}
+.ai-p2-mgr-bar-track > i[data-tone="green"] { background: #047857; }
+.ai-p2-mgr-bar-track > i[data-tone="teal"] { background: #0d9488; }
+.ai-p2-mgr-bar-track > i[data-tone="amber"] { background: #b45309; }
+.ai-p2-mgr-bar-track > i[data-tone="red"] { background: #be123c; }
+html.dark .ai-p2-mgr-bar-track > i[data-tone="green"] { background: #34d399; }
+html.dark .ai-p2-mgr-bar-track > i[data-tone="teal"] { background: #2dd4bf; }
+html.dark .ai-p2-mgr-bar-track > i[data-tone="amber"] { background: #fbbf24; }
+html.dark .ai-p2-mgr-bar-track > i[data-tone="red"] { background: #fb7185; }
+.ai-p2-mgr-bar-score {
+  font-size: 10px;
   font-weight: 800;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
-  color: var(--text);
-  line-height: 1.05;
+  text-align: right;
   white-space: nowrap;
 }
-.ai-p2-score-tile-max {
-  margin-left: 0.04rem;
-  font-size: 8.5px;
-  font-weight: 600;
-  color: var(--muted);
+.ai-p2-mgr-status {
+  margin: 0;
+  flex-shrink: 0;
+}
+.ai-p2-mgr-status .ai-chip {
+  max-width: 100%;
 }
 .ai-p2-score-meter {
   display: block;
@@ -5391,12 +5438,6 @@ html.dark .ai-p2-score-tile[data-band="neutral"] {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 35%, transparent);
   overflow: hidden;
   flex-shrink: 0;
-}
-/* Manager tiles only — slightly clearer track without changing QA meters. */
-.ai-p2-mgr .ai-p2-score-meter {
-  height: 5px;
-  background: color-mix(in srgb, var(--border) 40%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 42%, transparent);
 }
 .ai-p2-score-meter-fill {
   display: block;
@@ -5414,27 +5455,6 @@ html.dark .ai-p2-score-meter-fill.is-green { background: #34d399; }
 html.dark .ai-p2-score-meter-fill.is-amber { background: #fbbf24; }
 html.dark .ai-p2-score-meter-fill.is-red { background: #fb7185; }
 html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
-.ai-p2-mgr-rec {
-  flex-shrink: 0;
-  margin-top: 0;
-  padding: 0.06rem 0.02rem 0;
-  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-}
-.ai-p2-mgr-rec .ai-p2-eyebrow {
-  font-size: 8px;
-  letter-spacing: 0.04em;
-}
-.ai-p2-mgr-rec-text {
-  margin: 0.02rem 0 0;
-  font-size: 10px;
-  font-weight: 650;
-  line-height: 1.22;
-  color: var(--text);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 
 /* QA maturity scorecard. Default rail is journey+decision | capability bars
    (used if the card is wide). Live placement is low col 2: see
@@ -6616,20 +6636,6 @@ html.dark .ai-rec-engine li {
   .ai-p2-rel-label {
     display: none;
   }
-  .ai-p2-score-tile-wt,
-  .ai-p2-score-tile-max {
-    display: none;
-  }
-  .ai-p2-score-tile-label {
-    letter-spacing: 0;
-    overflow: visible;
-    text-overflow: clip;
-  }
-  .ai-p2-mgr .ai-p2-card-title {
-    font-size: 10px;
-    white-space: normal;
-    line-height: 1.15;
-  }
 }
 /* Below a 1440 laptop pane (~1366 content, and 90% zoom): drop secondary
    copy. KPI values (score, value, recoverable, risks, leakage figures) stay. */
@@ -6658,7 +6664,7 @@ html.dark .ai-rec-engine li {
 @container (max-width: 1180px) {
   .ai-util-fit[data-page="2"] > .ai-p2 {
     /* Col 1 stays a bit wider than the closed 0.72 — the pane is tighter.
-       Manager shares the Battle track. Release and the funnel stay the narrow col 3. */
+       Portfolio benchmark shares the Battle track. Release and the funnel stay the narrow col 3. */
     --ai-p2-col-1: minmax(0, 0.78fr);
     --ai-p2-col-2: minmax(0, 1.22fr);
     --ai-p2-col-3: minmax(0, 0.90fr);
@@ -6682,30 +6688,21 @@ html.dark .ai-rec-engine li {
     padding: 0.16rem 0.28rem 0.12rem;
   }
   .ai-p2-mgr-body {
-    gap: 0.08rem;
+    gap: 0.14rem;
     padding-top: 0;
-    /* Extreme Genie squeeze only — normal laptop stays overflow hidden. */
-    overflow-y: auto;
+    overflow: hidden;
   }
-  .ai-p2-mgr-tiles {
-    gap: 0.08rem;
+  .ai-p2-mgr-rank b {
+    font-size: 20px;
   }
-  .ai-p2-score-tile {
-    padding: 0.08rem 0.16rem 0.1rem 0.22rem;
-    gap: 0.05rem;
+  .ai-p2-mgr-health b {
+    font-size: 15px;
   }
-  .ai-p2-score-tile-label {
-    font-size: 9px;
+  .ai-p2-mgr-bars {
+    gap: 0.12rem;
   }
-  .ai-p2-score-tile-value {
-    font-size: 10.5px;
-  }
-  .ai-p2-mgr .ai-p2-score-meter {
-    height: 4px;
-  }
-  .ai-p2-mgr-rec-text {
-    font-size: 9.5px;
-    -webkit-line-clamp: 2;
+  .ai-p2-mgr-bar-track {
+    height: 5px;
   }
   .ai-p3-mid,
   .ai-p3-low {

@@ -26,6 +26,7 @@ type Band = 'green' | 'amber' | 'red' | 'neutral';
 
 const BAND: Record<string, string> = {
   green: 'ai-band-green',
+  teal: 'ai-band-teal',
   amber: 'ai-band-amber',
   red: 'ai-band-red',
   neutral: 'ai-band-neutral',
@@ -106,13 +107,172 @@ function maturityStatus(readiness: number | null, gap: number | null): { label: 
   return { label: 'At Risk', band: 'red' };
 }
 
-const MGR_COMP_META: Record<string, { label: string; weight: number }> = {
-  adoption: { label: 'Adoption', weight: 30 },
-  savings: { label: 'Savings', weight: 25 },
-  efficiency: { label: 'Efficiency', weight: 20 },
-  quality: { label: 'Evidence', weight: 25 },
-  evidence: { label: 'Evidence', weight: 25 },
+type BenchTone = 'green' | 'teal' | 'amber' | 'red';
+
+/**
+ * Inclusive linear percentile (Excel PERCENTILE.INC).
+ * Small portfolios use the same interpolation — quartiles are not hardcoded.
+ */
+function percentileInc(sortedAsc: number[], p: number): number | null {
+  const n = sortedAsc.length;
+  if (n === 0) return null;
+  if (n === 1) return sortedAsc[0];
+  const index = (p / 100) * (n - 1);
+  const lo = Math.floor(index);
+  const hi = Math.ceil(index);
+  if (lo === hi) return sortedAsc[lo];
+  const weight = index - lo;
+  return sortedAsc[lo] * (1 - weight) + sortedAsc[hi] * weight;
+}
+
+function projectValueUsd(row: AIHealthRow): number | null {
+  return finiteNum(row.value_usd ?? row.ai_value_usd);
+}
+
+/** Value ÷ active users, or ÷ headcount when active users is 0. */
+function valuePerUserOf(row: AIHealthRow): number | null {
+  const value = projectValueUsd(row);
+  if (value == null) return null;
+  const active = finiteNum(row.active_users) ?? 0;
+  const headcount = finiteNum(row.headcount_scope) ?? 0;
+  const denom = active > 0 ? active : headcount > 0 ? headcount : 0;
+  if (denom <= 0) return null;
+  return value / denom;
+}
+
+/** Share of the ranked list at or above this place. #1 of 4 is 25%, not a forced top 10%. */
+function rankSlice(rank: number, total: number): number {
+  if (total <= 0) return 1;
+  return rank / total;
+}
+
+function rankToneOf(rank: number, total: number): BenchTone {
+  const slice = rankSlice(rank, total);
+  if (slice <= 0.1) return 'green';
+  if (slice <= 0.25) return 'teal';
+  if (slice <= 0.5) return 'amber';
+  return 'red';
+}
+
+function healthToneOf(score: number): BenchTone {
+  if (score >= 90) return 'green';
+  if (score >= 75) return 'teal';
+  if (score >= 60) return 'amber';
+  return 'red';
+}
+
+function valueToneOf(deltaPct: number | null): BenchTone | null {
+  if (deltaPct == null || Number.isNaN(deltaPct)) return null;
+  if (deltaPct > 25) return 'green';
+  if (Math.abs(deltaPct) <= 2) return 'amber';
+  if (deltaPct > 2) return 'teal';
+  return 'red';
+}
+
+/** First matching rule. Health above 80 that is outside the top 25% has no label. */
+function benchmarkStatus(score: number, rank: number, total: number): { label: string; tone: BenchTone } | null {
+  const slice = rankSlice(rank, total);
+  if (score > 90 && slice <= 0.1) return { label: 'Portfolio Leader', tone: 'green' };
+  if (score > 80 && slice <= 0.25) return { label: 'High Performer', tone: 'teal' };
+  if (score >= 60 && score <= 80) return { label: 'Improvement Opportunity', tone: 'amber' };
+  if (score < 60) return { label: 'Executive Attention Required', tone: 'red' };
+  return null;
+}
+
+function vsAverageLabel(deltaPct: number): string {
+  const digits = Math.abs(deltaPct) >= 9.95 ? 0 : 1;
+  const rounded = Number(deltaPct.toFixed(digits));
+  const body = Math.abs(rounded).toFixed(digits);
+  if (rounded > 0) return `+${body}%`;
+  if (rounded < 0) return `-${body}%`;
+  return '0%';
+}
+
+type PortfolioBenchmark = {
+  rank: number;
+  total: number;
+  health: number;
+  average: number;
+  topQuartile: number;
+  bottomQuartile: number;
+  valuePerUser: number | null;
+  valueDeltaPct: number | null;
+  rankTone: BenchTone;
+  healthTone: BenchTone;
+  valueTone: BenchTone | null;
+  status: { label: string; tone: BenchTone } | null;
+  title: string;
+  bars: { key: string; label: string; score: number; tone: BenchTone }[];
 };
+
+function buildPortfolioBenchmark(rows: AIHealthRow[], project: string): PortfolioBenchmark | null {
+  const scored = rows.filter((row) => finiteNum(row.health_score) != null);
+  const mine = rows.find((row) => sameProject(row.project, project));
+  const health = mine ? finiteNum(mine.health_score) : null;
+  if (!mine || health == null || scored.length === 0) return null;
+
+  const total = scored.length;
+  const better = scored.filter((row) => (finiteNum(row.health_score) as number) > health).length;
+  const rank = better + 1;
+  const scores = scored.map((row) => finiteNum(row.health_score) as number).sort((a, b) => a - b);
+  const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  const topQuartile = percentileInc(scores, 75) as number;
+  const bottomQuartile = percentileInc(scores, 25) as number;
+
+  const peerValues = scored.map(valuePerUserOf).filter((value): value is number => value != null);
+  const valuePerUser = valuePerUserOf(mine);
+  const averageValuePerUser = peerValues.length
+    ? peerValues.reduce((sum, value) => sum + value, 0) / peerValues.length
+    : null;
+  const valueDeltaPct = valuePerUser != null && averageValuePerUser != null && averageValuePerUser !== 0
+    ? ((valuePerUser - averageValuePerUser) / Math.abs(averageValuePerUser)) * 100
+    : null;
+
+  const titleParts = [
+    `Rank #${rank} of ${total}`,
+    `Health ${fmt(health, 1)}`,
+    `Portfolio average ${fmt(average, 1)}`,
+    `Top quartile ${fmt(topQuartile, 1)}`,
+    `Bottom quartile ${fmt(bottomQuartile, 1)}`,
+  ];
+  if (valuePerUser != null) {
+    const delta = valueDeltaPct == null ? '' : ` (${vsAverageLabel(valueDeltaPct)} vs average)`;
+    titleParts.push(`Value per user ${money(valuePerUser)}${delta}`);
+  }
+  const maturity = finiteNum(mine.maturity_level);
+  if (maturity != null) {
+    const label = MATURITY_LABEL[maturity];
+    titleParts.push(label ? `Maturity L${maturity} ${label}` : `Maturity L${maturity}`);
+  }
+  const trend = finiteNum(mine.trend_pts);
+  if (trend != null) {
+    titleParts.push(`Release trend ${trend > 0 ? '+' : ''}${fmt(trend, 1)} pts`);
+  }
+
+  const bars = [
+    { key: 'project', label: 'This project', score: health },
+    { key: 'top', label: 'Top quartile', score: topQuartile },
+    { key: 'average', label: 'Average', score: average },
+    { key: 'bottom', label: 'Bottom quartile', score: bottomQuartile },
+  ].map((bar) => ({ ...bar, tone: healthToneOf(bar.score) }));
+
+  return {
+    rank,
+    total,
+    health,
+    average,
+    topQuartile,
+    bottomQuartile,
+    valuePerUser,
+    valueDeltaPct,
+    rankTone: rankToneOf(rank, total),
+    healthTone: healthToneOf(health),
+    valueTone: valueToneOf(valueDeltaPct),
+    status: benchmarkStatus(health, rank, total),
+    title: titleParts.join(' · '),
+    bars,
+  };
+}
 
 function scoreBand(score: number | null | undefined): Band {
   if (score == null || Number.isNaN(score)) return 'neutral';
@@ -314,17 +474,6 @@ function ScoreRing({ score, band }: { score: number | null; band: string }) {
   );
 }
 
-function projectRecommendation(health: AIHealthRow | undefined, fallback?: string) {
-  if (fallback) return fallback;
-  if (!health) return 'Review AI evidence';
-  if (health.recommendation) return health.recommendation;
-  const score = health.health_score;
-  if (score != null && score < 70) return 'Executive Attention';
-  if ((health.adoption_pct ?? 0) < 60) return 'Drive adoption';
-  if (score != null && score >= 80) return 'Scale AI';
-  return 'Optimize value';
-}
-
 function managementRecommendation(
   card: { gap_sentence?: string; adoption_pct?: number | null; release_quality_pct?: number | null; score?: number | null; grade?: string } | undefined,
   health: AIHealthRow | undefined,
@@ -339,6 +488,17 @@ function managementRecommendation(
   if (card?.score != null && card.score < 70) return 'Executive Review Required';
   if (gap.includes('efficiency') || gap.includes('savings')) return 'Improve Evidence Quality';
   return 'Maintain Momentum';
+}
+
+function projectRecommendation(health: AIHealthRow | undefined, fallback?: string) {
+  if (fallback) return fallback;
+  if (!health) return 'Review AI evidence';
+  if (health.recommendation) return health.recommendation;
+  const score = health.health_score;
+  if (score != null && score < 70) return 'Executive Attention';
+  if ((health.adoption_pct ?? 0) < 60) return 'Drive adoption';
+  if (score != null && score >= 80) return 'Scale AI';
+  return 'Optimize value';
 }
 
 /** Chart point label = adopt % only (release names live on axis / chips; roles on callouts). */
@@ -459,6 +619,10 @@ export function AIUtilizationPage2({
       }))
       .sort((a, b) => a.sequence - b.sequence);
   }, [data.release_trend, project, health?.release_series]);
+  const benchmark = useMemo(
+    () => buildPortfolioBenchmark(data.health ?? [], project),
+    [data.health, project],
+  );
   const scorecards = useMemo(
     () => (data.manager_scorecard ?? []).filter((row) => sameProject(row.project, project)),
     [data.manager_scorecard, project],
@@ -682,6 +846,7 @@ export function AIUtilizationPage2({
     return { rows, valueMax };
   }, [effectiveness]);
   const card = scorecards.find((row) => row.manager && health?.manager && row.manager === health.manager) || scorecards[0];
+  const mgrRec = managementRecommendation(card, health);
   const delta = health?.trend_pts;
   const deltaBand = delta == null ? 'neutral' : delta >= 0 ? 'green' : delta > -5 ? 'amber' : 'red';
   const maturity = health?.maturity_level ?? 1;
@@ -821,23 +986,6 @@ export function AIUtilizationPage2({
     return 'Click a release for deep dive.';
   })();
 
-  const mgrRec = managementRecommendation(card, health);
-  const managerComponents = (() => {
-    const fallback = [
-      { key: 'adoption', label: 'Adoption', weight: 30, score: card?.adoption_pct != null ? Math.min(100, (card.adoption_pct / 80) * 100) : null },
-      { key: 'savings', label: 'Savings', weight: 25, score: card?.hours_target ? Math.min(100, (card.hours_saved / card.hours_target) * 100) : null },
-      { key: 'efficiency', label: 'Efficiency', weight: 20, score: card?.efficiency_gain_pct != null ? Math.min(100, (card.efficiency_gain_pct / 30) * 100) : null },
-      { key: 'quality', label: 'Evidence', weight: 25, score: card?.release_quality_pct ?? null },
-    ];
-    const raw = card?.components?.length ? card.components : fallback;
-    return raw.map((comp) => {
-      const meta = MGR_COMP_META[String(comp.key || '').toLowerCase()];
-      const label = String(comp.label || '').trim() || meta?.label || 'Component';
-      const weight = Number.isFinite(comp.weight) && comp.weight > 0 ? comp.weight : meta?.weight ?? 0;
-      return { ...comp, label, weight };
-    });
-  })();
-
   const adoption = useMemo(() => {
     const stages = adoptionStages(health, domains, contributors.length);
     const drops = stages.map((stage, index) => (
@@ -965,8 +1113,8 @@ export function AIUtilizationPage2({
           </span>
         </div>
         <div className="ai-p2-head-row2">
-          <span className="ai-p2-head-meta" title={health?.manager || card?.manager || undefined}>
-            Manager {oneManager(health?.manager || card?.manager)}
+          <span className="ai-p2-head-meta" title={health?.manager || undefined}>
+            Manager {oneManager(health?.manager)}
           </span>
           <span className="ai-p2-head-contrib shrink-0" aria-label="Contributors">
             <span className="ai-p2-head-contrib-text">Contributors: {contributors.length}</span>
@@ -1205,29 +1353,69 @@ export function AIUtilizationPage2({
       </div>
 
       <div className="ai-p2-low ai-p2-low-3">
-        <section className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0 overflow-hidden flex flex-col">
+        <section
+          className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0 overflow-hidden flex flex-col"
+          data-ai-p2-benchmark
+          title={benchmark?.title}
+          aria-label={benchmark ? `Portfolio benchmark. ${benchmark.title}` : 'Portfolio benchmark'}
+        >
           <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <div className="ai-p2-card-titles min-w-0">
-              <span className="ai-p2-card-title" title={`Manager score · ${oneManager(card?.manager || health?.manager)}`}>Manager score · {oneManager(card?.manager || health?.manager)}</span>
-            </div>
-            <span className={`ai-chip shrink-0 ${BAND[card?.grade === 'A+' || card?.grade === 'A' ? 'green' : card?.grade === 'B' ? 'amber' : card ? 'red' : 'neutral']}`}>
-              {card?.grade || 'n/a'}{card?.score == null ? '' : ` ${fmt(card.score, 0)}`}
-            </span>
+            <span className="ai-p2-card-title">Portfolio benchmark</span>
           </div>
-          {card ? (
-            <div className="ai-p2-mgr-body custom-scrollbar">
-              <div className="ai-p2-mgr-tiles" aria-label="Manager score components">
-                {managerComponents.map((comp) => (
-                  <ScoreTile key={comp.key} label={comp.label} weight={comp.weight} score={comp.score} />
-                ))}
+          {benchmark ? (
+            <div className="ai-p2-mgr-body">
+              <div className="ai-p2-mgr-hero">
+                <p
+                  className="ai-p2-mgr-rank"
+                  data-tone={benchmark.rankTone}
+                  data-benchmark-rank={benchmark.rank}
+                  data-benchmark-total={benchmark.total}
+                >
+                  <b>#{benchmark.rank}</b>
+                  <span>of {benchmark.total}</span>
+                </p>
+                <p className="ai-p2-mgr-health" data-benchmark-health={benchmark.health}>
+                  <b data-tone={benchmark.healthTone}>{fmt(benchmark.health, 1)}</b>
+                  <span>Health</span>
+                </p>
               </div>
-              <div className="ai-p2-mgr-rec">
-                <span className="ai-p2-eyebrow">Recommendation</span>
-                <p className="ai-p2-mgr-rec-text" title={mgrRec}>{mgrRec}</p>
+              <div className="ai-p2-mgr-metrics">
+                <span>Portfolio avg <b data-benchmark-average={benchmark.average}>{fmt(benchmark.average, 1)}</b></span>
+                <span>Top quartile <b data-benchmark-top={benchmark.topQuartile}>{fmt(benchmark.topQuartile, 1)}</b></span>
+                <span>Bottom quartile <b data-benchmark-bottom={benchmark.bottomQuartile}>{fmt(benchmark.bottomQuartile, 1)}</b></span>
+                <span
+                  className="ai-p2-mgr-vpu"
+                  data-tone={benchmark.valueTone || undefined}
+                  data-benchmark-vpu={benchmark.valuePerUser ?? ''}
+                  data-benchmark-vpu-delta={benchmark.valueDeltaPct ?? ''}
+                >
+                  {benchmark.valuePerUser == null
+                    ? 'Value/user n/a'
+                    : `${money(benchmark.valuePerUser)}/user${benchmark.valueDeltaPct == null ? '' : ` ${vsAverageLabel(benchmark.valueDeltaPct)}`}`}
+                </span>
               </div>
+              <div className="ai-p2-mgr-bars" aria-label="This project, top quartile, portfolio average, and bottom quartile">
+                {benchmark.bars.map((bar) => {
+                  const width = Math.max(0, Math.min(100, bar.score));
+                  return (
+                    <div key={bar.key} className={`ai-p2-mgr-bar${bar.key === 'project' ? ' is-project' : ''}`}>
+                      <span className="ai-p2-mgr-bar-label">{bar.label}</span>
+                      <span className="ai-p2-mgr-bar-track" aria-hidden="true">
+                        <i data-tone={bar.tone} style={{ width: `${width}%` }} />
+                      </span>
+                      <span className="ai-p2-mgr-bar-score" data-tone={bar.tone}>{fmt(bar.score, 1)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {benchmark.status && (
+                <p className="ai-p2-mgr-status" data-benchmark-status={benchmark.status.label}>
+                  <span className={`ai-chip ${BAND[benchmark.status.tone]}`}>{benchmark.status.label}</span>
+                </p>
+              )}
             </div>
           ) : (
-            <p className="ai-p2-empty">No manager score for this project.</p>
+            <p className="ai-p2-empty">No health score for this project.</p>
           )}
         </section>
 
@@ -1377,45 +1565,6 @@ export function AIUtilizationPage2({
           )}
         </ol>
       </section>
-    </div>
-  );
-}
-
-function ScoreTile({
-  label,
-  weight,
-  score,
-}: {
-  label: string;
-  weight: number;
-  score: number | null | undefined;
-}) {
-  const safeLabel = String(label || '').trim() || 'Component';
-  const fill = score == null || Number.isNaN(score) ? 0 : Math.max(0, Math.min(100, score));
-  const band = scoreBand(score);
-  const valueText = score == null || Number.isNaN(score) ? 'n/a' : `${fmt(score, 0)}`;
-  return (
-    <div className="ai-p2-score-tile" title={`${safeLabel} ${weight}% · ${valueText} / 100`} data-band={band}>
-      <div className="ai-p2-score-tile-head">
-        <span className="ai-p2-score-tile-label">
-          {safeLabel}
-          {weight > 0 ? <span className="ai-p2-score-tile-wt">{weight}%</span> : null}
-        </span>
-        <span className="ai-p2-score-tile-value">
-          {valueText}
-          <span className="ai-p2-score-tile-max">/100</span>
-        </span>
-      </div>
-      <div
-        className="ai-p2-score-meter"
-        role="meter"
-        aria-label={`${safeLabel} ${valueText} of 100`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        {...(score != null && !Number.isNaN(score) ? { 'aria-valuenow': Math.round(fill) } : {})}
-      >
-        <span className={`ai-p2-score-meter-fill is-${band}`} style={{ width: `${fill}%` }} />
-      </div>
     </div>
   );
 }
