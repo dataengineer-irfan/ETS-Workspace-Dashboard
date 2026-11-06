@@ -5463,10 +5463,9 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
 /* QA maturity scorecard. The side-by-side rail (journey+decision | bars) is
    the wide-card default. Live placement is low col 2 (~1.02fr, Genie ~1.08fr):
    `.ai-p2-low .ai-p2-qa-*` stacks score and the constraint/action on top, then
-   a compact list of short ~5.25rem capability meters. That stack is what fits
-   this column — the side-by-side rail overlaps the journey and the bars here,
-   and pinning the decision to the bottom left a hollow under the last meter.
-   Body does not scroll. The action is not line-clamped. */
+   short ~5.25rem capability meters on equal tracks that use the card height.
+   That stack is what fits this column — the side-by-side rail overlaps the
+   journey and the bars here. Body does not scroll. The action is not line-clamped. */
 .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
   flex: 1 1 0%;
@@ -5754,11 +5753,12 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 /* QA in low col 2 (~1.02fr, Genie ~1.08fr), under Use case effectiveness.
    The side-by-side journey|bars rail does not fit this width (names + 5.25rem
    meters collide with the score and the action). Stack instead: score, then
-   the constraint and one action, then a packed capability list. The low-row
-   card is as tall as the benchmark; the benchmark keeps its facts at the top.
-   Stretching these meters across that leftover opened a gap between every
-   score, and pinning the decision to the bottom left a hollow under the list.
-   The action wraps in full — it is not line-clamped. */
+   the constraint and one action, then the capability list. The low-row card
+   matches the benchmark and the funnel. Leftover height (including what the
+   shorter project header returns) is shared inside this stack: a little more
+   air between the score, the constraint, and the action, and equal tracks for
+   the capability rows so the card does not end in an empty band. The action
+   wraps in full — it is not line-clamped. */
 .ai-p2-low .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
   grid-template-columns: minmax(0, 1fr);
@@ -5766,10 +5766,11 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     "journey"
     "decision"
     "bars";
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   column-gap: 0;
-  row-gap: 0.16rem;
-  align-content: start;
+  row-gap: 0.42rem;
+  align-content: stretch;
+  align-items: stretch;
 }
 .ai-p2-low .ai-p2-qa-head-titles {
   flex-wrap: wrap;
@@ -5781,7 +5782,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   text-overflow: clip;
 }
 .ai-p2-low .ai-p2-qa-journey {
-  gap: 0.04rem;
+  gap: 0.12rem;
 }
 .ai-p2-low .ai-p2-qa-score {
   font-size: 15px;
@@ -5791,21 +5792,25 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   max-width: 100%;
   height: auto;
   min-height: 0;
-  align-self: start;
-  gap: 0.08rem;
-  padding: 0.12rem 0.32rem 0.14rem;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.16rem;
+  padding: 0.16rem 0.32rem 0.14rem;
   overflow: hidden;
 }
 .ai-p2-low .ai-p2-qa-bars-list {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
   /* max-content, not minmax(0, max-content): a 0 minimum collapses the name.
-     align-content start: space-between / space-evenly on a tall track left a
-     band under the last meter. */
+     Equal 1fr tracks share the card's leftover height. min-content floor keeps
+     a name from collapsing when the low row is short. */
   grid-template-columns: max-content var(--ai-p2-qa-track) max-content;
   column-gap: 0.42rem;
-  row-gap: 0.28rem;
-  align-content: start;
+  row-gap: 0.12rem;
+  grid-auto-rows: minmax(min-content, 1fr);
+  align-content: stretch;
   align-items: center;
   justify-content: start;
 }
@@ -5821,11 +5826,11 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   height: 3.5px;
 }
 .ai-p2-low .ai-p2-qa-decision {
-  align-self: start;
+  align-self: stretch;
   height: auto;
-  justify-content: flex-start;
-  padding: 0.12rem 0.28rem;
-  gap: 0.08rem;
+  justify-content: space-between;
+  padding: 0.18rem 0.32rem;
+  gap: 0.28rem;
 }
 .ai-p2-low .ai-p2-qa-rec-text {
   display: block;
@@ -6122,34 +6127,39 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   flex-shrink: 0;
 }
 
-/* Dense two-row project chrome — reclaim height for mid/low `auto` grid head. */
+/* Dense two-row project chrome. Padding, row gap, and the ring stay short so
+   the low row (benchmark | QA maturity | funnel) keeps that height. */
 .ai-p2-head {
   display: flex;
   flex-direction: column;
-  gap: 0.04rem;
-  padding: 0.12rem 0.55rem !important;
+  gap: 0;
+  padding: 0.05rem 0.5rem !important;
 }
 .ai-p2-head .ai-score-ring svg {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
+}
+.ai-p2-head .ai-score-ring svg text {
+  /* Stay a readable score when the ring is smaller than the viewBox. */
+  font-size: 11px;
 }
 .ai-p2-head-row1 {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.24rem;
   min-width: 0;
   flex-wrap: nowrap;
 }
 .ai-p2-head-row1 .ai-chip {
-  padding: 0.05rem 0.3rem;
-  line-height: 1.1;
+  padding: 0.02rem 0.28rem;
+  line-height: 1.05;
 }
 .ai-p2-head-crumb {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.18rem;
   font-size: 11px;
-  line-height: 1.15;
+  line-height: 1.05;
   opacity: 0.85;
 }
 .ai-p2-head-sep {
@@ -6168,7 +6178,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   font-weight: 800;
   letter-spacing: -0.01em;
   color: var(--text);
-  line-height: 1.1;
+  line-height: 1.05;
 }
 /* Teams live in title tooltip — keep collapsed header to two rows. */
 .ai-p2-head-teams {
@@ -6206,14 +6216,14 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.4rem;
+  gap: 0.35rem;
   min-width: 0;
 }
 .ai-p2-head-meta {
   font-size: 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  line-height: 1.05;
   min-width: 0;
   color: var(--muted);
 }
@@ -6233,12 +6243,12 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  line-height: 1.15;
+  line-height: 1.05;
 }
 .ai-p2-head-team-toggle {
   font-size: 10px;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.05;
 }
 .ai-p2-head-team {
   display: flex;
