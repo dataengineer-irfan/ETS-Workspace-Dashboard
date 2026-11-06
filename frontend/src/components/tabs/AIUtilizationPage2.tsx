@@ -389,6 +389,21 @@ function adoptionStages(
   ];
 }
 
+/**
+ * Funnel bars are Team → Enabled → Active. Contributors is not a stage:
+ * it is the count of people producing value, so it never draws a drop.
+ * When Enabled's count equals Team, skip it — a second identical bar hides
+ * the real Team → Active drop.
+ */
+function funnelBars(stages: AdoptStage[]): AdoptStage[] {
+  const team = stages.find((stage) => stage.key === 'team');
+  return stages.filter((stage) => {
+    if (stage.key === 'contributors') return false;
+    if (stage.key !== 'enabled' || !team) return true;
+    return stage.count !== team.count;
+  });
+}
+
 /** Drop-off % = (previous − current) / previous. Null when either side is missing or previous is 0. */
 function adoptionDrop(previous: number | null, current: number | null): number | null {
   if (previous == null || current == null || previous <= 0) return null;
@@ -514,7 +529,7 @@ function ReleaseHealthLabel(props: {
   const health = props.payload?.health;
   if (health == null || Number.isNaN(Number(health))) return null;
   return (
-    <text x={x} y={y - 6} textAnchor="middle" fill="currentColor" fontSize={8} fontWeight={700} className="ai-p2-rel-label">
+    <text x={x} y={y - 6} textAnchor="middle" fill="currentColor" fontSize={9.5} fontWeight={700} className="ai-p2-rel-label">
       {Math.round(Number(health))}
     </text>
   );
@@ -988,16 +1003,18 @@ export function AIUtilizationPage2({
 
   const adoption = useMemo(() => {
     const stages = adoptionStages(health, domains, contributors.length);
-    const drops = stages.map((stage, index) => (
-      index === 0 ? null : adoptionDrop(stages[index - 1].count, stage.count)
+    const bars = funnelBars(stages);
+    const contributorsStage = stages.find((stage) => stage.key === 'contributors') ?? null;
+    const drops = bars.map((stage, index) => (
+      index === 0 ? null : adoptionDrop(bars[index - 1].count, stage.count)
     ));
     let leakAt = -1;
     let bestDrop = 0;
     let bestAbs = 0;
     drops.forEach((drop, index) => {
       if (drop == null || drop <= 0) return;
-      const prev = stages[index - 1].count ?? 0;
-      const abs = prev - (stages[index].count ?? 0);
+      const prev = bars[index - 1].count ?? 0;
+      const abs = prev - (bars[index].count ?? 0);
       if (drop > bestDrop + 1e-9 || (Math.abs(drop - bestDrop) < 1e-9 && abs > bestAbs)) {
         leakAt = index;
         bestDrop = drop;
@@ -1006,9 +1023,9 @@ export function AIUtilizationPage2({
     });
     const insight = leakAt < 0
       ? 'No adoption drop between these stages.'
-      : `Biggest drop is ${stages[leakAt - 1].label} → ${stages[leakAt].label}: ${fmt(stages[leakAt - 1].count)} to ${fmt(stages[leakAt].count)}`;
-    const max = Math.max(...stages.map((stage) => stage.count ?? 0), 1);
-    return { stages, drops, leakAt, insight, max };
+      : `Biggest drop is ${bars[leakAt - 1].label} → ${bars[leakAt].label}: ${fmt(bars[leakAt - 1].count)} to ${fmt(bars[leakAt].count)}`;
+    const max = Math.max(...bars.map((stage) => stage.count ?? 0), 1);
+    return { bars, drops, leakAt, insight, max, contributors: contributorsStage };
   }, [health, domains, contributors.length]);
   const executiveInsight = (() => {
     const lines: { role: string; text: string }[] = [];
@@ -1267,14 +1284,14 @@ export function AIUtilizationPage2({
                 <p className="ai-p2-empty">No releases for this project.</p>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={timeline} margin={{ top: showPointLabels ? 10 : 4, right: 8, left: 2, bottom: 2 }}>
+                  <ComposedChart data={timeline} margin={{ top: showPointLabels ? 12 : 6, right: 8, left: 2, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.12} />
                     <XAxis
                       dataKey="release"
                       interval={0}
                       tickLine={false}
                       axisLine={false}
-                      height={18}
+                      height={16}
                       tick={(props) => {
                         const index = Number(props.index ?? 0);
                         const last = timeline.length - 1;
@@ -1284,10 +1301,10 @@ export function AIUtilizationPage2({
                         return (
                           <text
                             x={Number(props.x ?? 0)}
-                            y={Number(props.y ?? 0) + 8}
+                            y={Number(props.y ?? 0) + 3}
                             textAnchor={anchor}
                             fill="currentColor"
-                            fontSize={8}
+                            fontSize={9.5}
                             fontWeight={650}
                           >
                             {String(props.payload?.value ?? '')}
@@ -1522,7 +1539,7 @@ export function AIUtilizationPage2({
             <span className="ai-p2-card-title">AI adoption funnel</span>
           </div>
           <div className="ai-p2-adopt" aria-label="AI adoption funnel">
-            {adoption.stages.map((stage, index) => {
+            {adoption.bars.map((stage, index) => {
               const drop = adoption.drops[index];
               const leak = index === adoption.leakAt;
               const width = stage.count != null && stage.count > 0
@@ -1550,6 +1567,22 @@ export function AIUtilizationPage2({
                 </div>
               );
             })}
+            {adoption.contributors && (
+              <div
+                className="ai-p2-adopt-row is-people"
+                data-funnel-stage="contributors"
+                data-funnel-count={adoption.contributors.count == null ? 'n/a' : String(adoption.contributors.count)}
+                data-funnel-drop=""
+                data-largest-drop="false"
+                data-funnel-role="producing-value"
+                title="People producing value. Not an adoption drop."
+              >
+                <span className="ai-p2-adopt-label">Contributors</span>
+                <span className="ai-p2-adopt-people">producing value</span>
+                <b className="ai-p2-adopt-count">{fmt(adoption.contributors.count)}</b>
+                <span className="ai-p2-adopt-drop" />
+              </div>
+            )}
           </div>
           <p className="ai-p2-adopt-insight" data-ai-p2-funnel-insight>{adoption.insight}</p>
         </section>

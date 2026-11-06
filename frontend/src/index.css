@@ -4993,7 +4993,22 @@ html.dark .ai-attn-heat-pop {
      minmax(0, max-content) on that name track.
      Closed 0.84 / 1.02 / 1.04; Genie 0.88 / 1.08 / 0.94.
      Genie col 2 is a bit wider than the first cut so the Rec chip stays
-     inside the card after Trend is dropped. */
+     inside the card after Trend is dropped.
+     Type scale matches the use-case table (existing font stack). Titles
+     11.5/750. Primary numbers (rank, health, QA score vs target, header
+     $, funnel counts) 13/800 tabular. Row labels 10/600 — QA labels stay
+     at that size. Row figures 10/700 tabular. Secondary meta and chips
+     9.5/600, never below 9px. */
+  --ai-p2-fs-title: 11.5px;
+  --ai-p2-fw-title: 750;
+  --ai-p2-fs-primary: 13px;
+  --ai-p2-fw-primary: 800;
+  --ai-p2-fs-label: 10px;
+  --ai-p2-fw-label: 600;
+  --ai-p2-fs-figure: 10px;
+  --ai-p2-fw-figure: 700;
+  --ai-p2-fs-meta: 9.5px;
+  --ai-p2-fw-meta: 600;
   --ai-p2-col-1: minmax(0, 0.84fr);
   --ai-p2-col-2: minmax(0, 1.02fr);
   --ai-p2-col-3: minmax(0, 1.04fr);
@@ -5102,25 +5117,29 @@ html.dark .ai-attn-heat-pop {
   min-width: 0;
 }
 .ai-p2-card-title {
-  font-size: 11.5px;
-  font-weight: 750;
+  font-size: var(--ai-p2-fs-title);
+  font-weight: var(--ai-p2-fw-title);
   letter-spacing: -0.01em;
   line-height: 1.2;
   color: var(--text);
 }
 .ai-p2-card-sub {
-  font-size: 9.5px;
-  font-weight: 500;
-  line-height: 1.25;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  line-height: 1.2;
   color: var(--muted);
 }
 .ai-p2-eyebrow {
   display: block;
-  font-size: 9px;
+  font-size: var(--ai-p2-fs-meta);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
+}
+.ai-p2 .ai-chip {
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: 700;
 }
 .ai-p2-empty {
   font-size: 11px;
@@ -5174,7 +5193,7 @@ html.dark .ai-attn-heat-pop {
   min-width: 0;
 }
 .ai-uc-axis {
-  font-size: 9.5px;
+  font-size: var(--ai-p2-fs-meta);
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5192,7 +5211,8 @@ html.dark .ai-attn-heat-pop {
 }
 .ai-uc-row {
   position: relative;
-  font-size: 10px;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   line-height: 1.1;
   /* No horizontal padding — it would inset subgrid tracks off the header. */
   padding: 0;
@@ -5246,7 +5266,8 @@ html.dark .ai-attn-heat-pop {
 }
 .ai-uc-label {
   flex: 0 0 auto;
-  font-weight: 600;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   line-height: 1.1;
   white-space: nowrap;
 }
@@ -5257,13 +5278,14 @@ html.dark .ai-attn-heat-pop {
   background: color-mix(in srgb, #047857 18%, transparent);
 }
 .ai-uc-name .ai-chip {
-  font-size: 9px;
+  font-size: var(--ai-p2-fs-meta);
   padding: 0.04rem 0.22rem;
   flex: 0 0 auto;
   position: static;
 }
 .ai-uc-num {
-  font-weight: 700;
+  font-size: var(--ai-p2-fs-figure);
+  font-weight: var(--ai-p2-fw-figure);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -5274,8 +5296,8 @@ html.dark .ai-attn-heat-pop {
   font-weight: 750;
 }
 .ai-uc-trend {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--ai-p2-fs-figure);
+  font-weight: var(--ai-p2-fw-label);
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: color-mix(in srgb, var(--muted) 40%, var(--text));
@@ -5285,7 +5307,7 @@ html.dark .ai-attn-heat-pop {
   text-align: right;
 }
 .ai-uc-rec .ai-chip {
-  font-size: 9px;
+  font-size: var(--ai-p2-fs-meta);
   padding: 0.04rem 0.22rem;
   flex: 0 0 auto;
   position: static;
@@ -5324,28 +5346,30 @@ html.dark .ai-attn-heat-pop {
   line-height: 1;
 }
 .ai-p2-mgr-rank b {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: var(--ai-p2-fs-primary);
+  font-weight: var(--ai-p2-fw-primary);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   white-space: nowrap;
 }
 .ai-p2-mgr-rank span {
-  font-size: 12px;
-  font-weight: 750;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: 650;
   white-space: nowrap;
 }
 .ai-p2-mgr-health {
   flex-shrink: 0;
 }
 .ai-p2-mgr-health b {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: var(--ai-p2-fs-primary);
+  font-weight: var(--ai-p2-fw-primary);
   font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   white-space: nowrap;
 }
 .ai-p2-mgr-health span {
-  font-size: 9px;
+  font-size: var(--ai-p2-fs-meta);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5366,8 +5390,8 @@ html.dark .ai-p2-mgr [data-tone="red"] { color: #fb7185; }
   flex-wrap: wrap;
   gap: 0.08rem 0.42rem;
   flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   line-height: 1.2;
   color: var(--muted);
 }
@@ -5397,8 +5421,8 @@ html.dark .ai-p2-mgr [data-tone="red"] { color: #fb7185; }
   min-width: 0;
 }
 .ai-p2-mgr-bar-label {
-  font-size: 9.5px;
-  font-weight: 650;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   line-height: 1.1;
   color: var(--text);
   white-space: nowrap;
@@ -5430,8 +5454,8 @@ html.dark .ai-p2-mgr-bar-track > i[data-tone="teal"] { background: #2dd4bf; }
 html.dark .ai-p2-mgr-bar-track > i[data-tone="amber"] { background: #fbbf24; }
 html.dark .ai-p2-mgr-bar-track > i[data-tone="red"] { background: #fb7185; }
 .ai-p2-mgr-bar-score {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: var(--ai-p2-fs-figure);
+  font-weight: var(--ai-p2-fw-figure);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -5511,8 +5535,8 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
   min-width: 0;
 }
 .ai-p2-qa-score {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: var(--ai-p2-fs-primary);
+  font-weight: var(--ai-p2-fw-primary);
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, Consolas, monospace;
   color: var(--text);
@@ -5520,14 +5544,14 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
   line-height: 1.05;
 }
 .ai-p2-qa-score span {
-  font-size: 10px;
+  font-size: var(--ai-p2-fs-primary);
   font-weight: 650;
   color: var(--muted);
   margin-left: 0.16rem;
 }
 .ai-p2-qa-meta {
-  font-size: 9px;
-  font-weight: 600;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
   color: var(--muted);
   text-align: right;
   min-width: 0;
@@ -5555,9 +5579,9 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
   position: relative;
   display: flex;
   justify-content: space-between;
-  min-height: 0.68rem;
-  font-size: 7.5px;
-  font-weight: 650;
+  min-height: 0;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
   color: var(--muted);
   line-height: 1;
 }
@@ -5589,8 +5613,9 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
 .ai-p2-qa-bars-label {
   flex-shrink: 0;
   padding: 0 0.02rem;
-  font-size: 8px;
-  line-height: 1.15;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  line-height: 1.1;
   white-space: nowrap;
 }
 .ai-p2-qa-bars-list {
@@ -5622,8 +5647,8 @@ html.dark .ai-p2-qa-bar.is-blocker {
   background: color-mix(in srgb, #fb7185 12%, transparent);
 }
 .ai-p2-qa-bar-label {
-  font-size: 10px;
-  font-weight: 650;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   color: var(--text);
   line-height: 1.2;
   min-width: 0;
@@ -5647,8 +5672,8 @@ html.dark .ai-p2-qa-bar.is-blocker {
   height: 7px;
 }
 .ai-p2-qa-bar-val {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: var(--ai-p2-fs-figure);
+  font-weight: var(--ai-p2-fw-figure);
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, Consolas, monospace;
   text-align: right;
@@ -5700,7 +5725,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 }
 .ai-p2-qa-block-line {
   margin: 0.02rem 0 0;
-  font-size: 11px;
+  font-size: var(--ai-p2-fs-label);
   font-weight: 700;
   line-height: 1.25;
   color: var(--text);
@@ -5708,14 +5733,14 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 .ai-p2-qa-block-impact,
 .ai-p2-qa-rec-text {
   margin: 0.02rem 0 0;
-  font-size: 9.5px;
-  font-weight: 550;
-  line-height: 1.22;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  line-height: 1.2;
   color: var(--muted);
 }
 .ai-p2-qa-rec-text {
-  font-size: 11px;
-  font-weight: 650;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   color: var(--text);
 }
 .ai-p2-qa-rec-meta {
@@ -5734,7 +5759,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   border-radius: 0.3rem;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   background: color-mix(in srgb, var(--panel-alt) 70%, transparent);
-  font-size: 8.5px;
+  font-size: var(--ai-p2-fs-meta);
   font-weight: 650;
   line-height: 1.15;
   color: var(--muted);
@@ -5755,46 +5780,39 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   gap: 0.08rem;
 }
 .ai-p2-mid .ai-p2-rel-chart {
-  /* Fill leftover height inside the denser Battle-sized card. Floor stays low
-     so best/worst/now, the insight line, and chips are not clipped. */
-  min-height: 1.75rem;
+  /* Yield to callouts, the insight line, and chips. The plot uses what remains. */
+  min-height: 0;
 }
 .ai-p2-mid .ai-p2-rel-meta {
   max-width: 10rem;
 }
 /* QA in low col 2 (~1.02fr, Genie ~1.08fr), under Use case effectiveness.
-   The side-by-side journey|bars rail does not fit this width (names + 5.25rem
-   meters collide with the score and the action). Stack instead: score, then
-   the constraint and one action, then the capability list. The low-row card
-   matches the benchmark and the funnel. Minimum padding is tight enough that
-   a short low row (the card can be ~12rem) still holds the level line, the
-   score, the constraint, the full action, and all six capability rows.
-   Leftover height is shared on equal capability tracks so the card does not
-   end in an empty band. Nothing in this stack uses overflow to hide a row.
-   The action wraps in full — it is not line-clamped. */
+   Stack: level + score vs target, then the constraint and the full action,
+   then every capability. The body is a column locked to the card. Journey
+   and the decision stay content-sized; the six rows share whatever height
+   is left as minmax(0, 1fr). A min-content floor made that list taller than
+   the card, and overflow:hidden then cut QA Coverage and Coverage. Gap and
+   padding stay tight so a short low row still holds all six names. Meters
+   stay ~5.25rem wide. The action wraps in full — it is not line-clamped.
+   Labels stay at the use-case label size. */
 .ai-p2-low .ai-p2-qa {
-  padding-top: 0.12rem;
-  padding-bottom: 0.08rem;
+  padding-top: 0.08rem;
+  padding-bottom: 0.06rem;
 }
 .ai-p2-low .ai-p2-qa .ai-p2-card-head {
-  padding-bottom: 0.02rem;
-  margin-bottom: 0.02rem;
+  padding-bottom: 0;
+  margin-bottom: 0.04rem;
+  gap: 0.28rem;
 }
 .ai-p2-low .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas:
-    "journey"
-    "decision"
-    "bars";
-  /* min-content floor: the bars row must not collapse and clip the lower axes.
-     1fr still takes leftover height when the low row is tall. */
-  grid-template-rows: auto auto minmax(min-content, 1fr);
-  column-gap: 0;
-  row-gap: 0.1rem;
-  align-content: stretch;
-  align-items: stretch;
-  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  gap: 0.06rem;
+  overflow: hidden;
+  padding-top: 0;
 }
 .ai-p2-low .ai-p2-qa-head-titles {
   flex-wrap: wrap;
@@ -5804,59 +5822,68 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
+  line-height: 1.15;
 }
 .ai-p2-low .ai-p2-qa-journey {
+  flex: 0 0 auto;
   gap: 0.02rem;
 }
 .ai-p2-low .ai-p2-qa-score {
-  font-size: 14px;
+  font-size: var(--ai-p2-fs-primary);
   line-height: 1;
 }
 .ai-p2-low .ai-p2-qa-scale {
-  min-height: 0.46rem;
+  min-height: 0;
+  line-height: 1.05;
+}
+.ai-p2-low .ai-p2-qa-journey .ai-p2-qa-meter {
+  height: 3px;
 }
 .ai-p2-low .ai-p2-qa-bars {
+  flex: 1 1 0%;
   width: 100%;
   max-width: 100%;
   height: auto;
-  min-height: min-content;
+  min-height: 0;
   align-self: stretch;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 0.04rem;
-  padding: 0.04rem 0.28rem 0.03rem;
-  /* Visible: a hidden box was clipping Test Case Generation and below
-     once the low row was shorter than the stacked score + action. */
-  overflow: visible;
+  gap: 0.02rem;
+  padding: 0.02rem 0.2rem 0.02rem;
+  overflow: hidden;
 }
 .ai-p2-low .ai-p2-qa-bars-label {
-  font-size: 7.5px;
+  font-size: var(--ai-p2-fs-meta);
   line-height: 1.05;
 }
 .ai-p2-low .ai-p2-qa-bars-list {
-  flex: 1 1 auto;
-  min-height: min-content;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: auto;
   /* max-content, not minmax(0, max-content): a 0 minimum collapses the name.
-     Equal 1fr tracks share leftover height. The min-content floor keeps every
-     axis inside the card when the low row is short. */
+     Row tracks are minmax(0, 1fr) so they share the card and can shrink.
+     min-content here pushed the last two names outside overflow:hidden. */
   grid-template-columns: max-content var(--ai-p2-qa-track) max-content;
-  column-gap: 0.42rem;
+  column-gap: 0.35rem;
   row-gap: 0;
-  grid-auto-rows: minmax(min-content, 1fr);
+  grid-auto-rows: minmax(0, 1fr);
   align-content: stretch;
   align-items: center;
   justify-content: start;
-  overflow: visible;
+  overflow: hidden;
 }
 .ai-p2-low .ai-p2-qa-bar {
+  min-height: 0;
   padding: 0;
+  overflow: hidden;
 }
 .ai-p2-low .ai-p2-qa-bar-label {
-  font-size: 10px;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   line-height: 1.05;
   white-space: nowrap;
-  overflow: visible;
+  overflow: hidden;
   text-overflow: clip;
   max-width: none;
 }
@@ -5867,15 +5894,16 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   height: 3.5px;
 }
 .ai-p2-low .ai-p2-qa-decision {
+  flex: 0 0 auto;
   align-self: stretch;
   height: auto;
   justify-content: flex-start;
-  padding: 0.05rem 0.28rem;
-  gap: 0.04rem;
-  overflow: visible;
+  padding: 0.04rem 0.2rem;
+  gap: 0.02rem;
+  overflow: hidden;
 }
 .ai-p2-low .ai-p2-qa-decision .ai-p2-eyebrow {
-  font-size: 8px;
+  font-size: var(--ai-p2-fs-meta);
   line-height: 1.05;
 }
 .ai-p2-low .ai-p2-qa-constraints {
@@ -5883,8 +5911,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   gap: 0.06rem;
 }
 .ai-p2-low .ai-p2-qa-constraints .ai-chip {
-  padding: 0.01rem 0.18rem;
-  font-size: 8.5px;
+  padding: 0.02rem 0.22rem;
+  font-size: var(--ai-p2-fs-meta);
   line-height: 1.1;
 }
 .ai-p2-low .ai-p2-qa-rec-text {
@@ -5894,42 +5922,14 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   -webkit-line-clamp: unset;
   line-clamp: unset;
   margin: 0;
-  font-size: 10.5px;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   line-height: 1.15;
 }
 .ai-p2-low .ai-p2-qa-meta {
   overflow: visible;
   text-overflow: clip;
-}
-/* The pane (main is the size container) is tall enough that the low row
-   can spare a little padding. Do not put container-type on the QA card:
-   a nested size container made the ≤1366px rules hide the scale and the
-   capability label inside a card that is only ~500px wide. */
-@container (min-height: 640px) {
-  .ai-p2-low .ai-p2-qa-body {
-    row-gap: 0.28rem;
-  }
-  .ai-p2-low .ai-p2-qa-journey {
-    gap: 0.08rem;
-  }
-  .ai-p2-low .ai-p2-qa-score {
-    font-size: 15px;
-    line-height: 1.05;
-  }
-  .ai-p2-low .ai-p2-qa-scale {
-    min-height: 0.62rem;
-  }
-  .ai-p2-low .ai-p2-qa-decision {
-    padding: 0.12rem 0.28rem;
-    gap: 0.12rem;
-  }
-  .ai-p2-low .ai-p2-qa-bars {
-    gap: 0.08rem;
-    padding: 0.1rem 0.28rem 0.08rem;
-  }
-  .ai-p2-low .ai-p2-qa-bars-list {
-    row-gap: 0.06rem;
-  }
+  font-size: var(--ai-p2-fs-meta);
 }
 /* Density only. Do not put the journey and the bars back beside each other
    in this column — `.ai-p2-low .ai-p2-qa-body` owns the stack. A max-content
@@ -5945,10 +5945,10 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     gap: 0.01rem;
   }
   .ai-p2-qa-score {
-    font-size: 14px;
+    font-size: var(--ai-p2-fs-primary);
   }
   .ai-p2-qa-bars-label {
-    font-size: 7.5px;
+    font-size: var(--ai-p2-fs-meta);
   }
   .ai-p2-qa-bars-list {
     column-gap: 0.32rem;
@@ -5958,7 +5958,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     padding: 0.01rem 0;
   }
   .ai-p2-qa-bar-label {
-    font-size: 9.5px;
+    font-size: var(--ai-p2-fs-label);
+    font-weight: var(--ai-p2-fw-label);
     line-height: 1.12;
     white-space: nowrap;
   }
@@ -5975,13 +5976,13 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   }
   .ai-p2-qa-rec-chip {
     padding: 0.01rem 0.14rem;
-    font-size: 7.5px;
+    font-size: var(--ai-p2-fs-meta);
   }
   .ai-p2-qa-scale {
-    min-height: 0.5rem;
+    min-height: 0;
   }
   .ai-p2-qa-meta {
-    font-size: 8.5px;
+    font-size: var(--ai-p2-fs-meta);
   }
 }
 .ai-p2-rel-label {
@@ -6006,8 +6007,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   margin-left: auto;
 }
 .ai-p2-rel-meta {
-  font-size: 9px;
-  font-weight: 600;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
   line-height: 1.2;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -6022,7 +6023,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   min-width: 0;
 }
 .ai-p2-rel-deltas .ai-chip {
-  font-size: 8.5px;
+  font-size: var(--ai-p2-fs-meta);
   padding: 0.03rem 0.18rem;
   line-height: 1.15;
 }
@@ -6090,22 +6091,22 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   box-shadow: inset 0 0 0 1px color-mix(in srgb, #0284c7 28%, transparent);
 }
 .ai-p2-rel-callout .ai-p2-eyebrow {
-  font-size: 8px;
+  font-size: var(--ai-p2-fs-meta);
   letter-spacing: 0.02em;
   line-height: 1.15;
   white-space: normal;
 }
 .ai-p2-rel-callout-name {
-  font-size: 10.5px;
-  font-weight: 750;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: 650;
   letter-spacing: -0.01em;
   line-height: 1.15;
   white-space: normal;
   overflow-wrap: break-word;
 }
 .ai-p2-rel-callout-meta {
-  font-size: 8.5px;
-  font-weight: 600;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
@@ -6113,16 +6114,25 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow-wrap: break-word;
 }
 .ai-p2-rel-chart {
-  /* Fill leftover card height (Battle-matched mid row). Floor stays low so callouts + chips stay visible. */
-  flex: 1 1 auto;
-  min-height: 2.6rem;
+  /* Fill leftover card height. The plot is clipped to this box so it cannot
+     paint over the insight line or the release chips. */
+  flex: 1 1 0%;
+  min-height: 0;
   margin: 0;
+  position: relative;
+  overflow: hidden;
+}
+.ai-p2-rel-chart .recharts-responsive-container {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
 }
 .ai-p2-rel-insight {
   flex-shrink: 0;
   margin: 0;
-  font-size: 10px;
-  font-weight: 550;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   line-height: 1.2;
   color: var(--muted);
   display: -webkit-box;
@@ -6137,12 +6147,10 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   padding-top: 0.04rem;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   flex-shrink: 0;
-  max-height: 3.15rem;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .ai-p2-rel-chips .ai-chip {
-  font-size: 9px;
+  font-size: var(--ai-p2-fs-meta);
   padding: 0.03rem 0.2rem;
   line-height: 1.15;
 }
@@ -6228,8 +6236,10 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   height: 32px;
 }
 .ai-p2-head .ai-score-ring svg text {
-  /* Stay a readable score when the ring is smaller than the viewBox. */
-  font-size: 11px;
+  /* Same tabular size as the other primary numbers; the 32px ring still holds two digits. */
+  font-size: var(--ai-p2-fs-primary);
+  font-weight: var(--ai-p2-fw-primary);
+  font-family: ui-monospace, Consolas, monospace;
 }
 .ai-p2-head-row1 {
   display: flex;
@@ -6288,15 +6298,15 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   font-variant-numeric: tabular-nums;
 }
 .ai-p2-head-kpi-k {
-  font-size: 9px;
+  font-size: var(--ai-p2-fs-meta);
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--muted);
 }
 .ai-p2-head-kpi b {
-  font-size: 11px;
-  font-weight: 800;
+  font-size: var(--ai-p2-fs-primary);
+  font-weight: var(--ai-p2-fw-primary);
   color: var(--text);
   font-family: ui-monospace, Consolas, monospace;
 }
@@ -6308,7 +6318,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   min-width: 0;
 }
 .ai-p2-head-meta {
-  font-size: 10px;
+  font-size: var(--ai-p2-fs-label);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
@@ -6326,15 +6336,15 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   flex-wrap: nowrap;
 }
 .ai-p2-head-contrib-text {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   line-height: 1.05;
 }
 .ai-p2-head-team-toggle {
-  font-size: 10px;
+  font-size: var(--ai-p2-fs-label);
   font-weight: 700;
   line-height: 1.05;
 }
@@ -6384,7 +6394,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     padding: 0.02rem 0.04rem 0;
   }
   .ai-battle-row {
-    font-size: 10px;
+    font-size: var(--ai-p2-fs-label);
     line-height: 1.1;
     padding: 0;
   }
@@ -6404,7 +6414,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     padding: 0.02rem 0.32rem 0.02rem 0.1rem;
   }
   .ai-uc-row {
-    font-size: 10px;
+    font-size: var(--ai-p2-fs-label);
     line-height: 1.1;
     padding: 0;
   }
@@ -6439,7 +6449,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   min-width: 0;
 }
 .ai-battle-axis {
-  font-size: 9.5px;
+  font-size: var(--ai-p2-fs-meta);
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -6456,12 +6466,13 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   text-align: left;
 }
 .ai-battle-row {
-  font-size: 10px;
+  font-size: var(--ai-p2-fs-label);
   line-height: 1.1;
   padding: 0;
 }
 .ai-battle-key {
-  font-weight: 500;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   color: var(--muted);
   min-width: 0;
   overflow: hidden;
@@ -6470,7 +6481,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   text-align: center;
 }
 .ai-battle-val {
-  font-weight: 750;
+  font-size: var(--ai-p2-fs-figure);
+  font-weight: var(--ai-p2-fw-figure);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -6501,7 +6513,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   min-width: 0;
 }
 .ai-battle-split-val {
-  font-size: 9px;
+  font-size: var(--ai-p2-fs-meta);
   font-weight: 750;
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, Consolas, monospace;
@@ -6522,7 +6534,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 }
 .ai-battle-rec {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--ai-p2-fs-label);
   font-weight: 650;
   line-height: 1.15;
   color: var(--text);
@@ -6535,37 +6547,50 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   gap: 0.1rem;
 }
 .ai-p2-adopt {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
-  gap: 0.12rem;
+  gap: 0.2rem;
+  overflow: hidden;
 }
 .ai-p2-adopt-row {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 6.15rem minmax(0, 1fr) 2.35rem 2.55rem;
   align-items: center;
   gap: 0.28rem;
   min-width: 0;
-  min-height: 1.2rem;
+  min-height: 0;
+}
+.ai-p2-adopt-row.is-people {
+  flex: 0 0 auto;
 }
 .ai-p2-adopt-label {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   line-height: 1.15;
   color: var(--text);
   white-space: nowrap;
+}
+.ai-p2-adopt-people {
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .ai-p2-adopt-track {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  min-height: 0.7rem;
-  max-height: 1.65rem;
+  height: 1.15rem;
+  min-height: 0;
+  max-height: 1.15rem;
   min-width: 0;
 }
 .ai-p2-adopt-bar {
@@ -6576,8 +6601,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   clip-path: polygon(0 10%, 100% 22%, 100% 78%, 0 90%);
 }
 .ai-p2-adopt-count {
-  font-size: 12px;
-  font-weight: 800;
+  font-size: var(--ai-p2-fs-primary);
+  font-weight: var(--ai-p2-fw-primary);
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: var(--text);
@@ -6585,8 +6610,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   white-space: nowrap;
 }
 .ai-p2-adopt-drop {
-  font-size: 11px;
-  font-weight: 750;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: var(--muted);
@@ -6603,8 +6628,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 .ai-p2-adopt-insight {
   margin: 0;
   flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 650;
+  font-size: var(--ai-p2-fs-label);
+  font-weight: var(--ai-p2-fw-label);
   line-height: 1.2;
   color: var(--text);
   white-space: nowrap;
@@ -6639,7 +6664,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   margin-top: 0.04rem;
 }
 .ai-p2-qa-constraints .ai-chip {
-  font-size: 9px;
+  font-size: var(--ai-p2-fs-meta);
   padding: 0.04rem 0.22rem;
 }
 .ai-p2-insight {
@@ -6655,7 +6680,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
 }
 .ai-p2-insight .ai-narr-list li {
   -webkit-line-clamp: 1;
-  font-size: 10px;
+  font-size: var(--ai-p2-fs-label);
   line-height: 1.2;
   padding: 0.04rem 0.28rem 0.04rem 0.38rem;
   border-left-color: color-mix(in srgb, var(--border) 35%, #047857);
@@ -6750,23 +6775,16 @@ html.dark .ai-rec-engine li {
     display: none;
   }
 }
-/* Below a 1440 laptop pane (~1366 content, and 90% zoom): drop secondary
-   copy. KPI values (score, value, recoverable, risks, leakage figures) stay. */
+/* Below a 1440 laptop pane the same type scale stays. Do not drop the release
+   insight or the QA scale — those lines have to remain inside the card. */
 @container (max-width: 1366px) {
-  .ai-p2-qa-block-impact,
-  .ai-p2-qa-scale,
-  .ai-p2-qa-bars-label,
-  .ai-p2-rel-insight,
-  .ai-p2-rel-meta {
-    display: none;
-  }
   .ai-p2-qa-rec-text {
     display: block;
     overflow: visible;
     white-space: normal;
   }
   .ai-p2-rel-chart {
-    min-height: 2rem;
+    min-height: 0;
   }
 }
 
@@ -6805,11 +6823,9 @@ html.dark .ai-rec-engine li {
     padding-top: 0;
     overflow: hidden;
   }
-  .ai-p2-mgr-rank b {
-    font-size: 20px;
-  }
+  .ai-p2-mgr-rank b,
   .ai-p2-mgr-health b {
-    font-size: 15px;
+    font-size: var(--ai-p2-fs-primary);
   }
   .ai-p2-mgr-bars {
     gap: 0.12rem;
@@ -6826,24 +6842,23 @@ html.dark .ai-rec-engine li {
     max-height: none;
   }
   .ai-p2-rel-chart {
-    min-height: 2.2rem;
+    min-height: 0;
   }
   .ai-p2-rel-chips {
-    max-height: 2.6rem;
-    overflow-y: auto;
+    overflow: hidden;
   }
   .ai-p2-rel-chips .ai-chip {
-    font-size: 8.5px;
+    font-size: var(--ai-p2-fs-meta);
     padding: 0.03rem 0.16rem;
   }
   .ai-p2-rel-callout {
     padding: 0.06rem 0.1rem 0.06rem;
   }
   .ai-p2-rel-callout-name {
-    font-size: 10px;
+    font-size: var(--ai-p2-fs-label);
   }
   .ai-p2-rel-callout-meta {
-    font-size: 8px;
+    font-size: var(--ai-p2-fs-meta);
   }
   .ai-p2-rel-meta {
     max-width: 4.5rem;
