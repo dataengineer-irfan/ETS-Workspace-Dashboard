@@ -4981,10 +4981,11 @@ html.dark .ai-attn-heat-pop {
 }
 .ai-p2 {
   /* Laptop fit (1440×900, also 1366×768 and Genie): header | mid | low | insight.
-     Mid is content-sized from the Battle card. UC and QA match that height.
-     Leftover height goes to low (Manager | release journey | AI adoption funnel).
+     Mid is content-sized from the Battle card. UC and Release match that height.
+     Leftover height goes to low (Manager | QA maturity | AI adoption funnel).
      Insight is a thin auto row (≤4 one-line bullets) so the page does not scroll.
-     Col 1 stays the Battle track so Manager width equals Battle width. */
+     Col 1 stays the Battle track so Manager width equals Battle width.
+     Col fractions stay 0.56 / 1.08 / 1.36 (Genie 0.66 / 1.12 / 1.32). */
   --ai-p2-col-1: minmax(0, 0.56fr);
   --ai-p2-col-2: minmax(0, 1.08fr);
   --ai-p2-col-3: minmax(0, 1.36fr);
@@ -5009,9 +5010,9 @@ html.dark .ai-attn-heat-pop {
 .ai-p2 > .ai-p2-mid,
 .ai-p2-mid {
   display: grid;
-  /* Battle | UC | QA — shared tracks with low. QA is the wide col 3. */
+  /* Battle | UC | Release — shared tracks with low. Release is the wide col 3. */
   grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
-  /* Row height = Battle content. UC and QA stretch to it (see .ai-p2-qa). */
+  /* Row height = Battle content. UC and Release stretch to it (see .ai-p2-rel). */
   grid-template-rows: auto;
   align-items: stretch;
   gap: 0.45rem;
@@ -5034,7 +5035,7 @@ html.dark .ai-attn-heat-pop {
   overflow: hidden;
 }
 .ai-p2-low.ai-p2-low-3 {
-  /* Manager | Release journey | AI adoption funnel — same tracks as mid (Battle | UC | QA). */
+  /* Manager | QA maturity | AI adoption funnel — same tracks as mid (Battle | UC | Release). */
   grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
 }
 
@@ -5053,7 +5054,7 @@ html.dark .ai-attn-heat-pop {
   padding-left: 0.28rem;
   padding-right: 0.28rem;
 }
-/* Release in low col 2 — reclaim a little horizontal pad for callouts/chips. */
+/* Release in wide mid col 3 — keep the tight horizontal pad so the chart uses the width. */
 .ai-p2-card.ai-p2-rel {
   padding-left: 0.28rem;
   padding-right: 0.28rem;
@@ -5433,13 +5434,11 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
   overflow: hidden;
 }
 
-/* QA maturity: one scorecard, Battle-matched height.
-   Left rail (1fr) is journey + constraint + one action.
-   Right rail hugs the capability table: name max-content, meter fixed
-   ~5.25rem / 3.5px, score. A 1fr name track left a hole before the meter;
-   a 16rem minimum clipped the scores when the card narrowed.
-   Rows share the body height, first axis at the top of the pane and
-   Coverage on the bottom padding (no trailing band). Body does not scroll. */
+/* QA maturity scorecard. Default rail is journey+decision | capability bars
+   (used if the card is wide). Live placement is low col 2: see
+   `.ai-p2-low .ai-p2-qa-*`, which stacks the same pieces with a shorter meter
+   and wrapping labels so the narrower track still shows level, score vs target,
+   every capability, the constraint, and one action. Body does not scroll. */
 .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
   flex: 1 1 0%;
@@ -5705,57 +5704,100 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* QA in mid col 3. Battle sets the auto row. height:0 + min-height:100%
-   keeps the scorecard from inflating mid; the card stretches to that row.
-   Journey, every capability, the constraint, and one action fit inside
-   (no body scroll). Capability column hugs name + short meter + score. */
-.ai-p2-mid > .ai-p2-qa {
+/* Release in mid col 3. Battle sets the auto row. height:0 + min-height:100%
+   keeps the journey from inflating mid; the card stretches to that row.
+   Callouts, chart, and chips stay inside (no body scroll). */
+.ai-p2-mid > .ai-p2-rel {
   height: 0;
   min-height: 100%;
   align-self: stretch;
   overflow: hidden;
 }
-.ai-p2-mid .ai-p2-qa-body {
-  row-gap: 0.1rem;
-  column-gap: 0.45rem;
-  padding-top: 0;
-  grid-template-columns: minmax(0, 1fr) max-content;
+.ai-p2-mid .ai-p2-rel-body {
+  gap: 0.08rem;
 }
-.ai-p2-mid .ai-p2-qa-journey {
-  gap: 0.02rem;
-  padding-top: 0;
+.ai-p2-mid .ai-p2-rel-chart {
+  /* Fill leftover Battle height. Floor stays low so callouts and chips are not clipped. */
+  min-height: 2.4rem;
 }
-.ai-p2-mid .ai-p2-qa-score {
+.ai-p2-mid .ai-p2-rel-meta {
+  max-width: 10rem;
+}
+/* QA in low col 2 (the old release track, ~1.08fr). Column fractions stay put.
+   Stack journey, short capability meters, then the constraint and one action
+   so the narrower card stays readable. Labels wrap instead of clipping.
+   Bars take leftover low-row height; the decision band stays fully visible. */
+.ai-p2-low .ai-p2-qa-body {
+  --ai-p2-qa-track: 5.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "journey"
+    "bars"
+    "decision";
+  /* Bars stay packed. Extra low-row height sits between the scorecard and the
+     decision band, which is pinned to the bottom so the constraint and action
+     stay visible without opening a gap under every axis. */
+  grid-template-rows: auto auto minmax(0, 1fr);
+  column-gap: 0;
+  row-gap: 0.16rem;
+  align-content: stretch;
+}
+.ai-p2-low .ai-p2-qa-head-titles {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+.ai-p2-low .ai-p2-qa-head-titles .ai-p2-card-sub {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.ai-p2-low .ai-p2-qa-journey {
+  gap: 0.04rem;
+}
+.ai-p2-low .ai-p2-qa-score {
   font-size: 15px;
 }
-.ai-p2-mid .ai-p2-qa-bars {
-  gap: 0.02rem;
-  padding: 0.04rem 0.26rem 0.04rem 0.3rem;
+.ai-p2-low .ai-p2-qa-bars {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  align-self: start;
+  gap: 0.04rem;
+  padding: 0.08rem 0.28rem 0.1rem;
 }
-.ai-p2-mid .ai-p2-qa-bar {
-  padding: 0.01rem 0;
+.ai-p2-low .ai-p2-qa-bars-list {
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, max-content) var(--ai-p2-qa-track) max-content;
+  column-gap: 0.36rem;
+  row-gap: 0.2rem;
+  align-content: start;
+  justify-content: start;
 }
-.ai-p2-mid .ai-p2-qa-bar-label {
+.ai-p2-low .ai-p2-qa-bar-label {
   font-size: 10px;
   line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: break-word;
+  max-width: 9.25rem;
 }
-.ai-p2-mid .ai-p2-qa-bar .ai-p2-qa-meter {
+.ai-p2-low .ai-p2-qa-bar .ai-p2-qa-meter {
   height: 3.5px;
 }
-.ai-p2-mid .ai-p2-qa-decision {
-  padding: 0.12rem 0.26rem 0.12rem;
-  gap: 0.08rem;
+.ai-p2-low .ai-p2-qa-decision {
+  align-self: end;
+  height: auto;
+  justify-content: flex-start;
+  padding: 0.12rem 0.26rem;
+  gap: 0.1rem;
 }
-.ai-p2-mid .ai-p2-qa-block-line,
-.ai-p2-mid .ai-p2-qa-block-impact,
-.ai-p2-mid .ai-p2-qa-rec-text {
-  margin-top: 0.01rem;
+.ai-p2-low .ai-p2-qa-rec-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.ai-p2-mid .ai-p2-qa-rec-meta {
-  margin-top: 0.04rem;
-  gap: 0.08rem;
-}
-/* Genie-narrow: same journey+decision | hugged bars. Do not restore a
+/* Genie-narrow fallback for a wide QA rail. The live card is low col 2 and
+   stacks (`.ai-p2-low .ai-p2-qa-body` wins on specificity). Do not restore a
    minmax floor on the bars column — it overflowed the card and clipped scores. */
 @container (max-width: 1180px) {
   .ai-p2-qa-body {
@@ -5818,7 +5860,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   fill: color-mix(in srgb, var(--text) 78%, var(--muted));
 }
 /* Release head: title stays intact; project·count + Improve/Trend wrap
-   instead of clipping when the card is low col 2 (~1.08fr). */
+   instead of clipping. The card now sits in wide mid col 3. */
 .ai-p2-rel .ai-p2-card-head-battle {
   flex-wrap: wrap;
   row-gap: 0.04rem;
@@ -5856,8 +5898,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   padding: 0.03rem 0.18rem;
   line-height: 1.15;
 }
-/* Release intelligence — low col 2. Roles once (merged Best·Now), chart = trend, chips = picker.
-   Denser than the old wide mid column so callout/chip labels wrap instead of clipping. */
+/* Release intelligence — wide mid col 3. Roles once (merged Best·Now), chart = trend, chips = picker.
+   Callout and chip labels still wrap instead of clipping. Chart fills leftover Battle height. */
 .ai-p2-rel-body {
   flex: 1 1 0%;
   min-height: 0;
@@ -5943,7 +5985,7 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   overflow-wrap: break-word;
 }
 .ai-p2-rel-chart {
-  /* Fill leftover low-row height; floor stays low so callouts + chips are not pushed into scroll. */
+  /* Fill leftover card height (Battle-matched mid row). Floor stays low so callouts + chips stay visible. */
   flex: 1 1 auto;
   min-height: 2.6rem;
   margin: 0;
@@ -6526,8 +6568,8 @@ html.dark .ai-rec-engine li {
   height: 100%;
 }
 /* Mid cards: stretch to the Battle row (not a tall fr track).
-   height:auto lets Battle define the row. QA overrides height so it
-   stretches to that row without inflating it (see .ai-p2-mid > .ai-p2-qa). */
+   height:auto lets Battle define the row. Release overrides height so it
+   stretches to that row without inflating it (see .ai-p2-mid > .ai-p2-rel). */
 .ai-p2-mid > * {
   height: auto;
   align-self: stretch;
@@ -6614,7 +6656,7 @@ html.dark .ai-rec-engine li {
 @container (max-width: 1180px) {
   .ai-util-fit[data-page="2"] > .ai-p2 {
     /* Col 1 stays a bit wider than the closed 0.56 — the pane is tighter.
-       Manager shares the Battle track. The adoption funnel stays the wide col 3. */
+       Manager shares the Battle track. Release is wide mid col 3; the funnel stays wide low col 3. */
     --ai-p2-col-1: minmax(0, 0.66fr);
     --ai-p2-col-2: minmax(0, 1.12fr);
     --ai-p2-col-3: minmax(0, 1.32fr);

@@ -54,9 +54,10 @@ const MATURITY_LABEL: Record<number, string> = {
    with slight air after reclaiming the More control; Genie uses compact row density instead of a toggle. */
 /* UC effectiveness: full ranked strip always visible (# · name+tag · Usage · Hours · Trend · Value · Rec) —
    no More/Less; Genie uses compact density (drops Trend) instead of a toggle. */
-/* Release journey (low col 2): single-line head; Best/Worst/Now (merge when Now equals
+/* Release journey (mid col 3, wide track): single-line head; Best/Worst/Now (merge when Now equals
    Best or Worst); chart = trend with release-name milestones; chips = picker (name + !);
-   one action line, no metric echo. Point labels drop under the compact container query. */
+   one action line, no metric echo. Point labels drop under the compact container query.
+   Card stretches to the Battle row and does not grow it. */
 
 function sameProject(a: string | null | undefined, b: string | null | undefined): boolean {
   return String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
@@ -1059,6 +1060,177 @@ export function AIUtilizationPage2({
           </div>
         </section>
 
+        <section className="glass-panel rounded-xl ai-p2-card ai-p2-rel min-h-0 min-w-0 overflow-hidden flex flex-col" data-rel-panel>
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <span className="ai-p2-card-title">Release journey</span>
+            <div className="ai-p2-rel-head-meta min-w-0">
+              <span
+                className="ai-p2-rel-meta truncate"
+                title={`${project} · ${timeline.length} release${timeline.length === 1 ? '' : 's'} · sequence order`}
+              >
+                {project} · {timeline.length}
+              </span>
+              <div className="ai-p2-rel-deltas">
+                {improveDelta && <span className="ai-chip">{improveDelta.text}</span>}
+                {trendDelta && (
+                  <span className={`ai-chip ${BAND[trendDelta.positive ? 'green' : 'red']}`}>
+                    {trendDelta.text}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="ai-p2-rel-body">
+            <div
+              className="ai-p2-rel-callouts"
+              aria-label="Best worst and current release"
+              style={{ gridTemplateColumns: `repeat(${Math.max(releaseCallouts.length, 1)}, minmax(0, 1fr))` }}
+            >
+              {releaseCallouts.map((c) => {
+                const eyebrow = c.roles.map((r) => REL_ROLE_LABEL[r]).join(' · ');
+                const roleClass = c.roles.map((r) => `is-${r}`).join(' ');
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    className={`ai-p2-rel-callout ${roleClass}`}
+                    onClick={() => onOpenRelease(c.row.release)}
+                    title={`${eyebrow} · ${c.row.release}`}
+                  >
+                    <span className="ai-p2-eyebrow">{eyebrow}</span>
+                    <span className="ai-p2-rel-callout-name">{c.row.release}</span>
+                    <span className="ai-p2-rel-callout-meta">
+                      {c.row.health != null ? `${fmt(c.row.health, 0)} adopt` : 'n/a'}
+                      {` · ${fmt(c.row.hours_saved, 0)} h`}
+                    </span>
+                  </button>
+                );
+              })}
+              {releaseCallouts.length === 0 && (
+                <div className="ai-p2-rel-callout is-now" aria-disabled>
+                  <span className="ai-p2-eyebrow">Now</span>
+                  <span className="ai-p2-rel-callout-name">—</span>
+                  <span className="ai-p2-rel-callout-meta">n/a</span>
+                </div>
+              )}
+            </div>
+            <div className="ai-p2-rel-chart flex-1 min-h-0" ref={relChartRef}>
+              {timeline.length === 0 ? (
+                <p className="ai-p2-empty">No releases for this project.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={timeline} margin={{ top: showPointLabels ? 10 : 4, right: 8, left: 2, bottom: 2 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.12} />
+                    <XAxis
+                      dataKey="release"
+                      interval={0}
+                      tickLine={false}
+                      axisLine={false}
+                      height={18}
+                      tick={(props) => {
+                        const index = Number(props.index ?? 0);
+                        const last = timeline.length - 1;
+                        const show = index === 0 || index === last || index % relStep === 0;
+                        if (!show) return <g />;
+                        const anchor = index === 0 ? 'start' : index === last ? 'end' : 'middle';
+                        return (
+                          <text
+                            x={Number(props.x ?? 0)}
+                            y={Number(props.y ?? 0) + 8}
+                            textAnchor={anchor}
+                            fill="currentColor"
+                            fontSize={8}
+                            fontWeight={650}
+                          >
+                            {String(props.payload?.value ?? '')}
+                          </text>
+                        );
+                      }}
+                    />
+                    <YAxis yAxisId="left" hide domain={[0, 100]} />
+                    <YAxis yAxisId="right" orientation="right" hide />
+                    <Tooltip />
+                    {currentRelease?.release && (
+                      <ReferenceLine
+                        yAxisId="left"
+                        x={currentRelease.release}
+                        stroke="currentColor"
+                        strokeOpacity={0.35}
+                        strokeDasharray="3 3"
+                      />
+                    )}
+                    <Area yAxisId="right" type="monotone" dataKey="hours_saved" fill="#0d948828" stroke="#0d9488" strokeWidth={1.25} name="Hours" />
+                    <Line
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="adoption_pct"
+                      stroke="#0284c7"
+                      strokeWidth={2}
+                      name="Adoption %"
+                      dot={{ r: 2.5, onClick: (state) => {
+                        const payload = (state as { payload?: AIReleaseTrendRow } | undefined)?.payload;
+                        if (payload?.release) onOpenRelease(payload.release);
+                      } }}
+                    >
+                      {showPointLabels ? <LabelList dataKey="health" content={ReleaseHealthLabel} /> : null}
+                    </Line>
+                    <Line yAxisId="right" type="monotone" dataKey="value" stroke="#047857" strokeDasharray="4 3" strokeWidth={1.25} dot={false} name="Value $" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            <p className="ai-p2-rel-insight" title={releaseInsight}>{releaseInsight}</p>
+            <div className="ai-p2-rel-chips" aria-label="Open release">
+              {timeline.map((row) => (
+                <button
+                  key={row.release}
+                  type="button"
+                  className={`ai-chip ${row.anomaly ? BAND.amber : ''} ${row.release === currentRelease?.release ? 'is-current' : ''} ${row.release === bestRelease?.release ? 'is-best' : ''} ${row.release === worstRelease?.release && worstRelease?.release !== bestRelease?.release ? 'is-worst' : ''}`}
+                  onClick={() => onOpenRelease(row.release)}
+                  title={
+                    row.anomaly
+                      ? `Open ${row.release} · anomaly · ${row.health == null ? 'n/a' : `${fmt(row.health, 0)} adopt`}`
+                      : `Open ${row.release}${row.health == null ? '' : ` · ${fmt(row.health, 0)} adopt`}`
+                  }
+                >
+                  {row.release}
+                  {row.anomaly ? ' !' : ''}
+                </button>
+              ))}
+              {timeline.length === 0 && <span className="ai-p2-empty">No release chips.</span>}
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div className="ai-p2-low ai-p2-low-3">
+        <section className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0 overflow-hidden flex flex-col">
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <div className="ai-p2-card-titles min-w-0">
+              <span className="ai-p2-card-title" title={`Manager score · ${oneManager(card?.manager || health?.manager)}`}>Manager score · {oneManager(card?.manager || health?.manager)}</span>
+            </div>
+            <span className={`ai-chip shrink-0 ${BAND[card?.grade === 'A+' || card?.grade === 'A' ? 'green' : card?.grade === 'B' ? 'amber' : card ? 'red' : 'neutral']}`}>
+              {card?.grade || 'n/a'}{card?.score == null ? '' : ` ${fmt(card.score, 0)}`}
+            </span>
+          </div>
+          {card ? (
+            <div className="ai-p2-mgr-body custom-scrollbar">
+              <div className="ai-p2-mgr-tiles" aria-label="Manager score components">
+                {managerComponents.map((comp) => (
+                  <ScoreTile key={comp.key} label={comp.label} weight={comp.weight} score={comp.score} />
+                ))}
+              </div>
+              <div className="ai-p2-mgr-rec">
+                <span className="ai-p2-eyebrow">Recommendation</span>
+                <p className="ai-p2-mgr-rec-text" title={mgrRec}>{mgrRec}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="ai-p2-empty">No manager score for this project.</p>
+          )}
+        </section>
+
         <section className="glass-panel rounded-xl ai-p2-card ai-p2-qa min-h-0 min-w-0 overflow-hidden flex flex-col">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <div className="ai-p2-qa-head-titles min-w-0">
@@ -1157,176 +1329,6 @@ export function AIUtilizationPage2({
             </div>
           </div>
         </section>
-      </div>
-
-      <div className="ai-p2-low ai-p2-low-3">
-        <section className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0 overflow-hidden flex flex-col">
-          <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <div className="ai-p2-card-titles min-w-0">
-              <span className="ai-p2-card-title" title={`Manager score · ${oneManager(card?.manager || health?.manager)}`}>Manager score · {oneManager(card?.manager || health?.manager)}</span>
-            </div>
-            <span className={`ai-chip shrink-0 ${BAND[card?.grade === 'A+' || card?.grade === 'A' ? 'green' : card?.grade === 'B' ? 'amber' : card ? 'red' : 'neutral']}`}>
-              {card?.grade || 'n/a'}{card?.score == null ? '' : ` ${fmt(card.score, 0)}`}
-            </span>
-          </div>
-          {card ? (
-            <div className="ai-p2-mgr-body custom-scrollbar">
-              <div className="ai-p2-mgr-tiles" aria-label="Manager score components">
-                {managerComponents.map((comp) => (
-                  <ScoreTile key={comp.key} label={comp.label} weight={comp.weight} score={comp.score} />
-                ))}
-              </div>
-              <div className="ai-p2-mgr-rec">
-                <span className="ai-p2-eyebrow">Recommendation</span>
-                <p className="ai-p2-mgr-rec-text" title={mgrRec}>{mgrRec}</p>
-              </div>
-            </div>
-          ) : (
-            <p className="ai-p2-empty">No manager score for this project.</p>
-          )}
-        </section>
-
-        <section className="glass-panel rounded-xl ai-p2-card ai-p2-rel min-h-0 min-w-0 overflow-hidden flex flex-col" data-rel-panel>
-          <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <span className="ai-p2-card-title">Release journey</span>
-            <div className="ai-p2-rel-head-meta min-w-0">
-              <span
-                className="ai-p2-rel-meta truncate"
-                title={`${project} · ${timeline.length} release${timeline.length === 1 ? '' : 's'} · sequence order`}
-              >
-                {project} · {timeline.length}
-              </span>
-              <div className="ai-p2-rel-deltas">
-                {improveDelta && <span className="ai-chip">{improveDelta.text}</span>}
-                {trendDelta && (
-                  <span className={`ai-chip ${BAND[trendDelta.positive ? 'green' : 'red']}`}>
-                    {trendDelta.text}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="ai-p2-rel-body">
-            <div
-              className="ai-p2-rel-callouts"
-              aria-label="Best worst and current release"
-              style={{ gridTemplateColumns: `repeat(${Math.max(releaseCallouts.length, 1)}, minmax(0, 1fr))` }}
-            >
-              {releaseCallouts.map((c) => {
-                const eyebrow = c.roles.map((r) => REL_ROLE_LABEL[r]).join(' · ');
-                const roleClass = c.roles.map((r) => `is-${r}`).join(' ');
-                return (
-                  <button
-                    key={c.key}
-                    type="button"
-                    className={`ai-p2-rel-callout ${roleClass}`}
-                    onClick={() => onOpenRelease(c.row.release)}
-                    title={`${eyebrow} · ${c.row.release}`}
-                  >
-                    <span className="ai-p2-eyebrow">{eyebrow}</span>
-                    <span className="ai-p2-rel-callout-name">{c.row.release}</span>
-                    <span className="ai-p2-rel-callout-meta">
-                      {c.row.health != null ? `${fmt(c.row.health, 0)} adopt` : 'n/a'}
-                      {` · ${fmt(c.row.hours_saved, 0)} h`}
-                    </span>
-                  </button>
-                );
-              })}
-              {releaseCallouts.length === 0 && (
-                <div className="ai-p2-rel-callout is-now" aria-disabled>
-                  <span className="ai-p2-eyebrow">Now</span>
-                  <span className="ai-p2-rel-callout-name">—</span>
-                  <span className="ai-p2-rel-callout-meta">n/a</span>
-                </div>
-              )}
-            </div>
-            <div className="ai-p2-rel-chart flex-1 min-h-0" ref={relChartRef}>
-              {timeline.length === 0 ? (
-                <p className="ai-p2-empty">No releases for this project.</p>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={timeline} margin={{ top: showPointLabels ? 10 : 4, right: 2, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.12} />
-                    <XAxis
-                      dataKey="release"
-                      interval={0}
-                      tickLine={false}
-                      axisLine={false}
-                      height={14}
-                      tick={(props) => {
-                        const index = Number(props.index ?? 0);
-                        const last = timeline.length - 1;
-                        const show = index === 0 || index === last || index % relStep === 0;
-                        if (!show) return <g />;
-                        return (
-                          <text
-                            x={Number(props.x ?? 0)}
-                            y={Number(props.y ?? 0) + 9}
-                            textAnchor="middle"
-                            fill="currentColor"
-                            fontSize={8}
-                            fontWeight={650}
-                          >
-                            {String(props.payload?.value ?? '')}
-                          </text>
-                        );
-                      }}
-                    />
-                    <YAxis yAxisId="left" hide domain={[0, 100]} />
-                    <YAxis yAxisId="right" orientation="right" hide />
-                    <Tooltip />
-                    {currentRelease?.release && (
-                      <ReferenceLine
-                        yAxisId="left"
-                        x={currentRelease.release}
-                        stroke="currentColor"
-                        strokeOpacity={0.35}
-                        strokeDasharray="3 3"
-                      />
-                    )}
-                    <Area yAxisId="right" type="monotone" dataKey="hours_saved" fill="#0d948828" stroke="#0d9488" strokeWidth={1.25} name="Hours" />
-                    <Line
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="adoption_pct"
-                      stroke="#0284c7"
-                      strokeWidth={2}
-                      name="Adoption %"
-                      dot={{ r: 2.5, onClick: (state) => {
-                        const payload = (state as { payload?: AIReleaseTrendRow } | undefined)?.payload;
-                        if (payload?.release) onOpenRelease(payload.release);
-                      } }}
-                    >
-                      {showPointLabels ? <LabelList dataKey="health" content={ReleaseHealthLabel} /> : null}
-                    </Line>
-                    <Line yAxisId="right" type="monotone" dataKey="value" stroke="#047857" strokeDasharray="4 3" strokeWidth={1.25} dot={false} name="Value $" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-            <p className="ai-p2-rel-insight" title={releaseInsight}>{releaseInsight}</p>
-            <div className="ai-p2-rel-chips" aria-label="Open release">
-              {timeline.map((row) => (
-                <button
-                  key={row.release}
-                  type="button"
-                  className={`ai-chip ${row.anomaly ? BAND.amber : ''} ${row.release === currentRelease?.release ? 'is-current' : ''} ${row.release === bestRelease?.release ? 'is-best' : ''} ${row.release === worstRelease?.release && worstRelease?.release !== bestRelease?.release ? 'is-worst' : ''}`}
-                  onClick={() => onOpenRelease(row.release)}
-                  title={
-                    row.anomaly
-                      ? `Open ${row.release} · anomaly · ${row.health == null ? 'n/a' : `${fmt(row.health, 0)} adopt`}`
-                      : `Open ${row.release}${row.health == null ? '' : ` · ${fmt(row.health, 0)} adopt`}`
-                  }
-                >
-                  {row.release}
-                  {row.anomaly ? ' !' : ''}
-                </button>
-              ))}
-              {timeline.length === 0 && <span className="ai-p2-empty">No release chips.</span>}
-            </div>
-          </div>
-        </section>
-
         <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col ai-p2-adopt-card" data-ai-p2-funnel>
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">AI adoption funnel</span>
