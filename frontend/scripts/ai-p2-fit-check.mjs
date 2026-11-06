@@ -13,7 +13,7 @@
  *   3. noscroll - page, app shell, .ai-p2 root and every card body have no scroll or clipped overflow
  *   4. ellipsis - no text-overflow ellipsis / line-clamp / overflow-hidden clipped text
  *   5. even     - sibling rows of the same table (use cases, capabilities, funnel, benchmark) share one height
- *      rows     - use-case and battle rows stay at or under their row cap, and no gap between consecutive rows exceeds one row
+ *      rows     - use-case rows <= 40px, battle rows <= 36px (the CSS cap tokens, never above these), no gap between consecutive rows above one row, and (viewport >= 860px tall) <= 40px padding above/below a 6+ row mid table
  *   6. slack    - no card leaves a large empty band under its content
  *   7. type     - one type scale: sizes 9.5 / 10 / 11.5 / 13px only, and equal size + weight for the
  *                 same role (row labels, row figures) in every card
@@ -356,8 +356,29 @@ const MEASURE = () => {
       }
     }
   };
-  denseTable('Use case', '.ai-uc-row', capOf('--p2-uc-row-max'));
-  denseTable('Battle', '.ai-battle-row', capOf('--p2-battle-row-max'));
+  denseTable('Use case', '.ai-uc-row', Math.min(capOf('--p2-uc-row-max'), 40));
+  denseTable('Battle', '.ai-battle-row', Math.min(capOf('--p2-battle-row-max'), 36));
+
+  /* 5c. on tall laptop viewports (860px and over) the padding above and below a mid table stays
+     within 40px. Only tables with 6+ rows are held to it: two rows cannot fill a tall card
+     without being spread apart, and rows are never spread. */
+  if (window.innerHeight >= 860) {
+    const padOf = (label, panelSel, lastSel) => {
+      const panel = root.querySelector(panelSel);
+      if (!panel || !visible(panel)) return;
+      if (root.querySelectorAll(panelSel === '.ai-uc-strip' ? '.ai-uc-row' : '.ai-battle-row').length < 6) return;
+      const card = panel.closest('.ai-p2-card');
+      const head = card.querySelector('.ai-p2-card-head').getBoundingClientRect();
+      const cr = card.getBoundingClientRect();
+      const last = root.querySelector(lastSel).getBoundingClientRect();
+      const above = panel.getBoundingClientRect().top - head.bottom;
+      const below = cr.bottom - parseFloat(getComputedStyle(card).paddingBottom) - last.bottom;
+      if (above > 40.5) fails.rows.push(`${label} table has ${px(above)}px of padding above it (max 40)`);
+      if (below > 40.5) fails.rows.push(`${label} table has ${px(below)}px of padding below it (max 40)`);
+    };
+    padOf('Use case', '.ai-uc-strip', '.ai-uc-strip');
+    padOf('Battle', '.ai-battle-compare', '.ai-battle-foot');
+  }
 
   /* 7b. same role = same type */
   const roles = {

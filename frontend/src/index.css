@@ -4928,6 +4928,9 @@ html.dark .ai-attn-heat-pop {
    height so the mid tables keep their rows readable instead of going down to the floors. */
 @media (max-height: 740px) {
   .ai-util-fit[data-page="2"] > .ai-p2 {
+    --p2-axis-h: 1rem;
+    --p2-panel-pad: 0.3rem 0.4rem 0.3rem;
+    --p2-panel-pad-y: 0.6rem;
     grid-template-rows: auto minmax(min-content, 1fr) auto auto;
   }
 }
@@ -4986,7 +4989,7 @@ html.dark .ai-attn-heat-pop {
   box-sizing: border-box;
 }
 .ai-util-fit[data-page="2"] > .ai-p2 {
-  gap: 0.32rem;
+  gap: 0.7rem;
 }
 .ai-p2 {
   /* Laptop fit (1440×900, also 1366×768, the same laptops minus browser chrome, and Genie):
@@ -5023,7 +5026,7 @@ html.dark .ai-attn-heat-pop {
   --ai-p2-col-1: minmax(0, 0.84fr);
   --ai-p2-col-2: minmax(0, 1.16fr);
   --ai-p2-col-3: minmax(0, 0.94fr);
-  grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, 11.75rem) auto;
+  grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, clamp(11.75rem, calc(11.75rem + (100vh - 768px) * 0.31), 14.375rem)) auto;
   grid-template-columns: minmax(0, 1fr);
 }
 .ai-p3 {
@@ -5050,7 +5053,7 @@ html.dark .ai-attn-heat-pop {
   /* Row height = Battle content. UC and Release stretch to it (see .ai-p2-rel). */
   grid-template-rows: auto;
   align-items: stretch;
-  gap: 0.32rem;
+  gap: 0.7rem;
   height: auto;
   /* Beat `.ai-p2 > * { min-height: 0 }` so mid never sits below its tallest card. */
   min-height: min-content;
@@ -5070,7 +5073,7 @@ html.dark .ai-attn-heat-pop {
   overflow: hidden;
 }
 .ai-p2-low {
-  gap: 0.32rem;
+  gap: 0.7rem;
   overflow: visible;
   height: auto;
   align-self: stretch;
@@ -5093,10 +5096,11 @@ html.dark .ai-attn-heat-pop {
   --p2-gap: 0.3rem;
   --p2-row: 13px;
   --p2-row-dense: 12px;
-  --p2-axis-h: 1rem;
-  --p2-uc-row-max: 32px;
-  --p2-battle-row-max: 28px;
-  --p2-panel-pad: 0.14rem 0.4rem 0.16rem;
+  --p2-axis-h: 1.4rem;
+  --p2-uc-row-max: 40px;
+  --p2-battle-row-max: 36px;
+  --p2-panel-pad: 0.4rem 0.4rem 0.5rem;
+  --p2-panel-pad-y: 0.9rem;
 }
 .ai-p2-card {
   position: relative;
@@ -5184,7 +5188,7 @@ html.dark .ai-attn-heat-pop {
   align-content: stretch;
   flex: 1 1 auto;
   min-height: 0;
-  max-height: calc(var(--p2-rows, 8) * var(--p2-row-max) + var(--p2-axis-h) + 0.3rem + 2px);
+  max-height: calc(var(--p2-rows, 8) * var(--p2-row-max) + var(--p2-axis-h) + var(--p2-panel-pad-y) + 2px);
   padding: var(--p2-panel-pad);
 }
 .ai-battle-compare {
@@ -5501,7 +5505,7 @@ html.dark .ai-p2-mgr .ai-p2-mgr-vpu[data-tone="red"] { color: #fb7185; }
   position: relative;
   display: block;
   width: 100%;
-  height: 10px;
+  height: 12px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 48%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 35%, transparent);
@@ -5525,9 +5529,9 @@ html.dark .ai-p2-mgr .ai-p2-mgr-vpu[data-tone="red"] { color: #fb7185; }
 .ai-p2-mgr-range-me {
   position: absolute;
   top: 50%;
-  width: 12px;
-  height: 12px;
-  margin: -6px 0 0 -6px;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
   border-radius: 50%;
   border: 2px solid var(--panel, #0b1220);
   background: currentColor;
@@ -5683,7 +5687,7 @@ html.dark .ai-p2-qa-step.is-current .ai-p2-qa-step-tag { color: #7dd3fc; }
   align-content: center;
   align-items: center;
   column-gap: 0.3rem;
-  row-gap: 0.16rem;
+  row-gap: 0.2rem;
   min-width: 0;
   padding: 0.04rem 0.3rem 0.04rem 0.5rem;
   border-radius: 0.3rem;
@@ -5722,7 +5726,7 @@ html.dark .ai-p2-qa-cap[data-band="red"] { --cap-color: #fb7185; }
   grid-row: 2;
   position: relative;
   display: block;
-  height: 8px;
+  height: 9px;
   margin-right: 2px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 55%, transparent);
@@ -5848,7 +5852,7 @@ html.dark .ai-p2-qa-fill.is-red { background: #fb7185; }
 }
 .ai-p2-adopt-track {
   display: block;
-  height: 8px;
+  height: 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 48%, transparent);
   overflow: hidden;
@@ -6426,12 +6430,16 @@ html.dark .ai-rec-engine li {
     --ai-p2-col-1: minmax(0, 0.88fr);
     --ai-p2-col-2: minmax(0, 1.08fr);
     --ai-p2-col-3: minmax(0, 0.94fr);
-    grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, 11.75rem) auto;
+    grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, clamp(11.75rem, calc(11.75rem + (100vh - 768px) * 0.31), 14.375rem)) auto;
     gap: 0.28rem;
   }
-  .ai-p2-mid {
+  .ai-p2 > .ai-p2-mid {
     grid-template-columns: var(--ai-p2-col-1) var(--ai-p2-col-2) var(--ai-p2-col-3);
     grid-template-rows: auto;
+    gap: 0.32rem;
+  }
+  .ai-p2-low {
+    gap: 0.32rem;
   }
   .ai-p2-mid > :nth-child(3) {
     grid-column: auto;
