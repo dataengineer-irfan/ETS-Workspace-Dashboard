@@ -5111,28 +5111,43 @@ html.dark .ai-attn-heat-pop {
 }
 /* Use case effectiveness — full ranked strip always visible (no More/Less).
    # · name(+tag) · Usage · Hours · Trend · Value · Rec + thin CSS value bar;
-   dense gap/padding so 8 rows fit without mid-body scroll; Genie = compact density.
+   dense row gap so 8 rows fit without mid-body scroll; Genie = compact density.
+   One shared column set (header + rows via subgrid). Name is content-tight
+   so leftover width spreads across the metric tracks — not a hole after the tag.
    flex: none — strip hugs ~8 rows (no empty stretch); mid row tracks this content. */
 .ai-uc-strip {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns:
+    0.95rem
+    minmax(0, max-content)
+    minmax(3.15rem, 1fr)
+    minmax(3.15rem, 1fr)
+    minmax(3.15rem, 1fr)
+    minmax(3.15rem, 1fr)
+    minmax(3.15rem, 1fr);
+  column-gap: 0.5rem;
+  row-gap: 0.06rem;
+  align-items: center;
   flex: 0 0 auto;
-  gap: 0.06rem;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
-  padding: 0.08rem 0.06rem 0.04rem;
+  padding: 0.08rem 0.38rem 0.04rem 0.12rem;
   border-radius: 0.4rem;
   border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
   background: color-mix(in srgb, var(--panel-alt) 55%, transparent);
 }
+.ai-uc-strip > .ai-p2-empty {
+  grid-column: 1 / -1;
+  margin-top: 0.15rem;
+}
 .ai-uc-axis,
 .ai-uc-row {
   display: grid;
-  /* Rank · name · USAGE · HOURS · TREND · $12,884 · Rec chip.
-     Fixed tracks hug the widest header or value (~2px slack). Name is the only flex track. */
-  grid-template-columns: 0.9rem minmax(0, 1fr) 2.15rem 2.3rem 2.2rem 2.7rem 3rem;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 0.12rem;
   min-width: 0;
 }
 .ai-uc-axis {
@@ -5146,17 +5161,17 @@ html.dark .ai-attn-heat-pop {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
 }
 .ai-uc-axis-rank,
-.ai-uc-axis-num {
-  text-align: right;
-}
+.ai-uc-axis-num,
+.ai-uc-axis-trend,
 .ai-uc-axis-rec {
-  text-align: left;
+  text-align: right;
 }
 .ai-uc-row {
   position: relative;
   font-size: 10.5px;
   line-height: 1.2;
-  padding: 0.04rem 0.02rem;
+  /* No horizontal padding — it would inset subgrid tracks off the header. */
+  padding: 0.03rem 0;
   border-radius: 0.28rem;
 }
 .ai-uc-row::before {
@@ -5185,14 +5200,16 @@ html.dark .ai-attn-heat-pop {
   color: color-mix(in srgb, var(--muted) 45%, var(--text));
 }
 .ai-uc-name {
+  justify-self: start;
+  max-width: 100%;
   min-width: 0;
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.14rem;
+  gap: 0.28rem;
 }
 .ai-uc-label {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   font-weight: 600;
   line-height: 1.25;
@@ -5228,6 +5245,7 @@ html.dark .ai-attn-heat-pop {
 }
 .ai-uc-rec {
   min-width: 0;
+  text-align: right;
 }
 .ai-uc-rec .ai-chip {
   font-size: 9px;
@@ -6150,18 +6168,23 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
     padding: 0.01rem 0;
   }
   .ai-uc-strip {
-    gap: 0.04rem;
-    padding: 0.06rem 0.05rem 0.02rem;
+    /* Drop the Trend track under Genie. Remaining metrics still share leftover
+       width — name stays max-content so the center hole does not come back. */
+    grid-template-columns:
+      0.9rem
+      minmax(0, max-content)
+      minmax(3rem, 1fr)
+      minmax(3rem, 1fr)
+      minmax(3rem, 1fr)
+      minmax(3rem, 1fr);
+    column-gap: 0.42rem;
+    row-gap: 0.04rem;
+    padding: 0.06rem 0.32rem 0.02rem 0.1rem;
   }
   .ai-uc-row {
     font-size: 10px;
     line-height: 1.15;
-    padding: 0.02rem 0.02rem;
-  }
-  .ai-uc-axis,
-  .ai-uc-row {
-    /* Drop Trend under Genie so Rec stays. Tracks still hug USAGE / hours / $12,884 / Rec. */
-    grid-template-columns: 0.85rem minmax(0, 1fr) 2.1rem 2.25rem 2.65rem 2.95rem;
+    padding: 0.02rem 0;
   }
   .ai-uc-axis-trend,
   .ai-uc-trend {
