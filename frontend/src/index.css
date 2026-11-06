@@ -5419,7 +5419,8 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
    Right rail hugs the capability table: name max-content, meter fixed
    ~5.25rem / 3.5px, score. A 1fr name track left a hole before the meter;
    a 16rem minimum clipped the scores when the card narrowed.
-   Rows share the body height evenly. Body does not scroll. */
+   Rows share the body height, first axis at the top of the pane and
+   Coverage on the bottom padding (no trailing band). Body does not scroll. */
 .ai-p2-qa-body {
   --ai-p2-qa-track: 5.25rem;
   flex: 1 1 0%;
@@ -5542,7 +5543,9 @@ html.dark .ai-p2-score-meter-fill.is-neutral { background: #94a3b8; }
   display: grid;
   grid-template-columns: max-content var(--ai-p2-qa-track) max-content;
   column-gap: 0.42rem;
-  align-content: space-evenly;
+  /* space-between: extra height goes between axes. space-evenly left a
+     trailing band under Coverage the same size as the row gap. */
+  align-content: space-between;
   align-items: center;
   justify-content: start;
 }
@@ -5606,7 +5609,9 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   order: 2;
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
+  /* Pin Biggest constraint to the top of this pane and the action chips
+     to its bottom padding. space-evenly left a hollow under the chips. */
+  justify-content: space-between;
   gap: 0.1rem;
   height: 100%;
   min-width: 0;
