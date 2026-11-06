@@ -9,6 +9,8 @@ import {
   ComposedChart,
   LabelList,
   Line,
+  Pie,
+  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -215,8 +217,8 @@ function leakageSteps(health: AIHealthRow | undefined): LeakStep[] {
   const pot = Math.max(0, potential);
   return [
     { name: 'Potential', base: 0, delta: pot, sign: 'up', raw: potential },
-    { name: 'Leakage', base: Math.max(0, pot - drop), delta: drop, sign: 'down', raw: leakage },
-    { name: 'Current', base: 0, delta: Math.max(0, current), sign: 'total', raw: current },
+    { name: 'Unrealized', base: Math.max(0, pot - drop), delta: drop, sign: 'down', raw: leakage },
+    { name: 'Generated', base: 0, delta: Math.max(0, current), sign: 'total', raw: current },
   ];
 }
 
@@ -233,6 +235,47 @@ type ContributionShare = {
   qaRaw: number;
   basis: 'value' | 'hours' | 'assets';
 };
+
+function ContributionDonut({ contribution }: { contribution: ContributionShare | null }) {
+  if (!contribution) {
+    return (
+      <div className="ai-p2-donut-row" data-ai-p2-donut>
+        <span className="ai-p2-donut-na">Share n/a</span>
+      </div>
+    );
+  }
+  const slices = [
+    { name: 'Dev', value: Math.max(contribution.devRaw, 0) },
+    { name: 'QA', value: Math.max(contribution.qaRaw, 0) },
+  ];
+  return (
+    <div
+      className="ai-p2-donut-row"
+      data-ai-p2-donut
+      title={`Dev ${fmt(contribution.devPct, 0)}% · QA ${fmt(contribution.qaPct, 0)}% of ${contribution.basis}`}
+    >
+      <PieChart width={28} height={28}>
+        <Pie
+          data={slices}
+          dataKey="value"
+          nameKey="name"
+          cx={14}
+          cy={14}
+          innerRadius={7}
+          outerRadius={13}
+          stroke="none"
+          isAnimationActive={false}
+        >
+          <Cell fill="#0284c7" />
+          <Cell fill="#0d9488" />
+        </Pie>
+      </PieChart>
+      <span className="ai-p2-donut-share">Dev {fmt(contribution.devPct, 0)}%</span>
+      <span className="ai-p2-donut-share">QA {fmt(contribution.qaPct, 0)}%</span>
+      <span className="ai-p2-donut-basis">{contribution.basis}</span>
+    </div>
+  );
+}
 
 function TreeBlock(props: TreemapNode & { top?: number; rec?: string }) {
   const { x, y, width, height, name, value, depth } = props;
@@ -280,15 +323,15 @@ function ScoreRing({ score, band }: { score: number | null; band: string }) {
   const c = 2 * Math.PI * r;
   const dash = (pctFill / 100) * c;
   return (
-    <span className="ai-score-ring ai-p2-health-ring" aria-label={`Health ${score ?? 'n/a'}`}>
-      <svg viewBox="0 0 36 36" width="26" height="26">
+    <span className="ai-score-ring ai-p2-health-ring" aria-label={`Health ${score ?? 'n/a'} ${band}`}>
+      <svg viewBox="0 0 36 36" width="44" height="44">
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(148,163,184,0.25)" strokeWidth="3.5" />
         <circle
           cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3.5"
           strokeDasharray={`${dash} ${c - dash}`} strokeLinecap="round"
           transform="rotate(-90 18 18)"
         />
-        <text x="18" y="21.5" textAnchor="middle" fontSize="10" fontWeight="800" fontFamily="ui-monospace, Consolas, monospace">{score == null ? '—' : Math.round(score)}</text>
+        <text x="18" y="21.2" textAnchor="middle" fontSize="11" fontWeight="800" fontFamily="ui-monospace, Consolas, monospace">{score == null ? '—' : Math.round(score)}</text>
       </svg>
     </span>
   );
@@ -972,16 +1015,10 @@ export function AIUtilizationPage2({
             ))}
           </div>
           <div className="ai-battle-foot">
-            {battle.contribution && battle.contribution.basis === 'value' && (
-              <div className="ai-battle-split" title={`Dev ${money(battle.devValue)} · QA ${money(battle.qaValue)}`}>
-                <span className="ai-battle-split-val">Dev {money(battle.devValue)}</span>
-                <span className="ai-battle-split-bar" aria-hidden="true">
-                  <i style={{ width: `${battle.contribution.devPct}%` }} />
-                </span>
-                <span className="ai-battle-split-val">QA {money(battle.qaValue)}</span>
-              </div>
+            <ContributionDonut contribution={battle.contribution} />
+            {(battle.recommend || mgrRec) && (
+              <p className="ai-battle-rec" title={battle.recommend || mgrRec}>{battle.recommend || mgrRec}</p>
             )}
-            <p className="ai-battle-rec" title={battle.recommend || mgrRec}>{battle.recommend || mgrRec}</p>
           </div>
         </section>
 
@@ -1135,7 +1172,7 @@ export function AIUtilizationPage2({
         <section className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0 overflow-hidden flex flex-col">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <div className="ai-p2-card-titles min-w-0">
-              <span className="ai-p2-card-title truncate">Manager score · {oneManager(card?.manager || health?.manager)}</span>
+              <span className="ai-p2-card-title" title={`Manager score · ${oneManager(card?.manager || health?.manager)}`}>Manager score · {oneManager(card?.manager || health?.manager)}</span>
             </div>
             <span className={`ai-chip shrink-0 ${BAND[card?.grade === 'A+' || card?.grade === 'A' ? 'green' : card?.grade === 'B' ? 'amber' : card ? 'red' : 'neutral']}`}>
               {card?.grade || 'n/a'}{card?.score == null ? '' : ` ${fmt(card.score, 0)}`}

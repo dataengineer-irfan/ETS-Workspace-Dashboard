@@ -6053,8 +6053,8 @@ html.dark .ai-p2-qa-bar-val[data-band="red"] { color: #fb7185; }
   padding: 0.12rem 0.55rem !important;
 }
 .ai-p2-head .ai-score-ring svg {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
 }
 .ai-p2-head-row1 {
   display: flex;
@@ -6579,6 +6579,20 @@ html.dark .ai-rec-engine li {
   .ai-p2-rel-label,
   .ai-p2-tree-quiet {
     display: none;
+  }
+  .ai-p2-score-tile-wt,
+  .ai-p2-score-tile-max {
+    display: none;
+  }
+  .ai-p2-score-tile-label {
+    letter-spacing: 0;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .ai-p2-mgr .ai-p2-card-title {
+    font-size: 10px;
+    white-space: normal;
+    line-height: 1.15;
   }
 }
 /* Below a 1440 laptop pane (~1366 content, and 90% zoom): drop secondary
