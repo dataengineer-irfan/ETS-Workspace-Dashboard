@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import {
   Area,
@@ -14,7 +14,6 @@ import {
 } from 'recharts';
 import type {
   AIHealthRow,
-  AILeagueRow,
   AIReleaseTrendRow,
   AIRiskCard,
   AIUtilizationKPIs,
@@ -24,6 +23,7 @@ type Band = 'green' | 'amber' | 'red' | 'neutral';
 
 const BAND: Record<string, string> = {
   green: 'ai-band-green',
+  teal: 'ai-band-teal',
   amber: 'ai-band-amber',
   red: 'ai-band-red',
   neutral: 'ai-band-neutral',
@@ -52,10 +52,10 @@ const MATURITY_LABEL: Record<number, string> = {
    with slight air after reclaiming the More control; Genie uses compact row density instead of a toggle. */
 /* UC effectiveness: full ranked strip always visible (# · name+tag · Usage · Hours · Trend · Value · Rec) —
    no More/Less; Genie uses compact density (drops Trend) instead of a toggle. */
-/* Release intelligence (low col 2, narrower than the old mid col 3): single-line head when it fits;
-   Best/Worst/Now callouts (merge when Now=Best/Worst); chart = trend only; chips = release picker
-   (name + ! only); insight = action, no metric restatement. Callouts/chart/chips are denser so
-   labels still fit ~0.75fr; body scrolls if the low row is shorter than the stack. */
+/* Release journey (mid col 3, wide track): single-line head; Best/Worst/Now (merge when Now equals
+   Best or Worst); chart = trend with release-name milestones; chips = picker (name + !);
+   one action line, no metric echo. Point labels drop under the compact container query.
+   Card stretches to the Battle row and does not grow it. */
 
 function sameProject(a: string | null | undefined, b: string | null | undefined): boolean {
   return String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
@@ -104,20 +104,190 @@ function maturityStatus(readiness: number | null, gap: number | null): { label: 
   return { label: 'At Risk', band: 'red' };
 }
 
-/** Canonical manager scorecard components — never blank titles on the 2×2 tiles. */
-const MGR_COMP_META: Record<string, { label: string; weight: number }> = {
-  adoption: { label: 'Adoption', weight: 30 },
-  savings: { label: 'Savings', weight: 25 },
-  efficiency: { label: 'Efficiency', weight: 20 },
-  quality: { label: 'Evidence', weight: 25 },
-  evidence: { label: 'Evidence', weight: 25 },
-};
+type BenchTone = 'green' | 'teal' | 'amber' | 'red';
 
-function scoreBand(score: number | null | undefined): Band {
-  if (score == null || Number.isNaN(score)) return 'neutral';
-  if (score >= 80) return 'green';
+/**
+ * Inclusive linear percentile (Excel PERCENTILE.INC).
+ * Small portfolios use the same interpolation — quartiles are not hardcoded.
+ */
+function percentileInc(sortedAsc: number[], p: number): number | null {
+  const n = sortedAsc.length;
+  if (n === 0) return null;
+  if (n === 1) return sortedAsc[0];
+  const index = (p / 100) * (n - 1);
+  const lo = Math.floor(index);
+  const hi = Math.ceil(index);
+  if (lo === hi) return sortedAsc[lo];
+  const weight = index - lo;
+  return sortedAsc[lo] * (1 - weight) + sortedAsc[hi] * weight;
+}
+
+function projectValueUsd(row: AIHealthRow): number | null {
+  return finiteNum(row.value_usd ?? row.ai_value_usd);
+}
+
+/** Value ÷ active users, or ÷ headcount when active users is 0. */
+function valuePerUserOf(row: AIHealthRow): number | null {
+  const value = projectValueUsd(row);
+  if (value == null) return null;
+  const active = finiteNum(row.active_users) ?? 0;
+  const headcount = finiteNum(row.headcount_scope) ?? 0;
+  const denom = active > 0 ? active : headcount > 0 ? headcount : 0;
+  if (denom <= 0) return null;
+  return value / denom;
+}
+
+/** Share of the ranked list at or above this place. #1 of 4 is 25%, not a forced top 10%. */
+function rankSlice(rank: number, total: number): number {
+  if (total <= 0) return 1;
+  return rank / total;
+}
+
+function rankToneOf(rank: number, total: number): BenchTone {
+  const slice = rankSlice(rank, total);
+  if (slice <= 0.1) return 'green';
+  if (slice <= 0.25) return 'teal';
+  if (slice <= 0.5) return 'amber';
+  return 'red';
+}
+
+function healthToneOf(score: number): BenchTone {
+  if (score >= 90) return 'green';
+  if (score >= 75) return 'teal';
   if (score >= 60) return 'amber';
   return 'red';
+}
+
+function valueToneOf(deltaPct: number | null): BenchTone | null {
+  if (deltaPct == null || Number.isNaN(deltaPct)) return null;
+  if (deltaPct > 25) return 'green';
+  if (Math.abs(deltaPct) <= 2) return 'amber';
+  if (deltaPct > 2) return 'teal';
+  return 'red';
+}
+
+/** Where this project sits among the scored projects. Position only: the band stays in the header. */
+function benchmarkPosition(
+  health: number,
+  average: number,
+  topQuartile: number,
+  bottomQuartile: number,
+  total: number,
+): string | null {
+  if (total < 2) return null;
+  if (health >= topQuartile && health > average) return 'Top quartile';
+  if (health <= bottomQuartile && health < average) return 'Bottom quartile';
+  if (health > average) return 'Above average';
+  if (health < average) return 'Below average';
+  return 'At average';
+}
+
+function vsAverageLabel(deltaPct: number): string {
+  const digits = Math.abs(deltaPct) >= 9.95 ? 0 : 1;
+  const rounded = Number(deltaPct.toFixed(digits));
+  const body = Math.abs(rounded).toFixed(digits);
+  if (rounded > 0) return `+${body}%`;
+  if (rounded < 0) return `-${body}%`;
+  return '0%';
+}
+
+type PortfolioBenchmark = {
+  rank: number;
+  total: number;
+  health: number;
+  average: number;
+  topQuartile: number;
+  bottomQuartile: number;
+  valuePerUser: number | null;
+  valueDeltaPct: number | null;
+  rankTone: BenchTone;
+  healthTone: BenchTone;
+  valueTone: BenchTone | null;
+  position: string | null;
+  title: string;
+  scale: { lo: number; hi: number };
+};
+
+function buildPortfolioBenchmark(rows: AIHealthRow[], project: string): PortfolioBenchmark | null {
+  const scored = rows.filter((row) => finiteNum(row.health_score) != null);
+  const mine = rows.find((row) => sameProject(row.project, project));
+  const health = mine ? finiteNum(mine.health_score) : null;
+  if (!mine || health == null || scored.length === 0) return null;
+
+  const total = scored.length;
+  const better = scored.filter((row) => (finiteNum(row.health_score) as number) > health).length;
+  const rank = better + 1;
+  const scores = scored.map((row) => finiteNum(row.health_score) as number).sort((a, b) => a - b);
+  const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  const topQuartile = percentileInc(scores, 75) as number;
+  const bottomQuartile = percentileInc(scores, 25) as number;
+
+  const peerValues = scored.map(valuePerUserOf).filter((value): value is number => value != null);
+  const valuePerUser = valuePerUserOf(mine);
+  const averageValuePerUser = peerValues.length
+    ? peerValues.reduce((sum, value) => sum + value, 0) / peerValues.length
+    : null;
+  const valueDeltaPct = valuePerUser != null && averageValuePerUser != null && averageValuePerUser !== 0
+    ? ((valuePerUser - averageValuePerUser) / Math.abs(averageValuePerUser)) * 100
+    : null;
+
+  const titleParts = [
+    `Rank #${rank} of ${total}`,
+    `Health ${fmt(health, 1)}`,
+    `Portfolio average ${fmt(average, 1)}`,
+    `Top quartile ${fmt(topQuartile, 1)}`,
+    `Bottom quartile ${fmt(bottomQuartile, 1)}`,
+  ];
+  if (valuePerUser != null) {
+    const delta = valueDeltaPct == null ? '' : ` (${vsAverageLabel(valueDeltaPct)} vs average)`;
+    titleParts.push(`Value per user ${money(valuePerUser)}${delta}`);
+  }
+  const maturity = finiteNum(mine.maturity_level);
+  if (maturity != null) {
+    const label = MATURITY_LABEL[maturity];
+    titleParts.push(label ? `Maturity L${maturity} ${label}` : `Maturity L${maturity}`);
+  }
+  const trend = finiteNum(mine.trend_pts);
+  if (trend != null) {
+    titleParts.push(`Release trend ${trend > 0 ? '+' : ''}${fmt(trend, 1)} pts`);
+  }
+
+  const marks = [health, topQuartile, average, bottomQuartile];
+  const spread = Math.max(...marks) - Math.min(...marks);
+  const pad = Math.max(3, spread * 0.12);
+  const lo = Math.max(0, Math.floor(Math.min(...marks) - pad));
+  const hi = Math.min(100, Math.ceil(Math.max(...marks) + pad));
+
+  return {
+    rank,
+    total,
+    health,
+    average,
+    topQuartile,
+    bottomQuartile,
+    valuePerUser,
+    valueDeltaPct,
+    rankTone: rankToneOf(rank, total),
+    healthTone: healthToneOf(health),
+    valueTone: valueToneOf(valueDeltaPct),
+    position: benchmarkPosition(health, average, topQuartile, bottomQuartile, total),
+    title: titleParts.join(' · '),
+    scale: { lo, hi: hi > lo ? hi : lo + 1 },
+  };
+}
+
+type QaStatus = { label: string; band: Band };
+
+/**
+ * Plain status of a capability against the next-level target. Near = within 10 pts.
+ * Red is kept for the one blocker (the weakest capability that is still well below target);
+ * the other below-target capabilities stay neutral and carry no status word, so the bar
+ * against the target line says it.
+ */
+function capabilityStatus(score: number, target: number, isBlocker = false): QaStatus {
+  if (score >= target) return { label: 'At target', band: 'green' };
+  if (score >= target - 10) return { label: 'Near target', band: 'amber' };
+  return isBlocker ? { label: 'Blocker', band: 'red' } : { label: '', band: 'neutral' };
 }
 
 function bandOf(value: string | undefined | null): Band {
@@ -150,6 +320,92 @@ function shortName(name: string) {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
+/** Header shows one SDM, never a comma-separated roster. */
+function oneManager(name: string | null | undefined) {
+  const raw = String(name || '').trim();
+  if (!raw) return '—';
+  const first = raw.split(/[,;|]|(?:\s+and\s+)/i)[0]?.trim();
+  return first || '—';
+}
+
+function finiteNum(value: number | null | undefined): number | null {
+  if (value == null || Number.isNaN(value)) return null;
+  return value;
+}
+
+type AdoptStage = { key: string; label: string; count: number | null };
+
+/**
+ * Workforce funnel for the drilled project. Counts come only from fields
+ * already on the payload. Power users are omitted: nothing in health, people,
+ * or contribution rows defines that stage or a threshold for it.
+ * A null count is n/a (no evidence). A real zero stays 0.
+ */
+function adoptionStages(
+  health: AIHealthRow | undefined,
+  domains: { users_enabled: number | null }[],
+  contributorCount: number,
+): AdoptStage[] {
+  const evidence = !!health && (
+    (health.people_tagged ?? 0) > 0
+    || (health.rows ?? 0) > 0
+    || (health.active_users ?? 0) > 0
+    || (health.headcount_scope ?? 0) > 0
+  );
+  const present = (value: number | null) => {
+    if (value == null) return null;
+    if (value === 0 && !evidence) return null;
+    return value;
+  };
+  const enabledVals = domains
+    .map((row) => finiteNum(row.users_enabled))
+    .filter((n): n is number => n != null);
+  const enabled = enabledVals.length ? enabledVals.reduce((sum, n) => sum + n, 0) : null;
+  return [
+    { key: 'team', label: 'Team', count: present(health ? finiteNum(health.headcount_scope) : null) },
+    { key: 'enabled', label: 'Enabled', count: enabled },
+    { key: 'active', label: 'Active', count: present(health ? finiteNum(health.active_users) : null) },
+    { key: 'contributors', label: 'Contributors', count: contributorCount },
+  ];
+}
+
+/**
+ * Funnel bars are Team → Enabled → Active. Contributors is not a stage:
+ * it is the count of people producing value, so it never draws a drop.
+ * When Enabled's count equals Team, skip it — a second identical bar hides
+ * the real Team → Active drop.
+ */
+function funnelBars(stages: AdoptStage[]): AdoptStage[] {
+  const team = stages.find((stage) => stage.key === 'team');
+  return stages.filter((stage) => {
+    if (stage.key === 'contributors') return false;
+    if (stage.key !== 'enabled' || !team) return true;
+    return stage.count !== team.count;
+  });
+}
+
+/** Drop-off % = (previous − current) / previous. Null when either side is missing or previous is 0. */
+function adoptionDrop(previous: number | null, current: number | null): number | null {
+  if (previous == null || current == null || previous <= 0) return null;
+  return ((previous - current) / previous) * 100;
+}
+
+function fmtDrop(drop: number | null): string {
+  if (drop == null) return 'n/a';
+  const rounded = Math.round(drop);
+  if (rounded === 0 && drop > 0) return '<1%';
+  if (rounded === 0 && drop < 0) return '−<1%';
+  return `${rounded}%`;
+}
+
+type ContributionShare = {
+  devPct: number;
+  qaPct: number;
+  devRaw: number;
+  qaRaw: number;
+  basis: 'value' | 'hours' | 'assets';
+};
+
 function ScoreRing({ score, band }: { score: number | null; band: string }) {
   const tone = bandOf(band);
   const color = tone === 'green' ? '#047857' : tone === 'amber' ? '#b45309' : tone === 'red' ? '#be123c' : '#64748b';
@@ -158,15 +414,18 @@ function ScoreRing({ score, band }: { score: number | null; band: string }) {
   const c = 2 * Math.PI * r;
   const dash = (pctFill / 100) * c;
   return (
-    <span className="ai-score-ring" aria-label={`Health ${score ?? 'n/a'}`}>
-      <svg viewBox="0 0 36 36" width="26" height="26">
+    <span
+      className={`ai-score-ring ai-p2-health-ring${score != null && Math.round(score) >= 100 ? ' is-wide' : ''}`}
+      aria-label={`Health ${score ?? 'n/a'} ${band}`}
+    >
+      <svg viewBox="0 0 36 36" width="44" height="44">
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(148,163,184,0.25)" strokeWidth="3.5" />
         <circle
           cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3.5"
           strokeDasharray={`${dash} ${c - dash}`} strokeLinecap="round"
           transform="rotate(-90 18 18)"
         />
-        <text x="18" y="21.5" textAnchor="middle" fontSize="10" fontWeight="800" fontFamily="ui-monospace, Consolas, monospace">{score == null ? '—' : Math.round(score)}</text>
+        <text x="18" y="21.2" textAnchor="middle" fontSize="11" fontWeight="800" fontFamily="ui-monospace, Consolas, monospace">{score == null ? '—' : Math.round(score)}</text>
       </svg>
     </span>
   );
@@ -183,22 +442,6 @@ function projectRecommendation(health: AIHealthRow | undefined, fallback?: strin
   return 'Optimize value';
 }
 
-function managementRecommendation(
-  card: { gap_sentence?: string; adoption_pct?: number | null; release_quality_pct?: number | null; score?: number | null; grade?: string } | undefined,
-  health: AIHealthRow | undefined,
-): string {
-  if (!card && !health) return 'Review AI evidence';
-  const gap = (card?.gap_sentence || '').toLowerCase();
-  if (gap.includes('evidence')) return 'Improve Evidence Quality';
-  if (gap.includes('adoption') || (card?.adoption_pct != null && card.adoption_pct < 50)) return 'Drive QA Adoption';
-  if ((health?.qa_adoption_pct ?? 100) < 40) return 'Drive QA Adoption';
-  if (card?.score != null && card.score >= 90) return 'Scale Best Practices';
-  if (card?.score != null && card.score >= 80) return 'Maintain Momentum';
-  if (card?.score != null && card.score < 70) return 'Executive Review Required';
-  if (gap.includes('efficiency') || gap.includes('savings')) return 'Improve Evidence Quality';
-  return 'Maintain Momentum';
-}
-
 /** Chart point label = adopt % only (release names live on axis / chips; roles on callouts). */
 function ReleaseHealthLabel(props: {
   x?: number;
@@ -212,7 +455,7 @@ function ReleaseHealthLabel(props: {
   const health = props.payload?.health;
   if (health == null || Number.isNaN(Number(health))) return null;
   return (
-    <text x={x} y={y - 6} textAnchor="middle" fill="currentColor" fontSize={8} fontWeight={700} className="ai-p2-rel-label">
+    <text x={x} y={y - 6} textAnchor="middle" fill="currentColor" fontSize={9.5} fontWeight={700} className="ai-p2-rel-label">
       {Math.round(Number(health))}
     </text>
   );
@@ -226,8 +469,55 @@ const REL_ROLE_LABEL: Record<RelCalloutRole, string> = {
   now: 'Now',
 };
 
-/** Deferred: Project Recommendation Engine bottom strip (`.ai-p2-narr`). Re-enable at end. */
-const SHOW_PROJECT_REC_ENGINE = false;
+let headlineCanvas: CanvasRenderingContext2D | null = null;
+
+/** Width of a text run in the element's own font, so the headline can pick the longest variant that fits one line. */
+function textWidthIn(el: HTMLElement, text: string): number {
+  if (!headlineCanvas) headlineCanvas = document.createElement('canvas').getContext('2d');
+  if (!headlineCanvas) return text.length * 6.4;
+  const cs = getComputedStyle(el);
+  headlineCanvas.font = `800 ${cs.fontSize} ${cs.fontFamily}`;
+  return headlineCanvas.measureText(text).width;
+}
+
+/** Hover definitions. Wording follows the backend calculation (analytics.py) and the design doc. */
+const DEFINITIONS = {
+  activeUsers: 'People in this domain with at least one activity row with hours saved or tokens in the current release.',
+  hoursSaved: 'Hours saved on the domain\'s activity rows in the current release.',
+  value: 'Hours saved × the $40/h loaded rate.',
+  adoption: 'Active users ÷ users enabled in this domain (headcount on the release outcome rows).',
+  utilization: 'Hours saved ÷ (enabled users × 8 h), capped at 100%.',
+  primaryArtifacts: 'Dev: code generated · QA: test cases / test design.',
+  secondaryAssets: 'Dev: documentation · QA: automation assets.',
+  defectPrevention: 'QA defect-analysis hours saved. Dev has no equivalent (n/a).',
+  coverage: 'QA adoption: share of QA headcount actively using AI, the same rule as Adoption % for QA. Dev has no equivalent (n/a).',
+  gain: 'Hours saved ÷ baseline effort for the use case (the productivity gain on its rows). It is not a release-over-release trend.',
+  funnelTeam: 'Headcount in scope for this project.',
+  funnelEnabled: 'Users with AI enabled (release outcome headcount).',
+  funnelActive: 'Active users: at least one activity row with hours saved or tokens in the current release.',
+  funnelContributors: 'People on this project\'s risk and opportunity cards (the View Team list). Not an adoption stage, so it never draws a drop.',
+} as const;
+
+const REC_DEFINITIONS: Record<string, string> = {
+  Scale: 'Scale: highest ROI or fastest-growing use case. Expand it to more people.',
+  Sustain: 'Sustain: the most adopted use case. Keep it going.',
+  Activate: 'Activate: in use but under 2 hours saved. Get more people using it.',
+  Review: 'Review: lowest value of the active use cases. Check whether to keep investing.',
+  Pilot: 'Pilot: no usage yet. Try it with one team.',
+  Monitor: 'Monitor: steady, no change needed.',
+};
+
+const BATTLE_DEFINITIONS: Record<string, string> = {
+  'Active Users': DEFINITIONS.activeUsers,
+  'Hours Saved': DEFINITIONS.hoursSaved,
+  'Value Generated': DEFINITIONS.value,
+  'Adoption %': DEFINITIONS.adoption,
+  'Utilization %': DEFINITIONS.utilization,
+  'Primary Artifacts': DEFINITIONS.primaryArtifacts,
+  'Secondary Assets': DEFINITIONS.secondaryAssets,
+  'Defect Prevention': DEFINITIONS.defectPrevention,
+  'Coverage %': DEFINITIONS.coverage,
+};
 
 export function AIUtilizationPage2({
   data,
@@ -243,53 +533,18 @@ export function AIUtilizationPage2({
   onBack: () => void;
 }) {
   const [showTeam, setShowTeam] = useState(false);
-  const [showFullLeague, setShowFullLeague] = useState(false);
+  const relChartRef = React.useRef<HTMLDivElement>(null);
+  const [relChartW, setRelChartW] = useState(0);
+  const headlineRef = useRef<HTMLParagraphElement>(null);
+  const [headlineW, setHeadlineW] = useState(0);
+  const verdictRef = useRef<HTMLParagraphElement>(null);
+  const [verdictW, setVerdictW] = useState(0);
 
   const health = (data.health ?? []).find((row) => sameProject(row.project, project)) as AIHealthRow | undefined;
   const projectRisks = useMemo(
     () => (data.risks ?? []).filter((row) => sameProject(row.project, project)),
     [data.risks, project],
   );
-  // #region agent log
-  React.useEffect(() => {
-    const rows = projectRisks.slice(0, 12).map((r) => ({
-      person: r.person ?? null,
-      type: r.type,
-      severity: r.severity,
-      empRaw: r.employee_number ?? null,
-      empType: typeof r.employee_number,
-      canOpen: typeof r.employee_number === 'number' && (r.employee_number as number) > 0,
-      bandClass: BAND[bandOf(r.severity)],
-    }));
-    const canOpenN = rows.filter((r) => r.canOpen).length;
-    const sevCounts = rows.reduce<Record<string, number>>((acc, r) => {
-      acc[r.severity] = (acc[r.severity] || 0) + 1;
-      return acc;
-    }, {});
-    const body = JSON.stringify({
-      sessionId: '6a418b',
-      runId: 'p2-risk-chips',
-      hypothesisId: 'H1',
-      location: 'AIUtilizationPage2.tsx:projectRisks',
-      message: 'Page2 risk chip openability + severity',
-      data: {
-        project,
-        riskCount: projectRisks.length,
-        canOpenN,
-        closedN: rows.length - canOpenN,
-        sevCounts,
-        uniqueBandClasses: [...new Set(rows.map((r) => r.bandClass))],
-        rows,
-      },
-      timestamp: Date.now(),
-    });
-    fetch('http://127.0.0.1:7896/ingest/a53d98a9-e463-4e07-91cc-72a241898446', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '6a418b' },
-      body,
-    }).catch(() => {});
-  }, [project, projectRisks]);
-  // #endregion
   const useCases = useMemo(
     () => (data.use_case_matrix ?? []).filter((row) => sameProject(row.project, project)),
     [data.use_case_matrix, project],
@@ -319,159 +574,51 @@ export function AIUtilizationPage2({
       }))
       .sort((a, b) => a.sequence - b.sequence);
   }, [data.release_trend, project, health?.release_series]);
-  const scorecards = useMemo(
-    () => (data.manager_scorecard ?? []).filter((row) => sameProject(row.project, project)),
-    [data.manager_scorecard, project],
+  const benchmark = useMemo(
+    () => buildPortfolioBenchmark(data.health ?? [], project),
+    [data.health, project],
   );
   const maturityAxes = useMemo(() => {
     const axes = (data.maturity_radar ?? []).find((row) => sameProject(row.project, project))?.axes ?? [];
     return axes
-      .map((axis) => ({
-        key: axis.axis,
+      .map((axis, index) => ({
+        key: `${axis.axis}-${index}`,
         axis: QA_AXIS_ALIAS[axis.axis] || axis.axis,
         score: typeof axis.score === 'number' && !Number.isNaN(axis.score) ? axis.score : 0,
       }))
       .sort((a, b) => a.score - b.score);
   }, [data.maturity_radar, project]);
-  /** Page 2 is project-scoped — do not show portfolio league (NH/Maven/…) while drilled into AK. */
-  const league = useMemo(() => {
-    const cards = (data.manager_scorecard ?? []).filter((row) => sameProject(row.project, project) && String(row.manager || '').trim());
-    if (cards.length > 0) {
-      const byMgr = new Map<string, (typeof cards)[number]>();
-      for (const card of cards) {
-        const key = String(card.manager).trim();
-        const prev = byMgr.get(key);
-        if (!prev || (card.score ?? -1) > (prev.score ?? -1)) byMgr.set(key, card);
-      }
-      return [...byMgr.values()]
-        .sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || String(a.manager).localeCompare(String(b.manager)))
-        .map((card, index) => ({
-          rank: index + 1,
-          manager: card.manager,
-          score: card.score ?? null,
-          grade: card.grade || '—',
-          value_usd: Math.round((card.hours_saved || 0) * 40),
-          hours_saved: card.hours_saved ?? 0,
-          projects: [project],
-        })) as AILeagueRow[];
-    }
-    return (data.league ?? [])
-      .filter((row) => (row.projects || []).some((p) => sameProject(p, project)))
-      .map((row, index) => ({
-        ...row,
-        rank: index + 1,
-        projects: (row.projects || []).filter((p) => sameProject(p, project)),
-      }));
-  }, [data.manager_scorecard, data.league, project]);
-  // #region agent log
+  useLayoutEffect(() => {
+    const el = headlineRef.current;
+    if (!el) return;
+    const measure = () => setHeadlineW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [project]);
+  useLayoutEffect(() => {
+    const el = verdictRef.current;
+    if (!el) return;
+    const measure = () => setVerdictW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [project]);
   React.useEffect(() => {
-    const portfolioLen = (data.league ?? []).length;
-    const foreignProjects = [...new Set(league.flatMap((r) => r.projects || []))].filter((p) => p !== project);
-    const send = (hypothesisId: string, message: string, dataPayload: Record<string, unknown>) => {
-      const body = JSON.stringify({
-        sessionId: '6a418b',
-        runId: 'post-fix-league-ui',
-        hypothesisId,
-        location: 'AIUtilizationPage2.tsx:league',
-        message,
-        data: dataPayload,
-        timestamp: Date.now(),
-      });
-      fetch('http://127.0.0.1:7896/ingest/a53d98a9-e463-4e07-91cc-72a241898446', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '6a418b' },
-        body,
-      }).catch(() => {});
-      fetch('/api/ai-utilization/debug-log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
-    };
-    send('L1', 'Page2 manager league scoped to drilled project', {
-      pageProject: project,
-      portfolioLeagueLen: portfolioLen,
-      scopedLeagueLen: league.length,
-      foreignProjects,
-      sample: league.slice(0, 5).map((r) => ({ rank: r.rank, manager: r.manager, projects: r.projects, score: r.score })),
-      expectForeignEmpty: true,
-      expectScopedLtPortfolio: portfolioLen === 0 || league.length <= portfolioLen,
-    });
-    const id = window.requestAnimationFrame(() => {
-      const root = document.querySelector('[data-ai-p2-root]') as HTMLElement | null;
-      const head = document.querySelector('[data-ai-p2-head]') as HTMLElement | null;
-      const panel = document.querySelector('[data-league-panel]') as HTMLElement | null;
-      const scroll = document.querySelector('[data-league-scroll]') as HTMLElement | null;
-      const rows = scroll?.querySelectorAll('tbody tr')?.length ?? 0;
-      const genieOpen = !!document.querySelector('.genie-docked, [data-genie-open="true"], .ai-copilot-open');
-      const fs = document.documentElement.classList.contains('app-fullscreen')
-        || !!document.fullscreenElement;
-      send('M1', 'league panel geometry (collapse check)', {
-        pageProject: project,
-        showFullLeague,
-        leagueLen: league.length,
-        visibleLen: showFullLeague ? league.length : Math.min(5, league.length),
-        panelH: panel?.clientHeight ?? null,
-        scrollH: scroll?.clientHeight ?? null,
-        scrollScrollH: scroll?.scrollHeight ?? null,
-        rowCountInDom: rows,
-        expectScrollHGt: 48,
-        expectRowsGt: 0,
-      });
-      send('H1', 'Page2 header + viewport mode', {
-        pageProject: project,
-        headH: head?.clientHeight ?? null,
-        headLines: head ? Math.round((head.clientHeight || 0) / 22) : null,
-        rootH: root?.clientHeight ?? null,
-        genieOpen,
-        fullscreen: fs,
-        expectHeadHLt: 88,
-        showTeam,
-      });
-      const chips = Array.from(document.querySelectorAll('.ai-cmd-quad, .ai-p2 .ai-chip')).slice(0, 0);
-      void chips;
-      const releaseChips = Array.from(
-        document.querySelectorAll('[data-rel-panel] .ai-chip'),
-      ).map((el) => (el.textContent || '').trim());
-      send('R1', 'release delta chips (no inflated %)', {
-        pageProject: project,
-        releaseChips,
-        expectNoHugePct: !releaseChips.some((t) => /\+\d{3,}%/.test(t)),
-      });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [league, project, data.league, showFullLeague, showTeam]);
-  // #endregion
+    const el = relChartRef.current;
+    if (!el) return;
+    const measure = () => setRelChartW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [project]);
   const projRec = useMemo(
     () => (data.project_recommendations ?? []).find((row) => sameProject(row.project, project)),
     [data.project_recommendations, project],
   );
-  // #region agent log
-  React.useEffect(() => {
-    const portfolioLen = (data.release_trend ?? []).length;
-    const foreign = (data.release_trend ?? [])
-      .filter((row) => sameProject(row.project, project) === false)
-      .map((row) => row.release);
-    const body = JSON.stringify({
-      sessionId: '6a418b',
-      runId: 'p2-release-scope',
-      hypothesisId: 'REL1',
-      location: 'AIUtilizationPage2.tsx:trend',
-      message: 'Page2 release series scoped to drilled project',
-      data: {
-        pageProject: project,
-        portfolioTrendLen: portfolioLen,
-        scopedTrendLen: trend.length,
-        scopedReleases: trend.map((r) => r.release),
-        foreignSample: [...new Set(foreign)].slice(0, 8),
-        expectScopedLtPortfolio: portfolioLen === 0 || trend.length <= portfolioLen,
-        expectNoForeignInScoped: trend.every((r) => sameProject(r.project, project)),
-      },
-      timestamp: Date.now(),
-    });
-    fetch('http://127.0.0.1:7896/ingest/a53d98a9-e463-4e07-91cc-72a241898446', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '6a418b' },
-      body,
-    }).catch(() => {});
-  }, [project, trend, data.release_trend]);
-  // #endregion
 
   const contributors = useMemo(() => {
     const seen = new Map<string, AIRiskCard>();
@@ -480,13 +627,14 @@ export function AIUtilizationPage2({
       if (!key || seen.has(key)) continue;
       seen.set(key, risk);
     }
-    return [...seen.values()];
+    const valueOf = (risk: AIRiskCard) => {
+      const raw = risk.values?.cost_usd ?? risk.values?.value_usd ?? risk.values?.hours_saved ?? risk.values?.hours;
+      const n = typeof raw === 'number' ? raw : Number(raw);
+      return Number.isFinite(n) ? n : 0;
+    };
+    return [...seen.values()].sort((a, b) => valueOf(b) - valueOf(a) || String(a.person || '').localeCompare(String(b.person || '')));
   }, [projectRisks]);
-
-  const topContributorValue = health?.value_usd ?? contributors.reduce((sum, risk) => {
-    const cost = risk.values?.cost_usd;
-    return sum + (typeof cost === 'number' ? cost : 0);
-  }, 0);
+  const topTeam = contributors.slice(0, 3);
 
   const battle = useMemo(() => {
     const dev = domains.find((row) => row.domain === 'Development');
@@ -511,33 +659,37 @@ export function AIUtilizationPage2({
 
     const qaCoverage = health?.qa_adoption_pct ?? (qaEnabled && qaEnabled > 0 ? adopt(qaActive, qaEnabled) : null);
 
-    /* Aligned Dev | metric | QA rows — full list always visible (effectiveness + n/a extras). */
-    const rows: { key: string; tip?: string; dev: string; qa: string }[] = [
-      { key: 'Active Users', dev: fmt(devActive), qa: fmt(qaActive) },
-      { key: 'Hours Saved', dev: fmt(devHours, 1), qa: fmt(qaHours, 1) },
-      { key: 'Value Generated', dev: money(devValue), qa: money(qaValue) },
-      { key: 'Adoption %', dev: pct(adopt(devActive, devEnabled)), qa: pct(adopt(qaActive, qaEnabled)) },
-      { key: 'Utilization %', dev: pct(util(devHours, devEnabled)), qa: pct(util(qaHours, qaEnabled)) },
-      {
-        key: 'Primary Artifacts',
-        tip: 'Dev: code generated · QA: test cases / design',
-        dev: fmt(dev?.artifacts ?? sumCount(['Code generation'])),
-        qa: fmt(qa?.artifacts ?? sumCount(['Unit testing', 'Test design'])),
-      },
-      {
-        key: 'Secondary Assets',
-        tip: 'Dev: documentation · QA: automation assets',
-        dev: fmt(sumCount(['Docs'])),
-        qa: fmt(sumCount(['Test automation'])),
-      },
-      {
-        key: 'Defect Prevention',
-        tip: 'QA defect-analysis hours (Dev n/a)',
-        dev: 'n/a',
-        qa: `${fmt(sumHours(['Defect analysis']), 1)} h`,
-      },
-      { key: 'Coverage %', tip: 'QA coverage (Dev n/a)', dev: 'n/a', qa: pct(qaCoverage) },
+    /* Metric | Dev | lead | QA rows. A null number is n/a (no evidence on that side). */
+    const devAdopt = adopt(devActive, devEnabled);
+    const qaAdopt = adopt(qaActive, qaEnabled);
+    const devUtil = util(devHours, devEnabled);
+    const qaUtil = util(qaHours, qaEnabled);
+    const devPrimary = dev?.artifacts ?? sumCount(['Code generation']);
+    const qaPrimary = qa?.artifacts ?? sumCount(['Unit testing', 'Test design']);
+    const devSecondary = sumCount(['Docs']);
+    const qaSecondary = sumCount(['Test automation']);
+    const defectHours = sumHours(['Defect analysis']);
+    const allRows: { key: string; tip?: string; dev: string; qa: string; devN: number | null; qaN: number | null }[] = [
+      { key: 'Active Users', dev: fmt(devActive), qa: fmt(qaActive), devN: devActive, qaN: qaActive },
+      { key: 'Hours Saved', dev: fmt(devHours, 1), qa: fmt(qaHours, 1), devN: devHours, qaN: qaHours },
+      { key: 'Value Generated', dev: money(devValue), qa: money(qaValue), devN: devValue, qaN: qaValue },
+      { key: 'Adoption %', dev: pct(devAdopt), qa: pct(qaAdopt), devN: devAdopt, qaN: qaAdopt },
+      { key: 'Utilization %', dev: pct(devUtil), qa: pct(qaUtil), devN: devUtil, qaN: qaUtil },
+      { key: 'Primary Artifacts', dev: fmt(devPrimary), qa: fmt(qaPrimary), devN: devPrimary, qaN: qaPrimary },
+      { key: 'Secondary Assets', dev: fmt(devSecondary), qa: fmt(qaSecondary), devN: devSecondary, qaN: qaSecondary },
+      { key: 'Defect Prevention', dev: 'n/a', qa: `${fmt(defectHours, 1)} h`, devN: null, qaN: defectHours },
+      { key: 'Coverage %', dev: 'n/a', qa: pct(qaCoverage), devN: null, qaN: qaCoverage ?? null },
     ];
+    const rows = allRows
+      .filter((row) => row.devN != null || row.qaN != null)
+      .map((row) => ({
+        ...row,
+        tip: BATTLE_DEFINITIONS[row.key],
+        lead: (row.devN != null && row.qaN != null && row.devN !== row.qaN
+          ? (row.devN > row.qaN ? 'dev' : 'qa')
+          : 'none') as 'dev' | 'qa' | 'none',
+      }));
+    const noData = allRows.filter((row) => row.devN == null && row.qaN == null).map((row) => row.key);
 
     const hasQa = !!qa && (qaActive > 0 || qaHours > 0 || (qaEnabled ?? 0) > 0);
     let conclusion: 'DEV LEADING' | 'QA LEADING' | 'BALANCED' | 'QA GAP' = 'BALANCED';
@@ -549,8 +701,33 @@ export function AIUtilizationPage2({
       else if (ratio < 1 / 1.15) conclusion = 'QA LEADING';
       else conclusion = 'BALANCED';
     }
+    const devArtifacts = typeof dev?.artifacts === 'number' ? dev.artifacts : sumCount(['Code generation']);
+    const qaArtifacts = typeof qa?.artifacts === 'number' ? qa.artifacts : sumCount(['Unit testing', 'Test design']);
+    const shareOf = (devN: number, qaN: number) => {
+      if (!(devN > 0) && !(qaN > 0)) return null;
+      const total = devN + qaN;
+      return { devPct: (devN / total) * 100, qaPct: (qaN / total) * 100, devRaw: devN, qaRaw: qaN };
+    };
+    const valueShare = shareOf(devValue, qaValue);
+    const hoursShare = shareOf(devHours, qaHours);
+    const assetShare = shareOf(devArtifacts, qaArtifacts);
+    const contribution: ContributionShare | null = valueShare
+      ? { ...valueShare, basis: 'value' }
+      : hoursShare
+        ? { ...hoursShare, basis: 'hours' }
+        : assetShare
+          ? { ...assetShare, basis: 'assets' }
+          : null;
+    let recommend: string | null = null;
+    if (!hasQa) {
+      recommend = 'Increase QA participation — no QA evidence.';
+    } else if (conclusion === 'DEV LEADING') {
+      if (contribution || devActive > 0 || qaActive > 0) {
+        recommend = 'Increase QA participation.';
+      }
+    }
 
-    return { rows, hasQa, conclusion, devValue, qaValue };
+    return { rows, noData, hasQa, conclusion, devValue, qaValue, contribution, recommend };
   }, [domains, useCases, health?.qa_adoption_pct]);
 
   const effectiveness = useMemo(() => {
@@ -605,9 +782,18 @@ export function AIUtilizationPage2({
       ...empty.map((row) => ({ ...row, displayRank: row.rank, isEmpty: true })),
     ];
     const valueMax = Math.max(...active.map((r) => r.value || 0), 1);
-    return { rows, valueMax };
+    /* Repeating one gain on every row says nothing: show the column only when the rows differ. */
+    const gains = active.map((r) => r.gain).filter((g): g is number => g != null);
+    const spread = gains.length ? Math.max(...gains) - Math.min(...gains) : 0;
+    const showTrend = gains.length > 1 && spread > 5;
+    let common: string | null = null;
+    if (!showTrend && gains.length) {
+      const sorted = [...gains].sort((a, b) => a - b);
+      const mid = sorted[Math.floor(sorted.length / 2)];
+      common = mid >= 5 ? `▲${fmt(mid, 0)}%` : mid <= -5 ? `▼${fmt(Math.abs(mid), 0)}%` : `▬${fmt(mid, 0)}%`;
+    }
+    return { rows, valueMax, showTrend, common };
   }, [effectiveness]);
-  const card = scorecards.find((row) => row.manager && health?.manager && row.manager === health.manager) || scorecards[0];
   const delta = health?.trend_pts;
   const deltaBand = delta == null ? 'neutral' : delta >= 0 ? 'green' : delta > -5 ? 'amber' : 'red';
   const maturity = health?.maturity_level ?? 1;
@@ -624,6 +810,44 @@ export function AIUtilizationPage2({
       : Math.min(100, (maturityScore / maturityTarget) * 100);
   const maturityTrack = maturityStatus(maturityReadiness, maturityGap);
   const weakestAxis = maturityAxes[0] ?? null;
+  const belowTarget = maturityAxes.filter((axis) => axis.score < maturityTarget);
+  const blockerAxis = weakestAxis != null && weakestAxis.score < maturityTarget - 10 ? weakestAxis : null;
+  const atTopLevel = nextMaturity <= maturity;
+  const problemKind: 'none' | 'blocker' | 'near' | 'ok' = !weakestAxis
+    ? 'none'
+    : blockerAxis
+      ? 'blocker'
+      : weakestAxis.score < maturityTarget
+        ? 'near'
+        : 'ok';
+  const problemBand: Band = problemKind === 'blocker' ? 'red' : problemKind === 'near' ? 'amber' : problemKind === 'ok' ? 'green' : 'neutral';
+  const problemLabel = problemKind === 'blocker' ? 'Problem' : problemKind === 'near' ? 'Watch' : problemKind === 'ok' ? 'On target' : 'Capabilities';
+  const otherAxes = weakestAxis ? maturityAxes.slice(1) : [];
+  const verdictVariants = (() => {
+    const levelName = `L${maturity} ${MATURITY_LABEL[maturity] || ''}`.trim();
+    const nextName = `L${nextMaturity} ${MATURITY_LABEL[nextMaturity] || ''}`.trim();
+    const head = `${levelName}.`;
+    if (maturityScore == null || maturityGap == null) return [{ head, rest: 'Capability scores not available.' }];
+    const score = fmt(maturityScore, 0);
+    const short = maturityGap <= 0 ? 'Target met.' : `${Math.max(1, Math.round(maturityGap))} pts short.`;
+    if (atTopLevel) {
+      return [
+        { head, rest: `${score} of ${maturityTarget} to hold the target. ${short}` },
+        { head, rest: `${score} of ${maturityTarget}. ${short}` },
+      ];
+    }
+    return [
+      { head, rest: `${score} of ${maturityTarget} to reach ${nextName}. ${short}` },
+      { head, rest: `${score} of ${maturityTarget} to reach L${nextMaturity}. ${short}` },
+      { head, rest: `${score} of ${maturityTarget}. ${short}` },
+    ];
+  })();
+  const verdictPick = (() => {
+    const el = verdictRef.current;
+    if (!el || verdictW <= 0) return verdictVariants[0];
+    return verdictVariants.find((v) => textWidthIn(el, `${v.head} ${v.rest}`) <= verdictW - 2)
+      ?? verdictVariants[verdictVariants.length - 1];
+  })();
   const maturityRec = (() => {
     const bullets = (projRec?.bullets ?? []).filter(Boolean);
     const fromGap = bullets.find((b) => {
@@ -721,73 +945,119 @@ export function AIUtilizationPage2({
   const bestHealth = bestRelease?.health ?? null;
   const trendDelta = releaseDeltaLabel(firstHealth, lastHealth, 'Trend');
   const improveDelta = releaseDeltaLabel(worstHealth, bestHealth, 'Improve');
-  /** Action line only — do not restate Best/Worst/Now names or adopt already on callouts. */
+  /** Real best / worst release data only, no advice and nothing about the points between releases. */
   const releaseInsight = (() => {
     if (!timeline.length) return 'No release evidence for this project yet.';
-    if (currentRelease && worstRelease && currentRelease.release === worstRelease.release && timeline.length > 1) {
-      return 'Trough release — close the evidence gap before the next ship.';
+    const describe = (row: (typeof timeline)[number]) =>
+      `${row.health != null ? `${fmt(row.health, 0)}% adoption, ` : ''}${fmt(row.hours_saved, 0)} h`;
+    if (timeline.length === 1 && currentRelease) {
+      return `${currentRelease.release} is the only release: ${describe(currentRelease)}.`;
     }
-    if (currentRelease?.anomaly) {
-      return currentRelease.has_evidence === false
-        ? 'Flagged — missing quantified evidence vs prior.'
-        : 'Flagged — adoption dropped ≥15 pts vs prior.';
+    if (!bestRelease || !worstRelease) return 'Click a release for deep dive.';
+    if (bestRelease.release === worstRelease.release) {
+      return `All ${timeline.length} releases are level: ${describe(bestRelease)}.`;
     }
-    if (trendDelta && !trendDelta.positive && currentRelease) {
-      return 'Adoption softened — coach inactive seats before the next release.';
-    }
-    if (bestRelease && currentRelease && bestRelease.release === currentRelease.release && trendDelta?.positive) {
-      return 'At the peak — lock in what worked and scale it next release.';
-    }
-    if (improveDelta && bestRelease && worstRelease && bestRelease.release !== worstRelease.release) {
-      return 'Replicate the peak playbook into the trough.';
-    }
-    return 'Click a release for deep dive.';
+    return `${worstRelease.release} is the weakest release: ${describe(worstRelease)}. ${bestRelease.release} is the best: ${describe(bestRelease)}.`;
   })();
 
-  const recommendation = projectRecommendation(health, projRec?.recommendation);
-  const mgrRec = managementRecommendation(card, health);
-
-  const execActions = useMemo(() => {
-    const fromApi = (projRec?.bullets ?? []).filter(Boolean).slice(0, 4);
-    if (fromApi.length) return fromApi;
-    const actions: string[] = [];
-    if (!battle.hasQa || battle.conclusion === 'QA GAP') {
-      actions.push('Increase QA participation — close the evidence gap next release.');
-    } else if (battle.conclusion === 'DEV LEADING') {
-      const qaActive = domains.find((d) => d.domain === 'QA')?.users_active ?? 0;
-      actions.push(`Increase QA participation from ${qaActive} toward ${Math.max(qaActive + 10, 40)} active users.`);
-    }
-    const topRoi = effectiveness.find((r) => r.tag === 'Highest ROI');
-    if (topRoi) actions.push(`Expand ${topRoi.label} as highest ROI activity.`);
-    const under = effectiveness.find((r) => r.tag === 'Underutilized');
-    if (under) actions.push(`Activate underutilized ${under.label} use case.`);
-    if ((health?.unrealized_value_usd || 0) > 0) {
-      actions.push(`Recover remaining ${money(health?.unrealized_value_usd)} unrealized value.`);
-    }
-    if ((health?.risk_count ?? projectRisks.length) >= 3) {
-      actions.push(`Clear ${health?.risk_count ?? projectRisks.length} open risk signals before the next release.`);
-    }
-    actions.push(`Advance maturity L${maturity} (${MATURITY_LABEL[maturity] || '—'}) → L${nextMaturity} (${MATURITY_LABEL[nextMaturity] || '—'}).`);
-    return actions.slice(0, 4);
-  }, [projRec?.bullets, battle, domains, effectiveness, health, projectRisks.length, maturity, nextMaturity]);
-
-  const managerComponents = (() => {
-    const fallback = [
-      { key: 'adoption', label: 'Adoption', weight: 30, score: card?.adoption_pct != null ? Math.min(100, (card.adoption_pct / 80) * 100) : null },
-      { key: 'savings', label: 'Savings', weight: 25, score: card?.hours_target ? Math.min(100, (card.hours_saved / card.hours_target) * 100) : null },
-      { key: 'efficiency', label: 'Efficiency', weight: 20, score: card?.efficiency_gain_pct != null ? Math.min(100, (card.efficiency_gain_pct / 30) * 100) : null },
-      { key: 'quality', label: 'Evidence', weight: 25, score: card?.release_quality_pct ?? null },
-    ];
-    const raw = card?.components?.length ? card.components : fallback;
-    return raw.map((comp) => {
-      const meta = MGR_COMP_META[String(comp.key || '').toLowerCase()];
-      const label = String(comp.label || '').trim() || meta?.label || 'Component';
-      const weight = Number.isFinite(comp.weight) && comp.weight > 0 ? comp.weight : meta?.weight ?? 0;
-      return { ...comp, label, weight };
+  const adoption = useMemo(() => {
+    const stages = adoptionStages(health, domains, contributors.length);
+    const bars = funnelBars(stages);
+    const contributorsStage = stages.find((stage) => stage.key === 'contributors') ?? null;
+    const drops = bars.map((stage, index) => (
+      index === 0 ? null : adoptionDrop(bars[index - 1].count, stage.count)
+    ));
+    let leakAt = -1;
+    let bestDrop = 0;
+    let bestAbs = 0;
+    drops.forEach((drop, index) => {
+      if (drop == null || drop <= 0) return;
+      const prev = bars[index - 1].count ?? 0;
+      const abs = prev - (bars[index].count ?? 0);
+      if (drop > bestDrop + 1e-9 || (Math.abs(drop - bestDrop) < 1e-9 && abs > bestAbs)) {
+        leakAt = index;
+        bestDrop = drop;
+        bestAbs = abs;
+      }
     });
+    const insight = leakAt < 0
+      ? 'No adoption drop between these stages.'
+      : `Biggest drop is ${bars[leakAt - 1].label} → ${bars[leakAt].label}: ${fmt(bars[leakAt - 1].count)} to ${fmt(bars[leakAt].count)}`;
+    const max = Math.max(...bars.map((stage) => stage.count ?? 0), 1);
+    return { bars, drops, leakAt, insight, max, contributors: contributorsStage };
+  }, [health, domains, contributors.length]);
+  /* The headline under the header carries the situation, QA level and recoverable $, and the cards carry
+     the rest, so the bottom strip keeps the one fact nothing else states: how concentrated the value is. */
+  const executiveInsight = (() => {
+    const lines: { role: string; text: string }[] = [];
+    const valued = effectiveness.filter((row) => (row.value || 0) > 0);
+    if (valued[0]) {
+      const total = valued.reduce((sum, row) => sum + (row.value || 0), 0);
+      const top = valued.slice(0, 2);
+      const share = total > 0 ? Math.round((top.reduce((sum, row) => sum + (row.value || 0), 0) / total) * 100) : null;
+      const names = top.map((row) => `${row.label} ${money(row.value)}`).join(', ');
+      lines.push({
+        role: 'Value',
+        text: `Top value: ${names}${share != null && valued.length > top.length ? ` (${share}% of use-case value)` : ''}.`,
+      });
+    }
+    return lines;
+  })();
+  /* One deterministic sentence from real fields. Variants run longest to shortest; the longest that fits
+     the strip on one line is shown, so there is never an ellipsis or a second line. */
+  const headlineVariants = (() => {
+    const score = health?.health_score ?? null;
+    const bandText = health?.band_label || health?.band || null;
+    const adoptWord = score == null ? null : score >= 90 ? 'leads on' : score >= 80 ? 'is strong on' : score >= 70 ? 'is average on' : 'needs attention on';
+    const head = score == null
+      ? ' has no AI adoption health score yet'
+      : ` ${adoptWord} AI adoption (${fmt(score, 0)}${bandText ? `, ${bandText}` : ''})`;
+    const levelName = `L${maturity} ${MATURITY_LABEL[maturity] || ''}`.trim();
+    const hasQaScores = maturityAxes.length > 0;
+    const behind = hasQaScores && !atTopLevel && maturityGap != null && maturityGap > 0;
+    const conj = score != null && score >= 80 && behind ? ' while ' : ' and ';
+    const qaLong = !hasQaScores
+      ? 'no QA capability scores are available yet'
+      : atTopLevel
+        ? `QA practice holds ${levelName}`
+        : `QA practice sits at ${levelName}`;
+    const qaShort = !hasQaScores ? 'no QA scores yet' : atTopLevel ? `QA holds L${maturity}` : `QA sits at L${maturity} of L${nextMaturity}`;
+    const gapBit = behind ? `, ${fmt(maturityGap, 0)} pts short of L${nextMaturity}` : '';
+    const focus = blockerAxis ?? belowTarget[0] ?? null;
+    const tailParts: string[] = [];
+    if ((health?.unrealized_value_usd ?? 0) > 0) tailParts.push(`${money(health?.unrealized_value_usd)} recoverable`);
+    if (focus) tailParts.push(`start with ${focus.axis}`);
+    const tail = tailParts.length ? ` — ${tailParts.join(', ')}` : '';
+    const out = [
+      `${head}${conj}${qaLong}${gapBit}${tail}.`,
+      `${head}${conj}${qaLong}${gapBit}.`,
+      `${head}${conj}${qaShort}.`,
+      score == null ? ` — ${qaShort}.` : `: ${fmt(score, 0)}${bandText ? ` (${bandText})` : ''}, ${qaShort}.`,
+    ];
+    return out.filter((text, index) => out.indexOf(text) === index);
+  })();
+  const headlineRest = (() => {
+    const el = headlineRef.current;
+    if (!el || headlineW <= 0) return headlineVariants[0];
+    return headlineVariants.find((text) => textWidthIn(el, `${project}${text}`) <= headlineW - 2)
+      ?? headlineVariants[headlineVariants.length - 1];
+  })();
+  const relStep = (() => {
+    const n = timeline.length;
+    if (n <= 2) return 1;
+    const slot = relChartW > 0 && relChartW < 420 ? 68 : 54;
+    const width = relChartW || 360;
+    const fit = Math.max(2, Math.floor(width / slot));
+    if (n <= fit) return 1;
+    return Math.ceil(n / fit);
+  })();
+  const showPointLabels = relChartW >= 560;
+  /* Adoption axis stops just above the tallest point so the plot uses the card height. */
+  const relAdoptCeil = (() => {
+    const peak = Math.max(0, ...timeline.map((row) => row.health ?? 0));
+    return Math.min(100, Math.max(20, Math.ceil((peak * 1.15) / 10) * 10));
   })();
 
-  const leagueVisible = showFullLeague ? league : league.slice(0, 5);
   const conclusionBand =
     battle.conclusion === 'DEV LEADING' ? 'amber' : battle.conclusion === 'QA LEADING' ? 'green' : battle.conclusion === 'QA GAP' ? 'red' : 'neutral';
 
@@ -806,7 +1076,7 @@ export function AIUtilizationPage2({
 
   return (
     <div className="ai-p2 h-full min-h-0 min-w-0 overflow-hidden" data-ai-p2-root>
-      {/* Line 1 = identity + health · Line 2 = money/ownership + contributors summary. Maturity lives in QA panel. */}
+      {/* Compact health command. Collapsed = two lines. View Team reveals the top 3 only. */}
       <section className="glass-panel rounded-xl ai-p2-head min-w-0 shrink-0" data-ai-p2-head>
         <div className="ai-p2-head-row1">
           <button type="button" className="ai-crumb shrink-0" onClick={onBack} aria-label="Back to portfolio">
@@ -822,83 +1092,89 @@ export function AIUtilizationPage2({
             className="ai-p2-head-identity min-w-0"
             title={health?.teams?.length ? health.teams.slice(0, 3).join(' · ') : undefined}
           >
-            <b className="ai-p2-head-project truncate">{project}</b>
+            <b className="ai-p2-head-project">{project}</b>
           </div>
-          <span className={`ai-chip shrink-0 ${BAND[bandOf(health?.band)]}`}>{health?.band_label || health?.band || 'n/a'}</span>
-          <span className={`ai-chip shrink-0 ${BAND[deltaBand]}`}>
-            {delta == null ? 'Trend n/a' : `${delta > 0 ? '+' : ''}${fmt(delta, 0)} pts`}
+          <span className="ai-p2-head-health shrink-0">
+            {project.length <= 18 && <span className="ai-p2-head-scope" title="Health score: adoption, business value, release coverage, QA adoption and documentation use">AI adoption health</span>}
+            <span className={`ai-chip shrink-0 ${BAND[bandOf(health?.band)]}`}>{health?.band_label || health?.band || 'n/a'}</span>
+            <span className={`ai-chip shrink-0 ${BAND[deltaBand]}`} title={health?.previous_release ? `Adoption points vs ${health.previous_release}` : undefined}>
+              {delta == null ? 'Trend n/a' : `${delta > 0 ? '+' : ''}${fmt(delta, 0)} pts`}
+            </span>
           </span>
-          <span className="ai-chip shrink-0 truncate max-w-[9rem]" title="Project recommendation">{recommendation}</span>
+          <span className="ai-p2-head-kpis" aria-label="Value, recoverable, and risk count">
+            <span className="ai-p2-head-kpi is-hero" title="Hours saved × the $40/h loaded rate">
+              <span className="ai-p2-head-kpi-k">Value</span>
+              <b>{money(health?.value_usd ?? health?.ai_value_usd)}</b>
+            </span>
+            <span className="ai-p2-head-kpi is-hero" title="Potential value (headcount × target hours × rate) minus value generated">
+              <span className="ai-p2-head-kpi-k">Recoverable</span>
+              <b>{money(health?.unrealized_value_usd)}</b>
+            </span>
+            <span className="ai-p2-head-kpi ai-p2-head-risk">
+              <span className="ai-p2-head-kpi-k">Risks</span>
+              <b>{health?.risk_count ?? projectRisks.length}</b>
+            </span>
+          </span>
         </div>
         <div className="ai-p2-head-row2">
-          <span className="ai-p2-head-meta truncate">
-            Manager {health?.manager || card?.manager || '—'}
-            {' · '}Team {health?.headcount_scope ?? '—'}
-            {health?.denominator_inferred ? ' · inferred' : ''}
-            {' · '}Value {money(health?.value_usd)}
-            {' · '}Unrealized {money(health?.unrealized_value_usd)}
-            {(health?.risk_count ?? projectRisks.length) > 0 ? (
-              <>
-                {' · '}
-                <span className="ai-p2-head-risk">{health?.risk_count ?? projectRisks.length} risks</span>
-              </>
-            ) : null}
+          <span className="ai-p2-head-meta" title={health?.manager || undefined}>
+            Manager {oneManager(health?.manager)}
           </span>
-          {contributors.length > 0 && (
-            <span className="ai-p2-head-contrib shrink-0" aria-label="Top contributors summary">
-              <span className="ai-p2-head-contrib-text" title="Project AI value (proxy for top contributor contribution)">
-                Contributors {contributors.length} · {money(topContributorValue)}
-              </span>
+          <span className="ai-p2-head-contrib shrink-0" aria-label="Contributors">
+            <span className="ai-p2-head-contrib-text">Contributors: {contributors.length}</span>
+            {contributors.length > 0 && (
               <button type="button" className="ai-crumb ai-p2-head-team-toggle" onClick={() => setShowTeam((v) => !v)}>
                 {showTeam ? 'Hide Team' : 'View Team →'}
               </button>
-            </span>
-          )}
+            )}
+          </span>
         </div>
-        {showTeam && contributors.length > 0 && (
-          <div className="ai-p2-head-team" aria-label="Project team contributors">
-            {contributors.slice(0, 12).map((risk) => (
+        {showTeam && topTeam.length > 0 && (
+          <div className="ai-p2-head-team" aria-label="Top 3 contributors">
+            {topTeam.map((risk) => (
               <RiskPersonChip key={`${risk.type}-${risk.person}-${risk.employee_number}`} risk={risk} onSelectEmployee={onSelectEmployee} />
             ))}
           </div>
         )}
       </section>
 
-      <div className="ai-p2-mid">
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col">
-          <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <span className="ai-p2-card-title">Dev vs QA battle</span>
-            <span className={`ai-chip shrink-0 ${BAND[conclusionBand]}`} title="Battle outcome">{battle.conclusion}</span>
-          </div>
-          <div className="ai-battle-compare min-h-0" data-battle-compare>
-            <div className="ai-battle-axis" aria-hidden="true">
-              <span className="ai-battle-axis-dev">Dev</span>
-              <span className="ai-battle-axis-key" />
-              <span className="ai-battle-axis-qa">QA</span>
-            </div>
-            {battle.rows.map((row) => (
-              <span key={row.key} className="ai-battle-row" title={row.tip}>
-                <b className="ai-battle-val is-dev">{row.dev}</b>
-                <span className="ai-battle-key">{row.key}</span>
-                <b className="ai-battle-val is-qa">{row.qa}</b>
-              </span>
-            ))}
-          </div>
-        </section>
+      <section className="ai-p2-headline glass-panel rounded-xl" aria-label="Headline" data-ai-p2-headline>
+        <p className="ai-p2-headline-text" ref={headlineRef} data-headline-variants={headlineVariants.length}>
+          <b>{project}</b>{headlineRest}
+        </p>
+        {health?.current_release && (
+          <span
+            className="ai-p2-headline-asof"
+            title={health.previous_release ? `Current release in scope. The trend chip compares adoption with ${health.previous_release}.` : 'Current release in scope.'}
+          >
+            Release {health.current_release}
+          </span>
+        )}
+      </section>
 
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col">
+      <div className="ai-p2-mid">
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">Use case effectiveness</span>
+            {!ucStrip.showTrend && ucStrip.common && (
+              <span className="ai-p2-card-sub" data-uc-common-gain title={DEFINITIONS.gain}>
+                All rows {ucStrip.common} gain vs baseline
+              </span>
+            )}
           </div>
-          <div className="ai-uc-strip min-h-0" data-uc-strip>
+          <div
+            className={`ai-uc-strip min-h-0${ucStrip.showTrend ? '' : ' is-no-trend'}`}
+            data-uc-strip
+            style={{ '--p2-rows': Math.max(1, ucStrip.rows.length) } as React.CSSProperties}
+          >
             <div className="ai-uc-axis" aria-hidden="true">
               <span className="ai-uc-axis-rank">#</span>
               <span className="ai-uc-axis-name">Use case</span>
-              <span className="ai-uc-axis-num">Usage</span>
-              <span className="ai-uc-axis-num">Hours</span>
-              <span className="ai-uc-axis-trend">Trend</span>
-              <span className="ai-uc-axis-num">Value</span>
-              <span className="ai-uc-axis-rec">Rec</span>
+              <span className="ai-uc-axis-num" title="Number of activity rows logged for the use case in the current release.">Usage</span>
+              <span className="ai-uc-axis-num" title={DEFINITIONS.hoursSaved}>Hours</span>
+              {ucStrip.showTrend && <span className="ai-uc-axis-trend" title={DEFINITIONS.gain}>Gain</span>}
+              <span className="ai-uc-axis-num" title={DEFINITIONS.value}>Value</span>
+              <span className="ai-uc-axis-rec" title="Recommendation per use case. Hover a chip for its rule.">Rec</span>
             </div>
             {ucStrip.rows.map((row) => {
               const barPct = row.count
@@ -907,7 +1183,7 @@ export function AIUtilizationPage2({
               return (
                 <span
                   key={row.label}
-                  className="ai-uc-row"
+                  className={`ai-uc-row${row.tag === 'Highest ROI' || row.tag === 'Fastest Growing' || row.rec === 'Scale' ? ' is-emphasis' : ''}`}
                   style={{ '--uc-bar': `${barPct}%` } as React.CSSProperties}
                   title={row.tag ? `${row.label} · ${row.tag}` : row.label}
                 >
@@ -918,10 +1194,10 @@ export function AIUtilizationPage2({
                   </span>
                   <span className="ai-uc-num">{row.count || '—'}</span>
                   <span className="ai-uc-num">{row.count ? fmt(row.hours, 1) : '—'}</span>
-                  <span className="ai-uc-trend">{row.count ? row.trend : '—'}</span>
+                  {ucStrip.showTrend && <span className="ai-uc-trend">{row.count ? row.trend : '—'}</span>}
                   <span className="ai-uc-num ai-uc-value">{row.count ? money(row.value) : 'n/a'}</span>
                   <span className="ai-uc-rec">
-                    <span className={`ai-chip ${BAND[recBand(row.rec)]}`}>{row.rec}</span>
+                    <span className={`ai-chip ${BAND[recBand(row.rec)]}`} title={REC_DEFINITIONS[row.rec] || row.rec}>{row.rec}</span>
                   </span>
                 </span>
               );
@@ -932,145 +1208,184 @@ export function AIUtilizationPage2({
           </div>
         </section>
 
-        <section className="glass-panel rounded-xl ai-p2-card ai-p2-qa min-h-0 min-w-0 overflow-hidden flex flex-col">
-          <div className="ai-p2-card-head">
-            <div className="ai-p2-card-titles min-w-0">
+        <section className="glass-panel rounded-xl ai-p2-card ai-p2-qa min-h-0 min-w-0">
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <div className="ai-p2-qa-head-titles min-w-0">
               <span className="ai-p2-card-title">QA maturity</span>
-              <span className="ai-p2-card-sub">
-                Current: L{maturity} {MATURITY_LABEL[maturity] || ''} → Next: L{nextMaturity}{' '}
-                {MATURITY_LABEL[nextMaturity] || ''}
-              </span>
+              <span className="ai-p2-card-sub" data-qa-sub>QA practice vs L{nextMaturity} target</span>
             </div>
             <span className={`ai-chip shrink-0 ${BAND[maturityTrack.band]}`} title="Maturity trajectory">
               {maturityTrack.label}
             </span>
           </div>
-          <div className="ai-p2-qa-body custom-scrollbar">
-            <div className="ai-p2-qa-journey">
-              <div className="ai-p2-qa-journey-row">
-                <span className="ai-p2-qa-score">
-                  {maturityScore == null ? 'n/a' : `${fmt(maturityScore, 0)} / 100`}
-                </span>
-                <span className="ai-p2-qa-meta" title={`Target ${maturityTarget}${maturityReadiness != null ? ` · Ready ${fmt(maturityReadiness, 0)}%` : ''}${maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}`}>
-                  Target {maturityTarget}
-                  {maturityReadiness != null ? ` · Ready ${fmt(maturityReadiness, 0)}%` : ''}
-                  {maturityGap != null ? ` · Gap ${fmt(maturityGap, 0)}` : ''}
-                </span>
-              </div>
-              <div
-                className="ai-p2-score-meter ai-p2-qa-progress"
-                role="meter"
-                aria-label={`Maturity score ${maturityScore == null ? 'n/a' : Math.round(maturityScore)} of 100 toward L${nextMaturity}`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                {...(maturityScore != null ? { 'aria-valuenow': Math.round(maturityScore) } : {})}
-              >
-                <span
-                  className={`ai-p2-score-meter-fill is-${scoreBand(maturityScore)}`}
-                  style={{ width: `${maturityScore == null ? 0 : Math.max(0, Math.min(100, maturityScore))}%` }}
-                />
-              </div>
+          <div className="ai-p2-qa-body">
+            <p className="ai-p2-qa-verdict" ref={verdictRef} data-qa-verdict data-qa-level={maturity} data-qa-next={atTopLevel ? undefined : nextMaturity}>
+              <b>{verdictPick.head}</b> {verdictPick.rest}
+            </p>
+
+            <div
+              className="ai-p2-qa-problem"
+              data-qa-problem
+              data-kind={problemKind}
+              data-band={problemBand}
+              title={maturityInsight}
+            >
+              <span className="ai-p2-eyebrow ai-p2-qa-problem-label">{problemLabel}</span>
+              <p className="ai-p2-qa-problem-text" title={weakestAxis ? axisImpact(weakestAxis.axis) : undefined}>
+                {weakestAxis ? (
+                  problemKind === 'ok' ? (
+                    <>Every capability is at target. Lowest: <b>{weakestAxis.axis}</b> <b className="ai-p2-qa-problem-num">{fmt(weakestAxis.score, 0)}</b></>
+                  ) : (
+                    <><b>{weakestAxis.axis}</b> is <b className="ai-p2-qa-problem-num">{fmt(weakestAxis.score, 0)}</b>, target {maturityTarget}</>
+                  )
+                ) : (
+                  'No capability scores for this project.'
+                )}
+              </p>
+              <span className="ai-p2-eyebrow ai-p2-qa-do-label">Do this</span>
+              <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
             </div>
 
-            <div className="ai-p2-qa-bars" aria-label="Capability scorecard">
-              <span className="ai-p2-eyebrow ai-p2-qa-bars-label">Capabilities · weakest first</span>
-              {maturityAxes.length === 0 && (
-                <p className="ai-p2-empty">No maturity axis scores for this project.</p>
-              )}
-              <div className="ai-p2-qa-bars-list">
-                {maturityAxes.map((row) => {
-                  const band = scoreBand(row.score);
-                  const fill = Math.max(0, Math.min(100, row.score));
+            {otherAxes.length > 0 && (
+              <div className="ai-p2-qa-others" data-qa-others aria-label="Other capabilities, weakest first">
+                <span className="ai-p2-eyebrow">Others</span>
+                {otherAxes.map((row) => {
+                  const status = capabilityStatus(row.score, maturityTarget);
                   return (
-                    <div key={row.key} className="ai-p2-qa-bar" title={`${row.axis} ${fmt(row.score, 0)} / 100`}>
-                      <span className="ai-p2-qa-bar-label">{row.axis}</span>
-                      <div className="ai-p2-score-meter" role="presentation">
-                        <span className={`ai-p2-score-meter-fill is-${band}`} style={{ width: `${fill}%` }} />
-                      </div>
-                      <span className="ai-p2-qa-bar-val" data-band={band}>{fmt(row.score, 0)}</span>
-                    </div>
+                    <span
+                      key={row.key}
+                      className="ai-p2-qa-other"
+                      data-band={status.band}
+                      title={`${row.axis} ${fmt(row.score, 0)}, target ${maturityTarget}`}
+                    >
+                      <span className="ai-p2-qa-other-name">{row.axis}</span>
+                      <b className="ai-p2-qa-other-score">{fmt(row.score, 0)}</b>
+                    </span>
                   );
                 })}
               </div>
-            </div>
+            )}
+          </div>
+        </section>
 
-            {weakestAxis && (
-              <div className="ai-p2-qa-block">
-                <span className="ai-p2-eyebrow">Biggest constraint</span>
-                <p
-                  className="ai-p2-qa-block-line"
-                  title={`${weakestAxis.axis} · ${fmt(weakestAxis.score, 0)} → ${maturityTarget} · Gap ${fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)}`}
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 ai-p2-adopt-card" data-ai-p2-funnel>
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <span className="ai-p2-card-title">AI adoption funnel</span>
+          </div>
+          <div className="ai-p2-adopt" aria-label="AI adoption funnel">
+            {adoption.bars.map((stage, index) => {
+              const drop = adoption.drops[index];
+              const leak = index === adoption.leakAt;
+              const width = stage.count != null && stage.count > 0
+                ? Math.max(4, (stage.count / adoption.max) * 100)
+                : 0;
+              return (
+                <div
+                  key={stage.key}
+                  className={`ai-p2-adopt-row${leak ? ' is-leak' : ''}`}
+                  data-funnel-stage={stage.key}
+                  data-funnel-count={stage.count == null ? 'n/a' : String(stage.count)}
+                  data-funnel-drop={index === 0 ? '' : (drop == null ? 'n/a' : fmtDrop(drop))}
+                  data-largest-drop={leak ? 'true' : 'false'}
                 >
-                  <strong>{weakestAxis.axis}</strong>
-                  {' · '}
-                  {fmt(weakestAxis.score, 0)} → {maturityTarget}
-                  {' · Gap '}
-                  {fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)}
-                </p>
-                <p className="ai-p2-qa-block-impact" title={axisImpact(weakestAxis.axis)}>
-                  {axisImpact(weakestAxis.axis)}
-                </p>
+                  <span className="ai-p2-adopt-label" title={stage.key === 'enabled' ? DEFINITIONS.funnelEnabled : stage.key === 'active' ? DEFINITIONS.funnelActive : DEFINITIONS.funnelTeam}>
+                    {stage.label}
+                  </span>
+                  <span className="ai-p2-adopt-line">
+                    <b className="ai-p2-adopt-count">{fmt(stage.count)}</b>
+                    {index > 0 && <span className="ai-p2-adopt-drop">▼ {fmtDrop(drop)}</span>}
+                  </span>
+                  <span className="ai-p2-adopt-track" aria-hidden="true">
+                    <span className="ai-p2-adopt-bar" style={{ width: `${width}%` }} />
+                  </span>
+                </div>
+              );
+            })}
+            {adoption.contributors && (
+              <div
+                className="ai-p2-adopt-row is-people"
+                data-funnel-stage="contributors"
+                data-funnel-count={adoption.contributors.count == null ? 'n/a' : String(adoption.contributors.count)}
+                data-funnel-drop=""
+                data-largest-drop="false"
+                data-funnel-role="producing-value"
+                title={DEFINITIONS.funnelContributors}
+              >
+                <span className="ai-p2-adopt-label" title={DEFINITIONS.funnelContributors}>Contributors</span>
+                <span className="ai-p2-adopt-line">
+                  <b className="ai-p2-adopt-count">{fmt(adoption.contributors.count)}</b>
+                  <span className="ai-p2-adopt-people">producing value</span>
+                </span>
+                <span className="ai-p2-adopt-track" aria-hidden="true">
+                  <span
+                    className="ai-p2-adopt-bar"
+                    style={{ width: `${adoption.contributors.count != null && adoption.contributors.count > 0 ? Math.min(100, Math.max(4, (adoption.contributors.count / adoption.max) * 100)) : 0}%` }}
+                  />
+                </span>
               </div>
             )}
-
-            <div className="ai-p2-qa-rec">
-              <span className="ai-p2-eyebrow">Recommendation</span>
-              <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
-              <div className="ai-p2-qa-rec-meta" aria-label="Recommendation meta">
-                {weakestAxis && (
-                  <span className="ai-p2-qa-rec-chip">
-                    Expected Gain ~{fmt(Math.max(0, maturityTarget - weakestAxis.score), 0)} pts
-                  </span>
-                )}
-                <span className="ai-p2-qa-rec-chip">Priority high</span>
-                <span className="ai-p2-qa-rec-chip">Impact L{nextMaturity}</span>
-              </div>
-            </div>
-
-            <p className="ai-p2-qa-summary" title={maturityInsight}>{maturityInsight}</p>
           </div>
+          <p className="ai-p2-adopt-insight" data-ai-p2-funnel-insight>{adoption.insight}</p>
         </section>
       </div>
 
       <div className="ai-p2-low ai-p2-low-3">
-        <section className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0 overflow-hidden flex flex-col">
-          {/* Single-line head; weights on 2×2 tiles only. */}
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <div className="ai-p2-card-titles min-w-0">
-              <span className="ai-p2-card-title truncate">Manager score · {card?.manager || health?.manager || '—'}</span>
-            </div>
-            <span className={`ai-chip shrink-0 ${BAND[card?.grade === 'A+' || card?.grade === 'A' ? 'green' : card?.grade === 'B' ? 'amber' : 'red']}`}>
-              {card?.grade || 'n/a'}{card?.score == null ? '' : ` ${fmt(card.score, 0)}`}
+            <span className="ai-p2-card-title">Dev vs QA battle</span>
+            {battle.contribution && (
+              <span
+                className="ai-p2-card-sub ai-p2-battle-share"
+                title={`${battle.recommend ? `${battle.recommend} ` : ''}Dev ${fmt(battle.contribution.devPct, 0)}% · QA ${fmt(battle.contribution.qaPct, 0)}% of ${battle.contribution.basis}`}
+              >
+                QA {fmt(battle.contribution.qaPct, 0)}% of {battle.contribution.basis}
+              </span>
+            )}
+            <span
+              className={`ai-chip shrink-0 ${BAND[conclusionBand]}`}
+              title={battle.recommend || 'Battle outcome'}
+            >
+              {battle.conclusion}
             </span>
           </div>
-          {card ? (
-            <div className="ai-p2-mgr-body custom-scrollbar">
-              <div className="ai-p2-mgr-tiles" aria-label="Manager score components">
-                {managerComponents.map((comp) => (
-                  <ScoreTile
-                    key={comp.key}
-                    label={comp.label}
-                    weight={comp.weight}
-                    score={comp.score}
-                  />
-                ))}
-              </div>
-              <div className="ai-p2-mgr-rec">
-                <span className="ai-p2-eyebrow">Recommendation</span>
-                <p className="ai-p2-mgr-rec-text" title={mgrRec}>{mgrRec}</p>
-              </div>
+          <div
+            className="ai-battle-compare min-h-0"
+            data-battle-compare
+            style={{ '--p2-rows': Math.max(1, battle.rows.length + (battle.noData.length ? 1 : 0)) } as React.CSSProperties}
+          >
+            <div className="ai-battle-axis" aria-hidden="true">
+              <span className="ai-battle-axis-key">Metric</span>
+              <span className="ai-battle-axis-dev">Dev</span>
+              <span className="ai-battle-axis-lead" />
+              <span className="ai-battle-axis-qa">QA</span>
             </div>
-          ) : (
-            <p className="ai-p2-empty">No manager score for this project.</p>
-          )}
+            {battle.rows.map((row) => (
+              <span key={row.key} className="ai-battle-row" title={row.tip} data-lead={row.lead}>
+                <span className="ai-battle-key" data-tip={row.tip ? 'true' : undefined}>{row.key}</span>
+                <b className={`ai-battle-val is-dev${row.devN == null ? ' is-na' : ''}`}>{row.dev}</b>
+                <i
+                  className={`ai-battle-lead is-${row.lead}`}
+                  aria-label={row.lead === 'dev' ? 'Dev leads' : row.lead === 'qa' ? 'QA leads' : 'No lead'}
+                  title={row.lead === 'dev' ? 'Dev leads' : row.lead === 'qa' ? 'QA leads' : 'No lead (equal or n/a)'}
+                >
+                </i>
+                <b className={`ai-battle-val is-qa${row.qaN == null ? ' is-na' : ''}`}>{row.qa}</b>
+              </span>
+            ))}
+            {battle.noData.length > 0 && (
+              <span className="ai-battle-nodata" data-battle-nodata>
+                No data: {battle.noData.join(', ')}
+              </span>
+            )}
+          </div>
         </section>
 
-        <section className="glass-panel rounded-xl ai-p2-card ai-p2-rel min-h-0 min-w-0 overflow-hidden flex flex-col" data-rel-panel>
+        <section className="glass-panel rounded-xl ai-p2-card ai-p2-rel min-h-0 min-w-0" data-rel-panel>
           <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <span className="ai-p2-card-title">Release intelligence</span>
+            <span className="ai-p2-card-title">Release journey</span>
             <div className="ai-p2-rel-head-meta min-w-0">
               <span
-                className="ai-p2-rel-meta truncate"
+                className="ai-p2-rel-meta"
                 title={`${project} · ${timeline.length} release${timeline.length === 1 ? '' : 's'} · sequence order`}
               >
                 {project} · {timeline.length}
@@ -1085,7 +1400,10 @@ export function AIUtilizationPage2({
               </div>
             </div>
           </div>
-          <div className="ai-p2-rel-body">
+          <div
+            className="ai-p2-rel-body"
+            style={{ '--rel-chart-max': relChartW > 0 ? `${Math.round(relChartW / 1.15)}px` : undefined } as React.CSSProperties}
+          >
             <div
               className="ai-p2-rel-callouts"
               aria-label="Best worst and current release"
@@ -1100,12 +1418,12 @@ export function AIUtilizationPage2({
                     type="button"
                     className={`ai-p2-rel-callout ${roleClass}`}
                     onClick={() => onOpenRelease(c.row.release)}
-                    title={`${eyebrow} · ${c.row.release}`}
+                    title={`${eyebrow} · ${c.row.release}${c.row.health != null ? ` · ${fmt(c.row.health, 0)}% adoption` : ''} · ${fmt(c.row.hours_saved, 0)} h`}
                   >
                     <span className="ai-p2-eyebrow">{eyebrow}</span>
-                    <span className="ai-p2-rel-callout-name">{c.row.release}</span>
                     <span className="ai-p2-rel-callout-meta">
-                      {c.row.health != null ? `${fmt(c.row.health, 0)} adopt` : 'n/a'}
+                      <b className="ai-p2-rel-callout-name">{c.row.release}</b>
+                      {c.row.health != null ? ` · ${fmt(c.row.health, 0)}%` : ' · n/a'}
                       {` · ${fmt(c.row.hours_saved, 0)} h`}
                     </span>
                   </button>
@@ -1114,22 +1432,59 @@ export function AIUtilizationPage2({
               {releaseCallouts.length === 0 && (
                 <div className="ai-p2-rel-callout is-now" aria-disabled>
                   <span className="ai-p2-eyebrow">Now</span>
-                  <span className="ai-p2-rel-callout-name">—</span>
-                  <span className="ai-p2-rel-callout-meta">n/a</span>
+                  <span className="ai-p2-rel-callout-meta">—</span>
                 </div>
               )}
             </div>
-            <div className="ai-p2-rel-chart flex-1 min-h-0">
+            <div className="ai-p2-rel-legend" data-rel-legend aria-label="Chart legend">
+              <span className="ai-p2-rel-key is-adoption" title="Adoption % of the project for each release (left scale)">Adoption %</span>
+              <span className="ai-p2-rel-key is-hours" title="Hours saved in each release (own scale, area under the line)">Hours saved</span>
+              <span className="ai-p2-rel-key is-dot" title="Each dot is one real release. Lines only join the dots.">Dot = release</span>
+            </div>
+            <div className="ai-p2-rel-chart flex-1 min-h-0" ref={relChartRef}>
               {timeline.length === 0 ? (
                 <p className="ai-p2-empty">No releases for this project.</p>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={timeline} margin={{ top: 10, right: 2, left: 0, bottom: 0 }}>
+                  <ComposedChart data={timeline} margin={{ top: showPointLabels ? 12 : 6, right: 8, left: 2, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.12} />
-                    <XAxis dataKey="release" tick={{ fontSize: 8 }} hide={timeline.length > 5} />
-                    <YAxis yAxisId="left" hide domain={[0, 100]} />
-                    <YAxis yAxisId="right" orientation="right" hide />
-                    <Tooltip />
+                    <XAxis
+                      dataKey="release"
+                      interval={0}
+                      tickLine={false}
+                      axisLine={false}
+                      height={16}
+                      tick={(props) => {
+                        const index = Number(props.index ?? 0);
+                        const last = timeline.length - 1;
+                        const show = index === 0 || index === last || (index % relStep === 0 && last - index >= relStep);
+                        if (!show) return <g />;
+                        const anchor = index === 0 ? 'start' : index === last ? 'end' : 'middle';
+                        return (
+                          <text
+                            x={Number(props.x ?? 0)}
+                            y={Number(props.y ?? 0) + 3}
+                            textAnchor={anchor}
+                            fill="currentColor"
+                            fontSize={9.5}
+                            fontWeight={650}
+                          >
+                            {String(props.payload?.value ?? '')}
+                          </text>
+                        );
+                      }}
+                    />
+                    <YAxis yAxisId="left" hide domain={[0, relAdoptCeil]} />
+                    <YAxis yAxisId="hours" hide domain={[0, 'dataMax']} />
+                    <YAxis yAxisId="value" hide domain={[0, 'dataMax']} />
+                    <Tooltip
+                      formatter={(value, name) => {
+                        const n = typeof value === 'number' ? value : Number(value);
+                        if (name === 'Adoption %') return [Number.isFinite(n) ? `${fmt(n, 0)}%` : 'n/a', name];
+                        if (name === 'Hours saved') return [Number.isFinite(n) ? `${fmt(n, 1)} h` : 'n/a', name];
+                        return [Number.isFinite(n) ? money(n) : 'n/a', name];
+                      }}
+                    />
                     {currentRelease?.release && (
                       <ReferenceLine
                         yAxisId="left"
@@ -1139,19 +1494,32 @@ export function AIUtilizationPage2({
                         strokeDasharray="3 3"
                       />
                     )}
-                    <Area yAxisId="right" type="monotone" dataKey="hours_saved" fill="#0d948828" stroke="#0d9488" strokeWidth={1.25} name="Hours" />
+                    <Area
+                      yAxisId="hours"
+                      type="linear"
+                      dataKey="hours_saved"
+                      fill="#0d948828"
+                      stroke="#0d9488"
+                      strokeWidth={1.5}
+                      name="Hours saved"
+                      dot={{ r: 2.5, fill: '#0d9488', stroke: '#0d9488' }}
+                      activeDot={false}
+                    />
                     <Line
                       yAxisId="left"
-                      type="monotone"
+                      type="linear"
                       dataKey="adoption_pct"
                       stroke="#0284c7"
                       strokeWidth={2}
                       name="Adoption %"
-                      dot={{ r: 3, onClick: (p: { payload?: AIReleaseTrendRow }) => p.payload && onOpenRelease(p.payload.release) }}
+                      dot={{ r: 3.5, fill: '#0284c7', stroke: '#0284c7', onClick: (state) => {
+                        const payload = (state as { payload?: AIReleaseTrendRow } | undefined)?.payload;
+                        if (payload?.release) onOpenRelease(payload.release);
+                      } }}
                     >
-                      <LabelList dataKey="health" content={ReleaseHealthLabel} />
+                      {showPointLabels ? <LabelList dataKey="health" content={ReleaseHealthLabel} /> : null}
                     </Line>
-                    <Line yAxisId="right" type="monotone" dataKey="value" stroke="#047857" strokeDasharray="4 3" strokeWidth={1.25} dot={false} name="Value $" />
+                    <Line yAxisId="value" type="linear" dataKey="value" stroke="none" dot={false} activeDot={false} legendType="none" name="Value $" />
                   </ComposedChart>
                 </ResponsiveContainer>
               )}
@@ -1179,109 +1547,112 @@ export function AIUtilizationPage2({
           </div>
         </section>
 
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 overflow-hidden flex flex-col ai-p2-league-compact" data-league-panel>
-          <div className="ai-p2-league-head" title="Top managers on this project">
-            <span className="ai-p2-league-title">Manager league</span>
-            <span className="ai-p2-league-meta">Top {Math.min(5, league.length)}{league.length > 5 ? ` / ${league.length}` : ''}</span>
+
+        <section
+          className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0"
+          data-ai-p2-benchmark
+          title={benchmark?.title}
+          aria-label={benchmark ? `Portfolio benchmark. ${benchmark.title}` : 'Portfolio benchmark'}
+        >
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <div className="ai-p2-qa-head-titles min-w-0">
+              <span className="ai-p2-card-title">Portfolio benchmark</span>
+              <span className="ai-p2-card-sub">AI adoption health</span>
+            </div>
+            {benchmark?.position && (
+              <span
+                className="ai-chip ai-band-neutral shrink-0"
+                data-benchmark-status={benchmark.position}
+                title="Position among the scored projects. The band (Elite, Strong, ...) is in the header."
+              >
+                {benchmark.position}
+              </span>
+            )}
           </div>
-          <div className="ai-p2-league-scroll min-h-0 overflow-auto custom-scrollbar" data-league-scroll>
-            <table className="ai-exec-table ai-league-table">
-              <thead>
-                <tr>
-                  <th className="num">#</th>
-                  <th>Manager</th>
-                  <th className="num">Value</th>
-                  <th className="num">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leagueVisible.map((row: AILeagueRow) => (
-                  <tr key={`${row.rank}-${row.manager}`} className={row.rank <= 3 ? 'ai-league-top' : ''}>
-                    <td className="num">{row.rank}</td>
-                    <td className="truncate" title={row.manager}>{shortName(row.manager)}</td>
-                    <td className="num">{money(row.value_usd)}</td>
-                    <td className="num">
-                      <span className={`ai-league-grade ${row.grade === 'A+' || row.grade === 'A' ? 'ai-band-green' : row.grade === 'B' ? 'ai-band-amber' : 'ai-band-red'}`}>
-                        {row.grade} {fmt(row.score, 0)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {league.length === 0 && (
-                  <tr><td colSpan={4}>No manager league rows.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {league.length > 5 && (
-            <button type="button" className="ai-crumb ai-p2-league-more" onClick={() => setShowFullLeague((v) => !v)}>
-              {showFullLeague ? 'Show Top 5' : 'View Full Ranking →'}
-            </button>
+          {benchmark ? (
+            <div className="ai-p2-mgr-body">
+              <div className="ai-p2-mgr-hero">
+                <p
+                  className="ai-p2-mgr-rank"
+                  data-tone={benchmark.rankTone}
+                  data-benchmark-rank={benchmark.rank}
+                  data-benchmark-total={benchmark.total}
+                >
+                  <b>#{benchmark.rank}</b>
+                  <span>of {benchmark.total} projects</span>
+                </p>
+                <span
+                  className="ai-p2-mgr-vpu"
+                  data-tone={benchmark.valueTone || undefined}
+                  data-benchmark-vpu={benchmark.valuePerUser ?? ''}
+                  data-benchmark-vpu-delta={benchmark.valueDeltaPct ?? ''}
+                  title="Value generated ÷ active users (headcount when nobody is active), vs the average of the scored projects"
+                >
+                  {benchmark.valuePerUser == null
+                    ? 'Value/user n/a'
+                    : `${money(benchmark.valuePerUser)}/user${benchmark.valueDeltaPct == null ? '' : ` ${vsAverageLabel(benchmark.valueDeltaPct)}`}`}
+                </span>
+              </div>
+              {(() => {
+                const span = benchmark.scale.hi - benchmark.scale.lo;
+                const pos = (score: number) => Math.max(0, Math.min(100, ((score - benchmark.scale.lo) / span) * 100));
+                const bandLeft = pos(benchmark.bottomQuartile);
+                const bandRight = pos(benchmark.topQuartile);
+                const quartilesApart = bandRight - bandLeft >= 30;
+                const label = (key: string, text: React.ReactNode, at: number, half: string, row: 'top' | 'low1' | 'low2', tip?: string) => (
+                  <span
+                    key={key}
+                    className={`ai-p2-mgr-tag is-${row} is-${key}`}
+                    style={{ '--at': `${at}%`, '--half': half } as React.CSSProperties}
+                    title={tip}
+                  >
+                    {text}
+                  </span>
+                );
+                return (
+                  <div
+                    className="ai-p2-mgr-range"
+                    role="img"
+                    aria-label={`This project ${fmt(benchmark.health, 1)} against the portfolio: average ${fmt(benchmark.average, 1)}, middle half ${fmt(benchmark.bottomQuartile, 1)} to ${fmt(benchmark.topQuartile, 1)}`}
+                  >
+                    {label('me', <b data-benchmark-health={benchmark.health} data-tone={benchmark.healthTone}>{fmt(benchmark.health, 1)}</b>, pos(benchmark.health), '1.1rem', 'top', `${project} health ${fmt(benchmark.health, 1)}`)}
+                    <span className="ai-p2-mgr-range-track">
+                      <span
+                        className="ai-p2-mgr-range-band"
+                        style={{ left: `${bandLeft}%`, width: `${Math.max(0.5, bandRight - bandLeft)}%` }}
+                      />
+                      <span className="ai-p2-mgr-range-avg" style={{ left: `${pos(benchmark.average)}%` }} />
+                      <span className="ai-p2-mgr-range-me" data-tone={benchmark.healthTone} style={{ left: `${pos(benchmark.health)}%` }} />
+                    </span>
+                    {label('avg', <>Avg <b data-benchmark-average={benchmark.average}>{fmt(benchmark.average, 1)}</b></>, pos(benchmark.average), '1.5rem', 'low1', 'Average health of the scored projects')}
+                    {quartilesApart ? (
+                      <>
+                        {label('q1', <>Q1 <b data-benchmark-bottom={benchmark.bottomQuartile}>{fmt(benchmark.bottomQuartile, 1)}</b></>, bandLeft, '1.35rem', 'low2', 'Bottom quartile: a quarter of the projects score below this')}
+                        {label('q3', <>Q3 <b data-benchmark-top={benchmark.topQuartile}>{fmt(benchmark.topQuartile, 1)}</b></>, bandRight, '1.35rem', 'low2', 'Top quartile: a quarter of the projects score above this')}
+                      </>
+                    ) : (
+                      label('q13', <>Middle half <b data-benchmark-bottom={benchmark.bottomQuartile} data-benchmark-top={benchmark.topQuartile}>{fmt(benchmark.bottomQuartile, 1)}–{fmt(benchmark.topQuartile, 1)}</b></>, (bandLeft + bandRight) / 2, '3.4rem', 'low2', 'Middle half of the scored projects (Q1 to Q3)')
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <p className="ai-p2-empty">No health score for this project.</p>
           )}
         </section>
       </div>
 
-      {/* Project Recommendation Engine (`.ai-p2-narr`) deferred — restore later.
-          Flip SHOW_PROJECT_REC_ENGINE when re-adding the bottom ≤4-action strip. */}
-      {SHOW_PROJECT_REC_ENGINE ? (
-        <section className="ai-p2-narr glass-panel rounded-xl ai-panel flex flex-col overflow-hidden min-h-0 min-w-0 shrink-0">
-          <div className="ai-sec-head" title="Situation-style project actions">
-            <span className="ai-sec-title">Project recommendation engine</span>
-            <span className="ai-sec-meta">≤4</span>
-          </div>
-          <ol className="ai-narr-list ai-narr-list-4">
-            {execActions.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-            {execActions.length === 0 && (
-              <li className="opacity-70">No project recommendations yet.</li>
-            )}
-          </ol>
-        </section>
-      ) : null}
-    </div>
-  );
-}
-
-function ScoreTile({
-  label,
-  weight,
-  score,
-}: {
-  label: string;
-  weight: number;
-  score: number | null | undefined;
-}) {
-  const safeLabel = String(label || '').trim() || 'Component';
-  const fill = score == null || Number.isNaN(score) ? 0 : Math.max(0, Math.min(100, score));
-  const band = scoreBand(score);
-  const valueText = score == null || Number.isNaN(score) ? 'n/a' : `${fmt(score, 0)}`;
-  return (
-    <div
-      className="ai-p2-score-tile"
-      title={`${safeLabel} ${weight}% · ${valueText} / 100`}
-      data-band={band}
-    >
-      <div className="ai-p2-score-tile-head">
-        <span className="ai-p2-score-tile-label">
-          {safeLabel}
-          {weight > 0 ? <span className="ai-p2-score-tile-wt">{weight}%</span> : null}
-        </span>
-        <span className="ai-p2-score-tile-value">
-          {valueText}
-          <span className="ai-p2-score-tile-max">/100</span>
-        </span>
-      </div>
-      <div
-        className="ai-p2-score-meter"
-        role="meter"
-        aria-label={`${safeLabel} ${valueText} of 100`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        {...(score != null && !Number.isNaN(score) ? { 'aria-valuenow': Math.round(fill) } : {})}
-      >
-        <span className={`ai-p2-score-meter-fill is-${band}`} style={{ width: `${fill}%` }} />
-      </div>
+      <section className="ai-p2-insight glass-panel rounded-xl min-h-0 min-w-0 shrink-0" aria-label="Executive insight" data-ai-p2-insight>
+        <ol className="ai-narr-list ai-narr-list-4">
+          {executiveInsight.map((line) => (
+            <li key={line.role} title={`${line.role}: ${line.text}`}>{line.text}</li>
+          ))}
+          {executiveInsight.length === 0 && (
+            <li className="opacity-70">No executive insight for this project yet.</li>
+          )}
+        </ol>
+      </section>
     </div>
   );
 }
@@ -1295,36 +1666,6 @@ function RiskPersonChip({
 }) {
   const label = risk.person || 'Person';
   const canOpen = typeof risk.employee_number === 'number' && risk.employee_number > 0;
-  // #region agent log
-  React.useEffect(() => {
-    const empCoerced = Number(risk.employee_number);
-    const body = JSON.stringify({
-      sessionId: '6a418b',
-      runId: 'p2-risk-chips',
-      hypothesisId: 'H2',
-      location: 'AIUtilizationPage2.tsx:RiskPersonChip',
-      message: 'chip render path',
-      data: {
-        person: label,
-        type: risk.type,
-        severity: risk.severity,
-        empRaw: risk.employee_number ?? null,
-        empType: typeof risk.employee_number,
-        empCoerced: Number.isFinite(empCoerced) ? empCoerced : null,
-        canOpen,
-        path: canOpen ? 'button-profile' : 'span-type',
-        bandClass: BAND[bandOf(risk.severity)],
-        bandOfInfoWouldBe: bandOf('info'),
-      },
-      timestamp: Date.now(),
-    });
-    fetch('http://127.0.0.1:7896/ingest/a53d98a9-e463-4e07-91cc-72a241898446', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '6a418b' },
-      body,
-    }).catch(() => {});
-  }, [label, risk.type, risk.severity, risk.employee_number, canOpen]);
-  // #endregion
   if (!canOpen) {
     return (
       <span className={`ai-chip ${BAND[bandOf(risk.severity)]}`} title={risk.text || risk.type}>
