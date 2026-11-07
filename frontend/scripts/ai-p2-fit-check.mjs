@@ -394,7 +394,7 @@ const MEASURE = (theme) => {
       if (below > 40.5) fails.rows.push(`${label} table has ${px(below)}px of padding below it (max 40)`);
     };
     padOf('Use case', '.ai-uc-strip', '.ai-uc-strip');
-    padOf('Battle', '.ai-battle-compare', '.ai-battle-foot');
+    padOf('Battle', '.ai-battle-compare', '.ai-battle-compare');
   }
 
   /* 7b. same role = same type */

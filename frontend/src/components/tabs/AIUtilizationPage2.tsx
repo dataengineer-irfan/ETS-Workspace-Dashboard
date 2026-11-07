@@ -3,12 +3,9 @@ import { ChevronLeft } from 'lucide-react';
 import {
   Area,
   CartesianGrid,
-  Cell,
   ComposedChart,
   LabelList,
   Line,
-  Pie,
-  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -409,47 +406,6 @@ type ContributionShare = {
   basis: 'value' | 'hours' | 'assets';
 };
 
-function ContributionDonut({ contribution }: { contribution: ContributionShare | null }) {
-  if (!contribution) {
-    return (
-      <div className="ai-p2-donut-row" data-ai-p2-donut>
-        <span className="ai-p2-donut-na">Share n/a</span>
-      </div>
-    );
-  }
-  const slices = [
-    { name: 'Dev', value: Math.max(contribution.devRaw, 0) },
-    { name: 'QA', value: Math.max(contribution.qaRaw, 0) },
-  ];
-  return (
-    <div
-      className="ai-p2-donut-row"
-      data-ai-p2-donut
-      title={`Dev ${fmt(contribution.devPct, 0)}% · QA ${fmt(contribution.qaPct, 0)}% of ${contribution.basis}`}
-    >
-      <PieChart width={20} height={20}>
-        <Pie
-          data={slices}
-          dataKey="value"
-          nameKey="name"
-          cx={10}
-          cy={10}
-          innerRadius={5}
-          outerRadius={9.5}
-          stroke="none"
-          isAnimationActive={false}
-        >
-          <Cell fill="#0284c7" />
-          <Cell fill="#0d9488" />
-        </Pie>
-      </PieChart>
-      <span className="ai-p2-donut-share">Dev {fmt(contribution.devPct, 0)}%</span>
-      <span className="ai-p2-donut-share">QA {fmt(contribution.qaPct, 0)}%</span>
-      <span className="ai-p2-donut-basis">of {contribution.basis}</span>
-    </div>
-  );
-}
-
 function ScoreRing({ score, band }: { score: number | null; band: string }) {
   const tone = bandOf(band);
   const color = tone === 'green' ? '#047857' : tone === 'amber' ? '#b45309' : tone === 'red' ? '#be123c' : '#64748b';
@@ -473,22 +429,6 @@ function ScoreRing({ score, band }: { score: number | null; band: string }) {
       </svg>
     </span>
   );
-}
-
-function managementRecommendation(
-  card: { gap_sentence?: string; adoption_pct?: number | null; release_quality_pct?: number | null; score?: number | null; grade?: string } | undefined,
-  health: AIHealthRow | undefined,
-): string {
-  if (!card && !health) return 'Review AI evidence';
-  const gap = (card?.gap_sentence || '').toLowerCase();
-  if (gap.includes('evidence')) return 'Improve Evidence Quality';
-  if (gap.includes('adoption') || (card?.adoption_pct != null && card.adoption_pct < 50)) return 'Drive QA Adoption';
-  if ((health?.qa_adoption_pct ?? 100) < 40) return 'Drive QA Adoption';
-  if (card?.score != null && card.score >= 90) return 'Scale Best Practices';
-  if (card?.score != null && card.score >= 80) return 'Maintain Momentum';
-  if (card?.score != null && card.score < 70) return 'Executive Review Required';
-  if (gap.includes('efficiency') || gap.includes('savings')) return 'Improve Evidence Quality';
-  return 'Maintain Momentum';
 }
 
 function projectRecommendation(health: AIHealthRow | undefined, fallback?: string) {
@@ -637,10 +577,6 @@ export function AIUtilizationPage2({
   const benchmark = useMemo(
     () => buildPortfolioBenchmark(data.health ?? [], project),
     [data.health, project],
-  );
-  const scorecards = useMemo(
-    () => (data.manager_scorecard ?? []).filter((row) => sameProject(row.project, project)),
-    [data.manager_scorecard, project],
   );
   const maturityAxes = useMemo(() => {
     const axes = (data.maturity_radar ?? []).find((row) => sameProject(row.project, project))?.axes ?? [];
@@ -858,8 +794,6 @@ export function AIUtilizationPage2({
     }
     return { rows, valueMax, showTrend, common };
   }, [effectiveness]);
-  const card = scorecards.find((row) => row.manager && health?.manager && row.manager === health.manager) || scorecards[0];
-  const mgrRec = managementRecommendation(card, health);
   const delta = health?.trend_pts;
   const deltaBand = delta == null ? 'neutral' : delta >= 0 ? 'green' : delta > -5 ? 'amber' : 'red';
   const maturity = health?.maturity_level ?? 1;
@@ -1399,7 +1333,20 @@ export function AIUtilizationPage2({
         <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">Dev vs QA battle</span>
-            <span className={`ai-chip shrink-0 ${BAND[conclusionBand]}`} title="Battle outcome">{battle.conclusion}</span>
+            {battle.contribution && (
+              <span
+                className="ai-p2-card-sub ai-p2-battle-share"
+                title={`${battle.recommend ? `${battle.recommend} ` : ''}Dev ${fmt(battle.contribution.devPct, 0)}% · QA ${fmt(battle.contribution.qaPct, 0)}% of ${battle.contribution.basis}`}
+              >
+                QA {fmt(battle.contribution.qaPct, 0)}% of {battle.contribution.basis}
+              </span>
+            )}
+            <span
+              className={`ai-chip shrink-0 ${BAND[conclusionBand]}`}
+              title={battle.recommend || 'Battle outcome'}
+            >
+              {battle.conclusion}
+            </span>
           </div>
           <div
             className="ai-battle-compare min-h-0"
@@ -1429,12 +1376,6 @@ export function AIUtilizationPage2({
               <span className="ai-battle-nodata" data-battle-nodata>
                 No data: {battle.noData.join(', ')}
               </span>
-            )}
-          </div>
-          <div className="ai-battle-foot">
-            <ContributionDonut contribution={battle.contribution} />
-            {(battle.recommend || mgrRec) && (
-              <p className="ai-battle-rec" title={battle.recommend || mgrRec}>{battle.recommend || mgrRec}</p>
             )}
           </div>
         </section>

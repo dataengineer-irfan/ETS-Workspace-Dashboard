@@ -5227,9 +5227,14 @@ html.dark .ai-attn-heat-pop {
 .ai-battle-compare {
   --p2-row-max: var(--p2-battle-row-max);
   grid-auto-rows: minmax(var(--p2-row-dense), 1fr);
-  margin-top: auto;
 }
-.ai-battle-foot { margin-bottom: auto; }
+.ai-p2-card-head:has(.ai-p2-battle-share) {
+  flex-wrap: nowrap;
+}
+.ai-p2-battle-share {
+  margin-left: auto;
+  white-space: nowrap;
+}
 .ai-uc-strip { margin-block: auto; }
 .ai-battle-row,
 .ai-uc-row {
