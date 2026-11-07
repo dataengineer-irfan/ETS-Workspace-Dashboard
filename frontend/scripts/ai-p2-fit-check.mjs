@@ -19,7 +19,7 @@
  *                 Value / Recoverable and the 17px benchmark rank), and equal size + weight for the
  *                 same role (row labels, row figures) in every card
  *   8. content  - the new elements: a one-line headline strip under the header, hero numbers, a
- *                 legend on the QA card and the release chart, linear release lines with one dot per
+ *                 legend on the release chart, the QA card's three zones (one-line verdict, one problem with a "Do this" line, other capabilities as name + number pills, no bars or status words), linear release lines with one dot per
  *                 release and a data-driven release sentence, a single red blocker in the QA card,
  *                 Battle rows with aligned columns and a lead marker that matches the numbers,
  *                 collapsed n/a rows, a Gain column only when rows differ, labelled benchmark
@@ -124,6 +124,14 @@ const SHAPES = {
   'few-axes': (k, p) => {
     const r = k.maturity_radar.find((x) => x.project === p);
     if (r) r.axes = r.axes.slice(0, 3);
+  },
+  'one-axis': (k, p) => {
+    const r = k.maturity_radar.find((x) => x.project === p);
+    if (r) r.axes = r.axes.slice(0, 1);
+  },
+  'near-target': (k, p) => {
+    const r = k.maturity_radar.find((x) => x.project === p);
+    if (r) r.axes = r.axes.map((a, i) => ({ ...a, score: 60 + i * 5 }));
   },
   'many-axes': (k, p) => {
     const r = k.maturity_radar.find((x) => x.project === p);
@@ -350,7 +358,6 @@ const MEASURE = (theme) => {
     if (list.length > 1 && Math.max(...list) - Math.min(...list) > 1.5) fails.even.push(`${label} rows differ: ${list.map(px).join(', ')}`);
   };
   spread('Use case', heights('.ai-uc-row'));
-  spread('QA capability', heights('.ai-p2-qa-cap'));
   spread('Funnel', heights('.ai-p2-adopt-row'));
   spread('Battle', heights('.ai-battle-row'));
 
@@ -392,11 +399,11 @@ const MEASURE = (theme) => {
 
   /* 7b. same role = same type */
   const roles = {
-    'row label (10.5/600)': ['.ai-uc-label', '.ai-battle-key', '.ai-p2-qa-cap-name', '.ai-p2-qa-step-name', '.ai-p2-qa-none', '.ai-p2-mgr-metrics', '.ai-p2-adopt-label', '.ai-p2-qa-rec-text', '.ai-p2-adopt-insight', '.ai-battle-rec', '.ai-p2-rel-insight', '.ai-p2-insight li', '.ai-p2-mgr-tag'],
-    'row figure (10.5/700)': ['.ai-uc-num', '.ai-uc-trend', '.ai-battle-val', '.ai-p2-qa-cap-score', '.ai-p2-adopt-drop', '.ai-p2-mgr-vpu', '.ai-p2-donut-share', '.ai-p2-mgr-tag:not(.is-top) b'],
-    'primary number (13/800)': ['.ai-p2-qa-score', '.ai-p2-adopt-count', '.ai-p2-mgr-tag.is-top b'],
+    'row label (10.5/600)': ['.ai-uc-label', '.ai-battle-key', '.ai-p2-qa-other-name', '.ai-p2-qa-verdict', '.ai-p2-qa-problem-text', '.ai-p2-mgr-metrics', '.ai-p2-adopt-label', '.ai-p2-qa-rec-text', '.ai-p2-adopt-insight', '.ai-battle-rec', '.ai-p2-rel-insight', '.ai-p2-insight li', '.ai-p2-mgr-tag'],
+    'row figure (10.5/700)': ['.ai-uc-num', '.ai-uc-trend', '.ai-battle-val', '.ai-p2-qa-other-score', '.ai-p2-adopt-drop', '.ai-p2-mgr-vpu', '.ai-p2-donut-share', '.ai-p2-mgr-tag:not(.is-top) b'],
+    'primary number (13/800)': ['.ai-p2-qa-problem-num', '.ai-p2-adopt-count', '.ai-p2-mgr-tag.is-top b'],
     'hero number (19/800)': ['.ai-p2-head-kpi.is-hero b'],
-    'meta (10/600)': ['.ai-p2-card-sub', '.ai-p2-eyebrow', '.ai-p2-qa-meta', '.ai-p2-qa-step-tag', '.ai-p2-qa-cap-status', '.ai-p2-adopt-people', '.ai-p2-donut-basis', '.ai-uc-axis', '.ai-battle-axis', '.ai-p2-rel-callout-meta', '.ai-battle-nodata', '.ai-p2-rel-legend', '.ai-p2-headline-asof', '.ai-p2-head-scope'],
+    'meta (10/600)': ['.ai-p2-card-sub', '.ai-p2-eyebrow', '.ai-p2-adopt-people', '.ai-p2-donut-basis', '.ai-uc-axis', '.ai-battle-axis', '.ai-p2-rel-callout-meta', '.ai-battle-nodata', '.ai-p2-rel-legend', '.ai-p2-headline-asof', '.ai-p2-head-scope'],
     'title (11.5/750)': ['.ai-p2-card-title'],
   };
   for (const [role, sels] of Object.entries(roles)) {
@@ -457,19 +464,51 @@ const MEASURE = (theme) => {
   }
   const qaCard = [...root.querySelectorAll('.ai-p2-qa')][0];
   if (qaCard) {
-    const legend = qaCard.querySelector('[data-qa-legend]');
-    if (!legend || !/bar = score/i.test(txt(legend)) || !/line = target/i.test(txt(legend))) fails.content.push('QA card legend "bar = score, line = target" is missing');
-    const caps = [...qaCard.querySelectorAll('.ai-p2-qa-cap')];
-    const redCaps = caps.filter((c) => c.dataset.band === 'red');
-    if (redCaps.length > 1) fails.content.push(`QA card has ${redCaps.length} red capabilities (only the blocker may be red)`);
-    for (const c of caps) {
-      const word = txt(c.querySelector('.ai-p2-qa-cap-status'));
-      if (!['', 'Blocker', 'Near target', 'At target'].includes(word)) fails.content.push(`QA capability status word "${word}" is not allowed`);
-      if (c.dataset.band === 'neutral' && word) fails.content.push(`Neutral QA capability "${txt(c.querySelector('.ai-p2-qa-cap-name'))}" has a status word`);
-      if (c.dataset.band === 'red' && word !== 'Blocker') fails.content.push('Red QA capability is not labelled Blocker');
+    const qaText = txt(qaCard);
+    if (qaCard.querySelector('[data-qa-legend], .ai-p2-qa-track, .ai-p2-qa-cap-status') || /bar = score|line = target/i.test(qaText)) fails.content.push('QA card still carries the bar/legend/status-word jargon');
+    const sub = txt(qaCard.querySelector('[data-qa-sub]'));
+    if (!/^QA practice vs L\d target$/.test(sub)) fails.content.push(`QA card sub-title is "${sub}"`);
+    const verdictEl = qaCard.querySelector('[data-qa-verdict]');
+    const problemEl = qaCard.querySelector('[data-qa-problem]');
+    const othersEl = qaCard.querySelector('[data-qa-others]');
+    if (!verdictEl || !problemEl) fails.content.push('QA card is missing the verdict line or the problem zone');
+    else {
+      const v = txt(verdictEl);
+      const lineH = parseFloat(getComputedStyle(verdictEl).lineHeight);
+      if (verdictEl.getBoundingClientRect().height > lineH * 1.5) fails.content.push(`QA verdict wraps to two lines: "${v}"`);
+      if (!/^L\d [A-Za-z ]+\. /.test(v) && !/^L\d\. /.test(v)) fails.content.push(`QA verdict does not start with the level: "${v}"`);
+      if (/undefined|NaN|null/.test(v)) fails.content.push(`QA verdict has a bad value: "${v}"`);
+      const hasScores = !!othersEl || /is \d|Lowest:/.test(txt(problemEl));
+      if (hasScores && !/\d+ of \d+/.test(v)) fails.content.push(`QA verdict lacks "N of T": "${v}"`);
+      if (hasScores && !/(\d+ pts? short|Target met)\.$/.test(v)) fails.content.push(`QA verdict lacks the gap: "${v}"`);
+      const pt = txt(problemEl);
+      const kind = problemEl.dataset.kind;
+      if (!/Do this/.test(pt)) fails.content.push('QA problem zone has no "Do this" line');
+      if (kind === 'blocker' || kind === 'near') {
+        if (!/ is \d+, target \d+/.test(pt)) fails.content.push(`QA problem line is not "X is N, target T": "${pt.slice(0, 60)}"`);
+        if (kind === 'near' && problemEl.dataset.band === 'red') fails.content.push('Near-target problem is red');
+      }
+      if (kind === 'blocker' && problemEl.dataset.band !== 'red') fails.content.push('Blocker problem zone is not red');
+      if (kind !== 'blocker' && problemEl.dataset.band === 'red') fails.content.push('QA problem zone is red without a blocker');
+      if (kind === 'none' && othersEl) fails.content.push('QA card has other capabilities but no problem axis');
+      const reds = [...qaCard.querySelectorAll('.ai-band-red, [data-band="red"]')];
+      if (reds.some((el) => el !== problemEl && !problemEl.contains(el) && !el.closest('.ai-chip'))) fails.content.push('Red appears in the QA card outside the problem zone');
+      if (qaCard.querySelectorAll('[data-band="red"]').length > 1) fails.content.push('More than one red QA element');
     }
-    const redChips = [...qaCard.querySelectorAll('.ai-p2-qa-constraints .ai-chip')].filter((c) => c.classList.contains('ai-band-red'));
-    if (redChips.length > 1) fails.content.push(`${redChips.length} red blocker chips (only the top one may be red)`);
+    if (othersEl) {
+      const pills = [...othersEl.querySelectorAll('.ai-p2-qa-other')];
+      const scores = pills.map((el) => parseFloat(txt(el.querySelector('.ai-p2-qa-other-score'))));
+      for (let i = 1; i < scores.length; i += 1) if (scores[i] < scores[i - 1]) { fails.content.push(`QA others are not weakest first: ${scores.join(', ')}`); break; }
+      const first = problemEl ? parseFloat((txt(problemEl).match(/ (?:is|Lowest: .*?) (\d+)/) || [])[1]) : NaN;
+      if (!Number.isNaN(first) && scores.length && scores[0] < first) fails.content.push('An "other" capability is weaker than the problem capability');
+      for (const el of pills) {
+        const word = txt(el.querySelector('.ai-p2-qa-other-name'));
+        if (/(Blocker|Near target|At target|Below target)/i.test(txt(el))) fails.content.push(`QA other "${word}" carries a status word`);
+        if (el.dataset.band === 'red') fails.content.push(`QA other "${word}" is red`);
+        const sc = el.querySelector('.ai-p2-qa-other-score');
+        if (!/^\d+$/.test(txt(sc))) fails.content.push(`QA other "${word}" score is "${txt(sc)}"`);
+      }
+    }
   }
   const battle = root.querySelector('[data-battle-compare]');
   if (battle) {

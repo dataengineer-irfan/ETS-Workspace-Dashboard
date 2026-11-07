@@ -293,33 +293,6 @@ function capabilityStatus(score: number, target: number, isBlocker = false): QaS
   return isBlocker ? { label: 'Blocker', band: 'red' } : { label: '', band: 'neutral' };
 }
 
-/** Bar runs from 0 to the target: a full bar is at target, the line at its end is the target. */
-function QaTargetBar({
-  score,
-  target,
-  band,
-  label,
-}: {
-  score: number;
-  target: number;
-  band: Band;
-  label: string;
-}) {
-  const fill = target > 0 ? Math.max(0, Math.min(100, (score / target) * 100)) : 0;
-  return (
-    <span
-      className="ai-p2-qa-track"
-      role="meter"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={target}
-      aria-valuenow={Math.round(score)}
-    >
-      <span className={`ai-p2-qa-fill is-${band}`} style={{ width: `${fill}%` }} />
-    </span>
-  );
-}
-
 function bandOf(value: string | undefined | null): Band {
   const key = String(value || 'neutral').toLowerCase();
   if (key === 'green' || key === 'amber' || key === 'red') return key;
@@ -624,6 +597,8 @@ export function AIUtilizationPage2({
   const [relChartW, setRelChartW] = useState(0);
   const headlineRef = useRef<HTMLParagraphElement>(null);
   const [headlineW, setHeadlineW] = useState(0);
+  const verdictRef = useRef<HTMLParagraphElement>(null);
+  const [verdictW, setVerdictW] = useState(0);
 
   const health = (data.health ?? []).find((row) => sameProject(row.project, project)) as AIHealthRow | undefined;
   const projectRisks = useMemo(
@@ -681,6 +656,15 @@ export function AIUtilizationPage2({
     const el = headlineRef.current;
     if (!el) return;
     const measure = () => setHeadlineW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [project]);
+  useLayoutEffect(() => {
+    const el = verdictRef.current;
+    if (!el) return;
+    const measure = () => setVerdictW(el.clientWidth);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -893,16 +877,42 @@ export function AIUtilizationPage2({
   const maturityTrack = maturityStatus(maturityReadiness, maturityGap);
   const weakestAxis = maturityAxes[0] ?? null;
   const belowTarget = maturityAxes.filter((axis) => axis.score < maturityTarget);
-  const topConstraints = belowTarget.slice(0, 2);
   const blockerAxis = weakestAxis != null && weakestAxis.score < maturityTarget - 10 ? weakestAxis : null;
   const atTopLevel = nextMaturity <= maturity;
-  const maturityGapWords = (() => {
-    if (maturityGap == null) return 'Capability scores not available';
-    const ready = maturityReadiness != null ? ` · ${fmt(maturityReadiness, 0)}% ready` : '';
-    if (maturityGap <= 0) return `Target met${ready}`;
-    return atTopLevel
-      ? `${fmt(maturityGap, 0)} pts to hold the L${maturity} target${ready}`
-      : `${fmt(maturityGap, 0)} pts to reach L${nextMaturity}${ready}`;
+  const problemKind: 'none' | 'blocker' | 'near' | 'ok' = !weakestAxis
+    ? 'none'
+    : blockerAxis
+      ? 'blocker'
+      : weakestAxis.score < maturityTarget
+        ? 'near'
+        : 'ok';
+  const problemBand: Band = problemKind === 'blocker' ? 'red' : problemKind === 'near' ? 'amber' : problemKind === 'ok' ? 'green' : 'neutral';
+  const problemLabel = problemKind === 'blocker' ? 'Problem' : problemKind === 'near' ? 'Watch' : problemKind === 'ok' ? 'On target' : 'Capabilities';
+  const otherAxes = weakestAxis ? maturityAxes.slice(1) : [];
+  const verdictVariants = (() => {
+    const levelName = `L${maturity} ${MATURITY_LABEL[maturity] || ''}`.trim();
+    const nextName = `L${nextMaturity} ${MATURITY_LABEL[nextMaturity] || ''}`.trim();
+    const head = `${levelName}.`;
+    if (maturityScore == null || maturityGap == null) return [{ head, rest: 'Capability scores not available.' }];
+    const score = fmt(maturityScore, 0);
+    const short = maturityGap <= 0 ? 'Target met.' : `${Math.max(1, Math.round(maturityGap))} pts short.`;
+    if (atTopLevel) {
+      return [
+        { head, rest: `${score} of ${maturityTarget} to hold the target. ${short}` },
+        { head, rest: `${score} of ${maturityTarget}. ${short}` },
+      ];
+    }
+    return [
+      { head, rest: `${score} of ${maturityTarget} to reach ${nextName}. ${short}` },
+      { head, rest: `${score} of ${maturityTarget} to reach L${nextMaturity}. ${short}` },
+      { head, rest: `${score} of ${maturityTarget}. ${short}` },
+    ];
+  })();
+  const verdictPick = (() => {
+    const el = verdictRef.current;
+    if (!el || verdictW <= 0) return verdictVariants[0];
+    return verdictVariants.find((v) => textWidthIn(el, `${v.head} ${v.rest}`) <= verdictW - 2)
+      ?? verdictVariants[verdictVariants.length - 1];
   })();
   const maturityRec = (() => {
     const bullets = (projRec?.bullets ?? []).filter(Boolean);
@@ -1576,89 +1586,59 @@ export function AIUtilizationPage2({
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <div className="ai-p2-qa-head-titles min-w-0">
               <span className="ai-p2-card-title">QA maturity</span>
-              <span className="ai-p2-card-sub" data-qa-legend>
-                <span className="ai-p2-qa-sub-lead">QA practice vs L{nextMaturity} target · </span>bar = score, line = target
-              </span>
+              <span className="ai-p2-card-sub" data-qa-sub>QA practice vs L{nextMaturity} target</span>
             </div>
             <span className={`ai-chip shrink-0 ${BAND[maturityTrack.band]}`} title="Maturity trajectory">
               {maturityTrack.label}
             </span>
           </div>
           <div className="ai-p2-qa-body">
-            <div className="ai-p2-qa-journey" aria-label="Maturity level">
-              <div className="ai-p2-qa-step is-current" data-qa-step="current">
-                <span className="ai-p2-qa-step-name">L{maturity} {MATURITY_LABEL[maturity] || ''}</span>
-                <span className="ai-p2-qa-step-tag">You are here</span>
-              </div>
-              <div className="ai-p2-qa-progress">
-                <span className="ai-p2-qa-score-line">
-                  <span className="ai-p2-qa-score">
-                    {maturityScore == null ? 'n/a' : fmt(maturityScore, 0)}
-                    <span> of {maturityTarget}</span>
-                  </span>
-                  <span className="ai-p2-qa-meta">{maturityGapWords}</span>
-                </span>
-                {!atTopLevel && (
-                  <span className="ai-p2-qa-step-link" aria-hidden="true">
-                    <i style={{ width: `${maturityReadiness == null ? 0 : Math.max(0, Math.min(100, maturityReadiness))}%` }} />
-                  </span>
+            <p className="ai-p2-qa-verdict" ref={verdictRef} data-qa-verdict data-qa-level={maturity} data-qa-next={atTopLevel ? undefined : nextMaturity}>
+              <b>{verdictPick.head}</b> {verdictPick.rest}
+            </p>
+
+            <div
+              className="ai-p2-qa-problem"
+              data-qa-problem
+              data-kind={problemKind}
+              data-band={problemBand}
+              title={maturityInsight}
+            >
+              <span className="ai-p2-eyebrow ai-p2-qa-problem-label">{problemLabel}</span>
+              <p className="ai-p2-qa-problem-text" title={weakestAxis ? axisImpact(weakestAxis.axis) : undefined}>
+                {weakestAxis ? (
+                  problemKind === 'ok' ? (
+                    <>Every capability is at target. Lowest: <b>{weakestAxis.axis}</b> <b className="ai-p2-qa-problem-num">{fmt(weakestAxis.score, 0)}</b></>
+                  ) : (
+                    <><b>{weakestAxis.axis}</b> is <b className="ai-p2-qa-problem-num">{fmt(weakestAxis.score, 0)}</b>, target {maturityTarget}</>
+                  )
+                ) : (
+                  'No capability scores for this project.'
                 )}
-              </div>
-              {!atTopLevel && (
-                <div className="ai-p2-qa-step is-next" data-qa-step="next">
-                  <span className="ai-p2-qa-step-name">L{nextMaturity} {MATURITY_LABEL[nextMaturity] || ''}</span>
-                  <span className="ai-p2-qa-step-tag">Target</span>
-                </div>
-              )}
-            </div>
-
-            <div className="ai-p2-qa-caps" aria-label="Capabilities, weakest first">
-              {maturityAxes.length === 0 && (
-                <p className="ai-p2-empty">No maturity axis scores for this project.</p>
-              )}
-              {maturityAxes.map((row) => {
-                const status = capabilityStatus(row.score, maturityTarget, blockerAxis != null && row.key === blockerAxis.key);
-                const statusTip = status.label || 'Below target';
-                return (
-                  <div
-                    key={row.key}
-                    className="ai-p2-qa-cap"
-                    data-band={status.band}
-                    data-blocker={status.label === 'Blocker' ? 'true' : undefined}
-                    title={`${row.axis} ${fmt(row.score, 0)} of ${maturityTarget} · ${statusTip}`}
-                  >
-                    <span className="ai-p2-qa-cap-name">{row.axis}</span>
-                    <span className="ai-p2-qa-cap-score">{fmt(row.score, 0)}</span>
-                    <QaTargetBar score={row.score} target={maturityTarget} band={status.band} label={`${row.axis} ${fmt(row.score, 0)} of ${maturityTarget}`} />
-                    <span className="ai-p2-qa-cap-status">{status.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="ai-p2-qa-decision" data-qa-decision title={maturityInsight}>
-              {maturityAxes.length > 0 && (
-                <>
-                  <span className="ai-p2-eyebrow">{blockerAxis ? 'Blocker' : 'Watch'}</span>
-                  <div className="ai-p2-qa-constraints">
-                    {topConstraints.length === 0 && (
-                      <span className="ai-p2-qa-none">None — every capability is at target</span>
-                    )}
-                    {topConstraints.map((axis, index) => (
-                      <span
-                        key={axis.key}
-                        className={`ai-chip ${blockerAxis && index === 0 ? BAND.red : 'ai-band-neutral is-outline'}`}
-                        title={`${axis.axis} · ${fmt(axis.score, 0)} of ${maturityTarget} · ${axisImpact(axis.axis)}`}
-                      >
-                        {axis.axis}
-                      </span>
-                    ))}
-                  </div>
-                </>
-              )}
-              <span className="ai-p2-eyebrow">Next action</span>
+              </p>
+              <span className="ai-p2-eyebrow ai-p2-qa-do-label">Do this</span>
               <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
             </div>
+
+            {otherAxes.length > 0 && (
+              <div className="ai-p2-qa-others" data-qa-others aria-label="Other capabilities, weakest first">
+                <span className="ai-p2-eyebrow">Others</span>
+                {otherAxes.map((row) => {
+                  const status = capabilityStatus(row.score, maturityTarget);
+                  return (
+                    <span
+                      key={row.key}
+                      className="ai-p2-qa-other"
+                      data-band={status.band}
+                      title={`${row.axis} ${fmt(row.score, 0)}, target ${maturityTarget}`}
+                    >
+                      <span className="ai-p2-qa-other-name">{row.axis}</span>
+                      <b className="ai-p2-qa-other-score">{fmt(row.score, 0)}</b>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 
