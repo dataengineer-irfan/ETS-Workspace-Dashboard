@@ -564,46 +564,6 @@ export function AIUtilizationPage2({
     () => (data.risks ?? []).filter((row) => sameProject(row.project, project)),
     [data.risks, project],
   );
-  // #region agent log
-  React.useEffect(() => {
-    const rows = projectRisks.slice(0, 12).map((r) => ({
-      person: r.person ?? null,
-      type: r.type,
-      severity: r.severity,
-      empRaw: r.employee_number ?? null,
-      empType: typeof r.employee_number,
-      canOpen: typeof r.employee_number === 'number' && (r.employee_number as number) > 0,
-      bandClass: BAND[bandOf(r.severity)],
-    }));
-    const canOpenN = rows.filter((r) => r.canOpen).length;
-    const sevCounts = rows.reduce<Record<string, number>>((acc, r) => {
-      acc[r.severity] = (acc[r.severity] || 0) + 1;
-      return acc;
-    }, {});
-    const body = JSON.stringify({
-      sessionId: '6a418b',
-      runId: 'p2-risk-chips',
-      hypothesisId: 'H1',
-      location: 'AIUtilizationPage2.tsx:projectRisks',
-      message: 'Page2 risk chip openability + severity',
-      data: {
-        project,
-        riskCount: projectRisks.length,
-        canOpenN,
-        closedN: rows.length - canOpenN,
-        sevCounts,
-        uniqueBandClasses: [...new Set(rows.map((r) => r.bandClass))],
-        rows,
-      },
-      timestamp: Date.now(),
-    });
-    fetch('http://127.0.0.1:7896/ingest/a53d98a9-e463-4e07-91cc-72a241898446', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '6a418b' },
-      body,
-    }).catch(() => {});
-  }, [project, projectRisks]);
-  // #endregion
   const useCases = useMemo(
     () => (data.use_case_matrix ?? []).filter((row) => sameProject(row.project, project)),
     [data.use_case_matrix, project],
@@ -644,8 +604,8 @@ export function AIUtilizationPage2({
   const maturityAxes = useMemo(() => {
     const axes = (data.maturity_radar ?? []).find((row) => sameProject(row.project, project))?.axes ?? [];
     return axes
-      .map((axis) => ({
-        key: axis.axis,
+      .map((axis, index) => ({
+        key: `${axis.axis}-${index}`,
         axis: QA_AXIS_ALIAS[axis.axis] || axis.axis,
         score: typeof axis.score === 'number' && !Number.isNaN(axis.score) ? axis.score : 0,
       }))
@@ -664,36 +624,6 @@ export function AIUtilizationPage2({
     () => (data.project_recommendations ?? []).find((row) => sameProject(row.project, project)),
     [data.project_recommendations, project],
   );
-  // #region agent log
-  React.useEffect(() => {
-    const portfolioLen = (data.release_trend ?? []).length;
-    const foreign = (data.release_trend ?? [])
-      .filter((row) => sameProject(row.project, project) === false)
-      .map((row) => row.release);
-    const body = JSON.stringify({
-      sessionId: '6a418b',
-      runId: 'p2-release-scope',
-      hypothesisId: 'REL1',
-      location: 'AIUtilizationPage2.tsx:trend',
-      message: 'Page2 release series scoped to drilled project',
-      data: {
-        pageProject: project,
-        portfolioTrendLen: portfolioLen,
-        scopedTrendLen: trend.length,
-        scopedReleases: trend.map((r) => r.release),
-        foreignSample: [...new Set(foreign)].slice(0, 8),
-        expectScopedLtPortfolio: portfolioLen === 0 || trend.length <= portfolioLen,
-        expectNoForeignInScoped: trend.every((r) => sameProject(r.project, project)),
-      },
-      timestamp: Date.now(),
-    });
-    fetch('http://127.0.0.1:7896/ingest/a53d98a9-e463-4e07-91cc-72a241898446', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '6a418b' },
-      body,
-    }).catch(() => {});
-  }, [project, trend, data.release_trend]);
-  // #endregion
 
   const contributors = useMemo(() => {
     const seen = new Map<string, AIRiskCard>();
@@ -1644,36 +1574,6 @@ function RiskPersonChip({
 }) {
   const label = risk.person || 'Person';
   const canOpen = typeof risk.employee_number === 'number' && risk.employee_number > 0;
-  // #region agent log
-  React.useEffect(() => {
-    const empCoerced = Number(risk.employee_number);
-    const body = JSON.stringify({
-      sessionId: '6a418b',
-      runId: 'p2-risk-chips',
-      hypothesisId: 'H2',
-      location: 'AIUtilizationPage2.tsx:RiskPersonChip',
-      message: 'chip render path',
-      data: {
-        person: label,
-        type: risk.type,
-        severity: risk.severity,
-        empRaw: risk.employee_number ?? null,
-        empType: typeof risk.employee_number,
-        empCoerced: Number.isFinite(empCoerced) ? empCoerced : null,
-        canOpen,
-        path: canOpen ? 'button-profile' : 'span-type',
-        bandClass: BAND[bandOf(risk.severity)],
-        bandOfInfoWouldBe: bandOf('info'),
-      },
-      timestamp: Date.now(),
-    });
-    fetch('http://127.0.0.1:7896/ingest/a53d98a9-e463-4e07-91cc-72a241898446', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '6a418b' },
-      body,
-    }).catch(() => {});
-  }, [label, risk.type, risk.severity, risk.employee_number, canOpen]);
-  // #endregion
   if (!canOpen) {
     return (
       <span className={`ai-chip ${BAND[bandOf(risk.severity)]}`} title={risk.text || risk.type}>
