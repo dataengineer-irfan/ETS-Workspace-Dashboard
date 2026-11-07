@@ -4931,7 +4931,7 @@ html.dark .ai-attn-heat-pop {
     --p2-axis-h: 1rem;
     --p2-panel-pad: 0.3rem 0.4rem 0.3rem;
     --p2-panel-pad-y: 0.6rem;
-    grid-template-rows: auto minmax(min-content, 1fr) auto auto;
+    grid-template-rows: auto auto minmax(min-content, 1fr) auto auto;
   }
 }
 @container (max-width: 720px) {
@@ -5008,25 +5008,30 @@ html.dark .ai-attn-heat-pop {
      Genie col 2 is a bit wider than the first cut so the Rec chip stays
      inside the card after Trend is dropped.
      Type scale matches the use-case table (existing font stack). Titles
-     11.5/750. Primary numbers (rank, health, QA score vs target, header
-     $) 13/800 tabular. Row labels 10/600 — QA, funnel and battle labels
-     stay at that size. Row figures 10/700 tabular — use-case figures,
-     battle values, QA scores, funnel counts and drop %. Secondary meta and
-     chips 9.5/600, never below 9px. */
+     11.5/750. Hero numbers 19/800 tabular, used only for the three VP
+     answers: health score (ring), Value and Recoverable in the header,
+     plus the benchmark rank (#1) at 17/800. Primary numbers (health in the
+     benchmark, QA score vs target, funnel counts) 13/800 tabular. Row labels
+     10.5/600 — QA, funnel and battle labels stay at that size. Row figures
+     10.5/700 tabular — use-case figures, battle values, QA scores and drop
+     %. Secondary meta and chips 10/600, never below 10px. */
   --ai-p2-fs-title: 11.5px;
   --ai-p2-fw-title: 750;
   --ai-p2-fs-primary: 13px;
   --ai-p2-fw-primary: 800;
-  --ai-p2-fs-label: 10px;
+  --ai-p2-fs-hero: 19px;
+  --ai-p2-fw-hero: 800;
+  --ai-p2-fs-rank: 17px;
+  --ai-p2-fs-label: 10.5px;
   --ai-p2-fw-label: 600;
-  --ai-p2-fs-figure: 10px;
+  --ai-p2-fs-figure: 10.5px;
   --ai-p2-fw-figure: 700;
-  --ai-p2-fs-meta: 9.5px;
+  --ai-p2-fs-meta: 10px;
   --ai-p2-fw-meta: 600;
   --ai-p2-col-1: minmax(0, 0.84fr);
   --ai-p2-col-2: minmax(0, 1.16fr);
   --ai-p2-col-3: minmax(0, 0.94fr);
-  grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, clamp(11.75rem, calc(11.75rem + (100vh - 768px) * 0.31), 14.375rem)) auto;
+  grid-template-rows: auto auto minmax(min-content, 1fr) minmax(min-content, clamp(11.75rem, calc(11.75rem + (100vh - 768px) * 0.31), 14.375rem)) auto;
   grid-template-columns: minmax(0, 1fr);
 }
 .ai-p3 {
@@ -5220,24 +5225,30 @@ html.dark .ai-attn-heat-pop {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
 }
 
-/* Dev vs QA battle: Dev | metric | QA. */
+/* Dev vs QA battle: metric (left) | Dev | lead marker | QA, values right-aligned in two columns.
+   The marker points to the leading side and is neutral when equal or n/a. */
 .ai-battle-axis,
 .ai-battle-row {
   display: grid;
-  grid-template-columns: minmax(3.4rem, 0.9fr) minmax(0, 1.5fr) minmax(3.4rem, 0.9fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(3.4rem, 0.8fr) 0.9rem minmax(3.4rem, 0.8fr);
   align-items: center;
   column-gap: 0.3rem;
   min-width: 0;
 }
-.ai-battle-axis-dev { text-align: right; }
-.ai-battle-axis-qa { text-align: left; }
+.ai-battle-axis-key { text-align: left; }
+.ai-battle-axis-dev,
+.ai-battle-axis-qa { text-align: right; }
 .ai-battle-key {
   min-width: 0;
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
   line-height: 1.15;
-  text-align: center;
+  text-align: left;
   color: var(--muted);
+}
+.ai-battle-key[data-tip] {
+  text-decoration: underline dotted color-mix(in srgb, var(--muted) 55%, transparent);
+  text-underline-offset: 2px;
 }
 .ai-battle-val {
   min-width: 0;
@@ -5248,9 +5259,46 @@ html.dark .ai-attn-heat-pop {
   line-height: 1.15;
   color: var(--text);
   white-space: nowrap;
+  text-align: right;
 }
-.ai-battle-val.is-dev { text-align: right; }
-.ai-battle-val.is-qa { text-align: left; }
+.ai-battle-val.is-na {
+  color: var(--muted);
+}
+.ai-battle-lead {
+  justify-self: center;
+  display: block;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-color: transparent;
+  color: var(--muted);
+}
+.ai-battle-lead.is-dev {
+  border-width: 3.5px 5px 3.5px 0;
+  border-right-color: #0284c7;
+}
+.ai-battle-lead.is-qa {
+  border-width: 3.5px 0 3.5px 5px;
+  border-left-color: #0d9488;
+}
+.ai-battle-lead.is-none {
+  width: 4px;
+  height: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+}
+html.dark .ai-battle-lead.is-dev { border-right-color: #38bdf8; }
+html.dark .ai-battle-lead.is-qa { border-left-color: #2dd4bf; }
+.ai-battle-nodata {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  line-height: 1.15;
+  color: var(--muted);
+}
 .ai-battle-foot {
   display: grid;
   flex: 0 0 auto;
@@ -5311,6 +5359,15 @@ html.dark .ai-attn-heat-pop {
     minmax(min-content, 1fr)
     minmax(min-content, 1fr);
   column-gap: 0.5rem;
+}
+.ai-uc-strip.is-no-trend {
+  grid-template-columns:
+    0.95rem
+    max-content
+    minmax(min-content, 1fr)
+    minmax(min-content, 1fr)
+    minmax(min-content, 1fr)
+    minmax(min-content, 1fr);
 }
 .ai-uc-strip > .ai-p2-empty {
   grid-column: 1 / -1;
@@ -5441,7 +5498,14 @@ html.dark .ai-attn-heat-pop {
   min-width: 0;
   line-height: 1.1;
 }
-.ai-p2-mgr-rank b,
+.ai-p2-mgr-rank b {
+  font-size: var(--ai-p2-fs-rank);
+  font-weight: var(--ai-p2-fw-hero);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
+}
 .ai-p2-mgr-health b {
   font-size: var(--ai-p2-fs-primary);
   font-weight: var(--ai-p2-fw-primary);
@@ -5496,9 +5560,12 @@ html.dark .ai-p2-mgr .ai-p2-mgr-vpu[data-tone="amber"] { color: #fbbf24; }
 html.dark .ai-p2-mgr .ai-p2-mgr-vpu[data-tone="red"] { color: #fb7185; }
 .ai-p2-mgr-range {
   flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  min-height: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 14px auto auto;
+  align-content: center;
+  row-gap: 0.14rem;
+  min-width: 0;
   padding: 0 7px;
 }
 .ai-p2-mgr-range-track {
@@ -5506,6 +5573,7 @@ html.dark .ai-p2-mgr .ai-p2-mgr-vpu[data-tone="red"] { color: #fb7185; }
   display: block;
   width: 100%;
   height: 12px;
+  align-self: center;
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 48%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 35%, transparent);
@@ -5537,22 +5605,35 @@ html.dark .ai-p2-mgr .ai-p2-mgr-vpu[data-tone="red"] { color: #fb7185; }
   background: currentColor;
   box-sizing: border-box;
 }
-.ai-p2-mgr-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.05rem 0.5rem;
+/* Direct marker labels: each sits on its own row so the project score, the average and the
+   quartiles can never print over each other; a label is centered on its marker and held inside
+   the strip near the ends. */
+.ai-p2-mgr-tag {
+  position: relative;
+  grid-column: 1;
+  justify-self: start;
+  left: clamp(var(--half, 1rem), var(--at, 0%), calc(100% - var(--half, 1rem)));
+  transform: translateX(-50%);
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
   line-height: 1.2;
+  white-space: nowrap;
   color: var(--muted);
 }
-.ai-p2-mgr-metrics span { white-space: nowrap; }
-.ai-p2-mgr-metrics b {
+.ai-p2-mgr-tag b {
   font-weight: var(--ai-p2-fw-figure);
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
+.ai-p2-mgr-tag.is-top { grid-row: 1; }
+.ai-p2-mgr-tag.is-top b {
+  font-size: var(--ai-p2-fs-primary);
+  font-weight: var(--ai-p2-fw-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.ai-p2-mgr-range-track { grid-row: 2; }
+.ai-p2-mgr-tag.is-low1 { grid-row: 3; }
+.ai-p2-mgr-tag.is-low2 { grid-row: 4; }
 
 /* QA maturity (compact, VP-readable): level stepper (You are here -> Target) with the score
    against the target, six capabilities as a weakest-first grid (score, bar to target, status
@@ -5694,9 +5775,11 @@ html.dark .ai-p2-qa-step.is-current .ai-p2-qa-step-tag { color: #7dd3fc; }
   box-shadow: inset 3px 0 0 var(--cap-color);
   background: color-mix(in srgb, var(--cap-color) 9%, transparent);
 }
+.ai-p2-qa-cap[data-band="neutral"] { --cap-color: #64748b; }
 .ai-p2-qa-cap[data-band="green"] { --cap-color: #047857; }
 .ai-p2-qa-cap[data-band="amber"] { --cap-color: #b45309; }
 .ai-p2-qa-cap[data-band="red"] { --cap-color: #be123c; }
+html.dark .ai-p2-qa-cap[data-band="neutral"] { --cap-color: #94a3b8; }
 html.dark .ai-p2-qa-cap[data-band="green"] { --cap-color: #34d399; }
 html.dark .ai-p2-qa-cap[data-band="amber"] { --cap-color: #fbbf24; }
 html.dark .ai-p2-qa-cap[data-band="red"] { --cap-color: #fb7185; }
@@ -5748,9 +5831,11 @@ html.dark .ai-p2-qa-cap[data-band="red"] { --cap-color: #fb7185; }
   border-radius: 999px;
   background: #64748b;
 }
+.ai-p2-qa-fill.is-neutral { background: #64748b; }
 .ai-p2-qa-fill.is-green { background: #047857; }
 .ai-p2-qa-fill.is-amber { background: #b45309; }
 .ai-p2-qa-fill.is-red { background: #be123c; }
+html.dark .ai-p2-qa-fill.is-neutral { background: #94a3b8; }
 html.dark .ai-p2-qa-fill.is-green { background: #34d399; }
 html.dark .ai-p2-qa-fill.is-amber { background: #fbbf24; }
 html.dark .ai-p2-qa-fill.is-red { background: #fb7185; }
@@ -5784,6 +5869,11 @@ html.dark .ai-p2-qa-fill.is-red { background: #fb7185; }
   padding: 0 0.24rem;
   line-height: 1.2;
   white-space: normal;
+}
+.ai-p2 .ai-chip.is-outline {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 55%, transparent);
+  color: var(--text);
 }
 .ai-p2-qa-none {
   font-size: var(--ai-p2-fs-label);
@@ -6075,6 +6165,43 @@ html.dark .ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
   width: 100% !important;
   height: 100% !important;
 }
+.ai-p2-rel-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.7rem;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  line-height: 1.2;
+  color: var(--muted);
+}
+.ai-p2-rel-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  white-space: nowrap;
+}
+.ai-p2-rel-key::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 0;
+  border-top: 2px solid currentColor;
+  flex: 0 0 auto;
+}
+.ai-p2-rel-key.is-adoption::before { border-color: #0284c7; }
+.ai-p2-rel-key.is-hours::before {
+  height: 7px;
+  border-top: 2px solid #0d9488;
+  background: #0d948828;
+}
+.ai-p2-rel-key.is-dot::before {
+  width: 7px;
+  height: 7px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--muted);
+}
 .ai-p2-rel-insight {
   margin: 0;
   font-size: var(--ai-p2-fs-label);
@@ -6171,14 +6298,19 @@ html.dark .ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
   padding: 0.05rem 0.5rem !important;
 }
 .ai-p2-head .ai-score-ring svg {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
 }
 .ai-p2-head .ai-score-ring svg text {
-  /* Same tabular size as the other primary numbers; the 32px ring still holds two digits. */
-  font-size: var(--ai-p2-fs-primary);
-  font-weight: var(--ai-p2-fw-primary);
+  /* Hero tier: the ring is drawn in a 36-unit box shown at 40px, so 16.5 units is about 18px
+     and still holds two digits; a 3-digit 100 drops to the primary size. */
+  font-size: 16.5px;
+  font-weight: var(--ai-p2-fw-hero);
   font-family: ui-monospace, Consolas, monospace;
+  fill: var(--text);
+}
+.ai-p2-head .ai-score-ring.is-wide svg text {
+  font-size: 12.5px;
 }
 .ai-p2-head-row1 {
   display: flex;
@@ -6248,6 +6380,61 @@ html.dark .ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
   font-weight: var(--ai-p2-fw-primary);
   color: var(--text);
   font-family: ui-monospace, Consolas, monospace;
+}
+.ai-p2-head-kpi.is-hero b {
+  font-size: var(--ai-p2-fs-hero);
+  font-weight: var(--ai-p2-fw-hero);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.ai-p2-head-health {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.ai-p2-head-kpis { margin-left: 0.5rem; }
+.ai-p2-head-scope {
+  margin-right: 0.1rem;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Headline: the one sentence a VP reads first. One line, never truncated (the longest variant
+   that fits is chosen in the component), no red. */
+.ai-p2-headline {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.18rem 0.6rem !important;
+  box-shadow: inset 3px 0 0 #0284c7;
+}
+.ai-p2-headline-text {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ai-p2-fs-title);
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--text);
+  white-space: nowrap;
+}
+.ai-p2-headline-text b {
+  font-weight: 800;
+}
+.ai-p2-headline-asof {
+  flex: 0 0 auto;
+  font-size: var(--ai-p2-fs-meta);
+  font-weight: var(--ai-p2-fw-meta);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
 }
 .ai-p2-head-row2 {
   display: flex;
@@ -6427,10 +6614,10 @@ html.dark .ai-rec-engine li {
     /* Battle stays on col 1. Col 2 is wide enough for the use-case name, tag,
        and Rec chip once Trend is hidden. Col 3 keeps Release and the funnel
        wider than the old 0.90 track. */
-    --ai-p2-col-1: minmax(0, 0.88fr);
-    --ai-p2-col-2: minmax(0, 1.08fr);
-    --ai-p2-col-3: minmax(0, 0.94fr);
-    grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, clamp(11.75rem, calc(11.75rem + (100vh - 768px) * 0.31), 14.375rem)) auto;
+    --ai-p2-col-1: minmax(0, 0.86fr);
+    --ai-p2-col-2: minmax(0, 1.14fr);
+    --ai-p2-col-3: minmax(0, 0.9fr);
+    grid-template-rows: auto auto minmax(min-content, 1fr) minmax(min-content, clamp(11.75rem, calc(11.75rem + (100vh - 768px) * 0.31), 14.375rem)) auto;
     gap: 0.28rem;
   }
   .ai-p2 > .ai-p2-mid {
@@ -6456,7 +6643,8 @@ html.dark .ai-rec-engine li {
       minmax(min-content, 1fr)
       minmax(min-content, 1fr)
       minmax(min-content, 1fr);
-    column-gap: 0.3rem;
+    column-gap: 0.2rem;
+    padding-inline: 0.3rem;
   }
   .ai-uc-axis-trend,
   .ai-uc-trend {
@@ -6466,6 +6654,9 @@ html.dark .ai-rec-engine li {
   .ai-p2-qa-decision {
     column-gap: 0.36rem;
   }
+  .ai-p2-qa-sub-lead {
+    display: none;
+  }
   .ai-p3-mid,
   .ai-p3-low {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -6473,6 +6664,17 @@ html.dark .ai-rec-engine li {
   .ai-p3-kpis {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     max-height: none;
+  }
+}
+/* Docked Genie on a short laptop viewport: the one-line value note under the cards gives its row to the tables. */
+@media (max-height: 740px) {
+  @container (max-width: 1180px) {
+    .ai-util-fit[data-page="2"] > .ai-p2 {
+      grid-template-rows: auto auto minmax(min-content, 1fr) auto;
+    }
+    .ai-util-fit[data-page="2"] > .ai-p2 > .ai-p2-insight {
+      display: none;
+    }
   }
 }
 @container (max-width: 720px) {

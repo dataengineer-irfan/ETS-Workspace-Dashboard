@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import {
   Area,
@@ -169,14 +169,20 @@ function valueToneOf(deltaPct: number | null): BenchTone | null {
   return 'red';
 }
 
-/** First matching rule. Health above 80 that is outside the top 25% has no label. */
-function benchmarkStatus(score: number, rank: number, total: number): { label: string; tone: BenchTone } | null {
-  const slice = rankSlice(rank, total);
-  if (score > 90 && slice <= 0.1) return { label: 'Portfolio Leader', tone: 'green' };
-  if (score > 80 && slice <= 0.25) return { label: 'High Performer', tone: 'teal' };
-  if (score >= 60 && score <= 80) return { label: 'Improvement Opportunity', tone: 'amber' };
-  if (score < 60) return { label: 'Executive Attention Required', tone: 'red' };
-  return null;
+/** Where this project sits among the scored projects. Position only: the band stays in the header. */
+function benchmarkPosition(
+  health: number,
+  average: number,
+  topQuartile: number,
+  bottomQuartile: number,
+  total: number,
+): string | null {
+  if (total < 2) return null;
+  if (health >= topQuartile && health > average) return 'Top quartile';
+  if (health <= bottomQuartile && health < average) return 'Bottom quartile';
+  if (health > average) return 'Above average';
+  if (health < average) return 'Below average';
+  return 'At average';
 }
 
 function vsAverageLabel(deltaPct: number): string {
@@ -200,7 +206,7 @@ type PortfolioBenchmark = {
   rankTone: BenchTone;
   healthTone: BenchTone;
   valueTone: BenchTone | null;
-  status: { label: string; tone: BenchTone } | null;
+  position: string | null;
   title: string;
   scale: { lo: number; hi: number };
 };
@@ -267,7 +273,7 @@ function buildPortfolioBenchmark(rows: AIHealthRow[], project: string): Portfoli
     rankTone: rankToneOf(rank, total),
     healthTone: healthToneOf(health),
     valueTone: valueToneOf(valueDeltaPct),
-    status: benchmarkStatus(health, rank, total),
+    position: benchmarkPosition(health, average, topQuartile, bottomQuartile, total),
     title: titleParts.join(' · '),
     scale: { lo, hi: hi > lo ? hi : lo + 1 },
   };
@@ -275,11 +281,16 @@ function buildPortfolioBenchmark(rows: AIHealthRow[], project: string): Portfoli
 
 type QaStatus = { label: string; band: Band };
 
-/** Plain status of a capability against the next-level target. Near = within 10 pts. */
-function capabilityStatus(score: number, target: number): QaStatus {
+/**
+ * Plain status of a capability against the next-level target. Near = within 10 pts.
+ * Red is kept for the one blocker (the weakest capability that is still well below target);
+ * the other below-target capabilities stay neutral and carry no status word, so the bar
+ * against the target line says it.
+ */
+function capabilityStatus(score: number, target: number, isBlocker = false): QaStatus {
   if (score >= target) return { label: 'At target', band: 'green' };
   if (score >= target - 10) return { label: 'Near target', band: 'amber' };
-  return { label: 'Below target', band: 'red' };
+  return isBlocker ? { label: 'Blocker', band: 'red' } : { label: '', band: 'neutral' };
 }
 
 /** Bar runs from 0 to the target: a full bar is at target, the line at its end is the target. */
@@ -461,7 +472,7 @@ function ContributionDonut({ contribution }: { contribution: ContributionShare |
       </PieChart>
       <span className="ai-p2-donut-share">Dev {fmt(contribution.devPct, 0)}%</span>
       <span className="ai-p2-donut-share">QA {fmt(contribution.qaPct, 0)}%</span>
-      <span className="ai-p2-donut-basis">{contribution.basis}</span>
+      <span className="ai-p2-donut-basis">of {contribution.basis}</span>
     </div>
   );
 }
@@ -474,7 +485,10 @@ function ScoreRing({ score, band }: { score: number | null; band: string }) {
   const c = 2 * Math.PI * r;
   const dash = (pctFill / 100) * c;
   return (
-    <span className="ai-score-ring ai-p2-health-ring" aria-label={`Health ${score ?? 'n/a'} ${band}`}>
+    <span
+      className={`ai-score-ring ai-p2-health-ring${score != null && Math.round(score) >= 100 ? ' is-wide' : ''}`}
+      aria-label={`Health ${score ?? 'n/a'} ${band}`}
+    >
       <svg viewBox="0 0 36 36" width="44" height="44">
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(148,163,184,0.25)" strokeWidth="3.5" />
         <circle
@@ -542,6 +556,56 @@ const REL_ROLE_LABEL: Record<RelCalloutRole, string> = {
   now: 'Now',
 };
 
+let headlineCanvas: CanvasRenderingContext2D | null = null;
+
+/** Width of a text run in the element's own font, so the headline can pick the longest variant that fits one line. */
+function textWidthIn(el: HTMLElement, text: string): number {
+  if (!headlineCanvas) headlineCanvas = document.createElement('canvas').getContext('2d');
+  if (!headlineCanvas) return text.length * 6.4;
+  const cs = getComputedStyle(el);
+  headlineCanvas.font = `800 ${cs.fontSize} ${cs.fontFamily}`;
+  return headlineCanvas.measureText(text).width;
+}
+
+/** Hover definitions. Wording follows the backend calculation (analytics.py) and the design doc. */
+const DEFINITIONS = {
+  activeUsers: 'People in this domain with at least one activity row with hours saved or tokens in the current release.',
+  hoursSaved: 'Hours saved on the domain\'s activity rows in the current release.',
+  value: 'Hours saved × the $40/h loaded rate.',
+  adoption: 'Active users ÷ users enabled in this domain (headcount on the release outcome rows).',
+  utilization: 'Hours saved ÷ (enabled users × 8 h), capped at 100%.',
+  primaryArtifacts: 'Dev: code generated · QA: test cases / test design.',
+  secondaryAssets: 'Dev: documentation · QA: automation assets.',
+  defectPrevention: 'QA defect-analysis hours saved. Dev has no equivalent (n/a).',
+  coverage: 'QA adoption: share of QA headcount actively using AI, the same rule as Adoption % for QA. Dev has no equivalent (n/a).',
+  gain: 'Hours saved ÷ baseline effort for the use case (the productivity gain on its rows). It is not a release-over-release trend.',
+  funnelTeam: 'Headcount in scope for this project.',
+  funnelEnabled: 'Users with AI enabled (release outcome headcount).',
+  funnelActive: 'Active users: at least one activity row with hours saved or tokens in the current release.',
+  funnelContributors: 'People on this project\'s risk and opportunity cards (the View Team list). Not an adoption stage, so it never draws a drop.',
+} as const;
+
+const REC_DEFINITIONS: Record<string, string> = {
+  Scale: 'Scale: highest ROI or fastest-growing use case. Expand it to more people.',
+  Sustain: 'Sustain: the most adopted use case. Keep it going.',
+  Activate: 'Activate: in use but under 2 hours saved. Get more people using it.',
+  Review: 'Review: lowest value of the active use cases. Check whether to keep investing.',
+  Pilot: 'Pilot: no usage yet. Try it with one team.',
+  Monitor: 'Monitor: steady, no change needed.',
+};
+
+const BATTLE_DEFINITIONS: Record<string, string> = {
+  'Active Users': DEFINITIONS.activeUsers,
+  'Hours Saved': DEFINITIONS.hoursSaved,
+  'Value Generated': DEFINITIONS.value,
+  'Adoption %': DEFINITIONS.adoption,
+  'Utilization %': DEFINITIONS.utilization,
+  'Primary Artifacts': DEFINITIONS.primaryArtifacts,
+  'Secondary Assets': DEFINITIONS.secondaryAssets,
+  'Defect Prevention': DEFINITIONS.defectPrevention,
+  'Coverage %': DEFINITIONS.coverage,
+};
+
 export function AIUtilizationPage2({
   data,
   project,
@@ -558,6 +622,8 @@ export function AIUtilizationPage2({
   const [showTeam, setShowTeam] = useState(false);
   const relChartRef = React.useRef<HTMLDivElement>(null);
   const [relChartW, setRelChartW] = useState(0);
+  const headlineRef = useRef<HTMLParagraphElement>(null);
+  const [headlineW, setHeadlineW] = useState(0);
 
   const health = (data.health ?? []).find((row) => sameProject(row.project, project)) as AIHealthRow | undefined;
   const projectRisks = useMemo(
@@ -611,6 +677,15 @@ export function AIUtilizationPage2({
       }))
       .sort((a, b) => a.score - b.score);
   }, [data.maturity_radar, project]);
+  useLayoutEffect(() => {
+    const el = headlineRef.current;
+    if (!el) return;
+    const measure = () => setHeadlineW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [project]);
   React.useEffect(() => {
     const el = relChartRef.current;
     if (!el) return;
@@ -664,33 +739,37 @@ export function AIUtilizationPage2({
 
     const qaCoverage = health?.qa_adoption_pct ?? (qaEnabled && qaEnabled > 0 ? adopt(qaActive, qaEnabled) : null);
 
-    /* Aligned Dev | metric | QA rows — full list always visible (effectiveness + n/a extras). */
-    const rows: { key: string; tip?: string; dev: string; qa: string }[] = [
-      { key: 'Active Users', dev: fmt(devActive), qa: fmt(qaActive) },
-      { key: 'Hours Saved', dev: fmt(devHours, 1), qa: fmt(qaHours, 1) },
-      { key: 'Value Generated', dev: money(devValue), qa: money(qaValue) },
-      { key: 'Adoption %', dev: pct(adopt(devActive, devEnabled)), qa: pct(adopt(qaActive, qaEnabled)) },
-      { key: 'Utilization %', dev: pct(util(devHours, devEnabled)), qa: pct(util(qaHours, qaEnabled)) },
-      {
-        key: 'Primary Artifacts',
-        tip: 'Dev: code generated · QA: test cases / design',
-        dev: fmt(dev?.artifacts ?? sumCount(['Code generation'])),
-        qa: fmt(qa?.artifacts ?? sumCount(['Unit testing', 'Test design'])),
-      },
-      {
-        key: 'Secondary Assets',
-        tip: 'Dev: documentation · QA: automation assets',
-        dev: fmt(sumCount(['Docs'])),
-        qa: fmt(sumCount(['Test automation'])),
-      },
-      {
-        key: 'Defect Prevention',
-        tip: 'QA defect-analysis hours (Dev n/a)',
-        dev: 'n/a',
-        qa: `${fmt(sumHours(['Defect analysis']), 1)} h`,
-      },
-      { key: 'Coverage %', tip: 'QA coverage (Dev n/a)', dev: 'n/a', qa: pct(qaCoverage) },
+    /* Metric | Dev | lead | QA rows. A null number is n/a (no evidence on that side). */
+    const devAdopt = adopt(devActive, devEnabled);
+    const qaAdopt = adopt(qaActive, qaEnabled);
+    const devUtil = util(devHours, devEnabled);
+    const qaUtil = util(qaHours, qaEnabled);
+    const devPrimary = dev?.artifacts ?? sumCount(['Code generation']);
+    const qaPrimary = qa?.artifacts ?? sumCount(['Unit testing', 'Test design']);
+    const devSecondary = sumCount(['Docs']);
+    const qaSecondary = sumCount(['Test automation']);
+    const defectHours = sumHours(['Defect analysis']);
+    const allRows: { key: string; tip?: string; dev: string; qa: string; devN: number | null; qaN: number | null }[] = [
+      { key: 'Active Users', dev: fmt(devActive), qa: fmt(qaActive), devN: devActive, qaN: qaActive },
+      { key: 'Hours Saved', dev: fmt(devHours, 1), qa: fmt(qaHours, 1), devN: devHours, qaN: qaHours },
+      { key: 'Value Generated', dev: money(devValue), qa: money(qaValue), devN: devValue, qaN: qaValue },
+      { key: 'Adoption %', dev: pct(devAdopt), qa: pct(qaAdopt), devN: devAdopt, qaN: qaAdopt },
+      { key: 'Utilization %', dev: pct(devUtil), qa: pct(qaUtil), devN: devUtil, qaN: qaUtil },
+      { key: 'Primary Artifacts', dev: fmt(devPrimary), qa: fmt(qaPrimary), devN: devPrimary, qaN: qaPrimary },
+      { key: 'Secondary Assets', dev: fmt(devSecondary), qa: fmt(qaSecondary), devN: devSecondary, qaN: qaSecondary },
+      { key: 'Defect Prevention', dev: 'n/a', qa: `${fmt(defectHours, 1)} h`, devN: null, qaN: defectHours },
+      { key: 'Coverage %', dev: 'n/a', qa: pct(qaCoverage), devN: null, qaN: qaCoverage ?? null },
     ];
+    const rows = allRows
+      .filter((row) => row.devN != null || row.qaN != null)
+      .map((row) => ({
+        ...row,
+        tip: BATTLE_DEFINITIONS[row.key],
+        lead: (row.devN != null && row.qaN != null && row.devN !== row.qaN
+          ? (row.devN > row.qaN ? 'dev' : 'qa')
+          : 'none') as 'dev' | 'qa' | 'none',
+      }));
+    const noData = allRows.filter((row) => row.devN == null && row.qaN == null).map((row) => row.key);
 
     const hasQa = !!qa && (qaActive > 0 || qaHours > 0 || (qaEnabled ?? 0) > 0);
     let conclusion: 'DEV LEADING' | 'QA LEADING' | 'BALANCED' | 'QA GAP' = 'BALANCED';
@@ -723,16 +802,12 @@ export function AIUtilizationPage2({
     if (!hasQa) {
       recommend = 'Increase QA participation — no QA evidence.';
     } else if (conclusion === 'DEV LEADING') {
-      if (contribution?.basis === 'value') {
-        recommend = `Increase QA participation — QA is ${fmt(contribution.qaPct, 0)}% of value.`;
-      } else if (devActive > 0 || qaActive > 0) {
-        recommend = `Increase QA participation — ${fmt(qaActive)} QA vs ${fmt(devActive)} Dev active.`;
-      } else if (contribution) {
-        recommend = `Increase QA participation — QA is ${fmt(contribution.qaPct, 0)}% of ${contribution.basis}.`;
+      if (contribution || devActive > 0 || qaActive > 0) {
+        recommend = 'Increase QA participation.';
       }
     }
 
-    return { rows, hasQa, conclusion, devValue, qaValue, contribution, recommend };
+    return { rows, noData, hasQa, conclusion, devValue, qaValue, contribution, recommend };
   }, [domains, useCases, health?.qa_adoption_pct]);
 
   const effectiveness = useMemo(() => {
@@ -787,7 +862,17 @@ export function AIUtilizationPage2({
       ...empty.map((row) => ({ ...row, displayRank: row.rank, isEmpty: true })),
     ];
     const valueMax = Math.max(...active.map((r) => r.value || 0), 1);
-    return { rows, valueMax };
+    /* Repeating one gain on every row says nothing: show the column only when the rows differ. */
+    const gains = active.map((r) => r.gain).filter((g): g is number => g != null);
+    const spread = gains.length ? Math.max(...gains) - Math.min(...gains) : 0;
+    const showTrend = gains.length > 1 && spread > 5;
+    let common: string | null = null;
+    if (!showTrend && gains.length) {
+      const sorted = [...gains].sort((a, b) => a - b);
+      const mid = sorted[Math.floor(sorted.length / 2)];
+      common = mid >= 5 ? `▲${fmt(mid, 0)}%` : mid <= -5 ? `▼${fmt(Math.abs(mid), 0)}%` : `▬${fmt(mid, 0)}%`;
+    }
+    return { rows, valueMax, showTrend, common };
   }, [effectiveness]);
   const card = scorecards.find((row) => row.manager && health?.manager && row.manager === health.manager) || scorecards[0];
   const mgrRec = managementRecommendation(card, health);
@@ -809,6 +894,7 @@ export function AIUtilizationPage2({
   const weakestAxis = maturityAxes[0] ?? null;
   const belowTarget = maturityAxes.filter((axis) => axis.score < maturityTarget);
   const topConstraints = belowTarget.slice(0, 2);
+  const blockerAxis = weakestAxis != null && weakestAxis.score < maturityTarget - 10 ? weakestAxis : null;
   const atTopLevel = nextMaturity <= maturity;
   const maturityGapWords = (() => {
     if (maturityGap == null) return 'Capability scores not available';
@@ -915,27 +1001,19 @@ export function AIUtilizationPage2({
   const bestHealth = bestRelease?.health ?? null;
   const trendDelta = releaseDeltaLabel(firstHealth, lastHealth, 'Trend');
   const improveDelta = releaseDeltaLabel(worstHealth, bestHealth, 'Improve');
-  /** Action line only — do not restate Best/Worst/Now names or adopt already on callouts. */
+  /** Real best / worst release data only, no advice and nothing about the points between releases. */
   const releaseInsight = (() => {
     if (!timeline.length) return 'No release evidence for this project yet.';
-    if (currentRelease && worstRelease && currentRelease.release === worstRelease.release && timeline.length > 1) {
-      return 'Trough release — close the evidence gap before the next ship.';
+    const describe = (row: (typeof timeline)[number]) =>
+      `${row.health != null ? `${fmt(row.health, 0)}% adoption, ` : ''}${fmt(row.hours_saved, 0)} h`;
+    if (timeline.length === 1 && currentRelease) {
+      return `${currentRelease.release} is the only release: ${describe(currentRelease)}.`;
     }
-    if (currentRelease?.anomaly) {
-      return currentRelease.has_evidence === false
-        ? 'Flagged — missing quantified evidence vs prior.'
-        : 'Flagged — adoption dropped ≥15 pts vs prior.';
+    if (!bestRelease || !worstRelease) return 'Click a release for deep dive.';
+    if (bestRelease.release === worstRelease.release) {
+      return `All ${timeline.length} releases are level: ${describe(bestRelease)}.`;
     }
-    if (trendDelta && !trendDelta.positive && currentRelease) {
-      return 'Adoption softened — coach inactive seats before the next release.';
-    }
-    if (bestRelease && currentRelease && bestRelease.release === currentRelease.release && trendDelta?.positive) {
-      return 'At the peak — lock in what worked and scale it next release.';
-    }
-    if (improveDelta && bestRelease && worstRelease && bestRelease.release !== worstRelease.release) {
-      return 'Replicate the peak playbook into the trough.';
-    }
-    return 'Click a release for deep dive.';
+    return `${worstRelease.release} is the weakest release: ${describe(worstRelease)}. ${bestRelease.release} is the best: ${describe(bestRelease)}.`;
   })();
 
   const adoption = useMemo(() => {
@@ -964,41 +1042,61 @@ export function AIUtilizationPage2({
     const max = Math.max(...bars.map((stage) => stage.count ?? 0), 1);
     return { bars, drops, leakAt, insight, max, contributors: contributorsStage };
   }, [health, domains, contributors.length]);
+  /* The headline under the header carries the situation, QA level and recoverable $, and the cards carry
+     the rest, so the bottom strip keeps the one fact nothing else states: how concentrated the value is. */
   const executiveInsight = (() => {
     const lines: { role: string; text: string }[] = [];
-    if (health?.health_score != null) {
-      const band = health.band_label || health.band || 'Unbanded';
-      const trendBit = delta == null
-        ? ''
-        : delta > 0
-          ? `, up ${fmt(delta, 0)} pts`
-          : delta < 0
-            ? `, down ${fmt(Math.abs(delta), 0)} pts`
-            : ', flat vs prior';
-      lines.push({ role: 'Situation', text: `${project} is ${band} at ${fmt(health.health_score, 0)}${trendBit}.` });
-    }
     const valued = effectiveness.filter((row) => (row.value || 0) > 0);
     if (valued[0]) {
-      const lead = `${valued[0].label} ${money(valued[0].value)}`;
+      const total = valued.reduce((sum, row) => sum + (row.value || 0), 0);
+      const top = valued.slice(0, 2);
+      const share = total > 0 ? Math.round((top.reduce((sum, row) => sum + (row.value || 0), 0) / total) * 100) : null;
+      const names = top.map((row) => `${row.label} ${money(row.value)}`).join(', ');
       lines.push({
         role: 'Value',
-        text: valued[1]
-          ? `Top value: ${lead}, ${valued[1].label} ${money(valued[1].value)}.`
-          : `Top value: ${lead}.`,
+        text: `Top value: ${names}${share != null && valued.length > top.length ? ` (${share}% of use-case value)` : ''}.`,
       });
     }
-    if (weakestAxis) {
-      lines.push({
-        role: 'Maturity',
-        text: `Blocker: ${weakestAxis.axis} at ${fmt(weakestAxis.score, 0)} vs L${nextMaturity} target ${maturityTarget}.`,
-      });
-    }
-    if (health?.unrealized_value_usd != null && health.unrealized_value_usd > 0) {
-      lines.push({ role: 'Recover', text: `Recover ${money(health.unrealized_value_usd)} unrealized value.` });
-    } else if (health?.unrealized_value_usd === 0) {
-      lines.push({ role: 'Recover', text: 'No unrealized value against current potential.' });
-    }
-    return lines.slice(0, 4);
+    return lines;
+  })();
+  /* One deterministic sentence from real fields. Variants run longest to shortest; the longest that fits
+     the strip on one line is shown, so there is never an ellipsis or a second line. */
+  const headlineVariants = (() => {
+    const score = health?.health_score ?? null;
+    const bandText = health?.band_label || health?.band || null;
+    const adoptWord = score == null ? null : score >= 90 ? 'leads on' : score >= 80 ? 'is strong on' : score >= 70 ? 'is average on' : 'needs attention on';
+    const head = score == null
+      ? ' has no AI adoption health score yet'
+      : ` ${adoptWord} AI adoption (${fmt(score, 0)}${bandText ? `, ${bandText}` : ''})`;
+    const levelName = `L${maturity} ${MATURITY_LABEL[maturity] || ''}`.trim();
+    const hasQaScores = maturityAxes.length > 0;
+    const behind = hasQaScores && !atTopLevel && maturityGap != null && maturityGap > 0;
+    const conj = score != null && score >= 80 && behind ? ' while ' : ' and ';
+    const qaLong = !hasQaScores
+      ? 'no QA capability scores are available yet'
+      : atTopLevel
+        ? `QA practice holds ${levelName}`
+        : `QA practice sits at ${levelName}`;
+    const qaShort = !hasQaScores ? 'no QA scores yet' : atTopLevel ? `QA holds L${maturity}` : `QA sits at L${maturity} of L${nextMaturity}`;
+    const gapBit = behind ? `, ${fmt(maturityGap, 0)} pts short of L${nextMaturity}` : '';
+    const focus = blockerAxis ?? belowTarget[0] ?? null;
+    const tailParts: string[] = [];
+    if ((health?.unrealized_value_usd ?? 0) > 0) tailParts.push(`${money(health?.unrealized_value_usd)} recoverable`);
+    if (focus) tailParts.push(`start with ${focus.axis}`);
+    const tail = tailParts.length ? ` — ${tailParts.join(', ')}` : '';
+    const out = [
+      `${head}${conj}${qaLong}${gapBit}${tail}.`,
+      `${head}${conj}${qaLong}${gapBit}.`,
+      `${head}${conj}${qaShort}.`,
+      score == null ? ` — ${qaShort}.` : `: ${fmt(score, 0)}${bandText ? ` (${bandText})` : ''}, ${qaShort}.`,
+    ];
+    return out.filter((text, index) => out.indexOf(text) === index);
+  })();
+  const headlineRest = (() => {
+    const el = headlineRef.current;
+    if (!el || headlineW <= 0) return headlineVariants[0];
+    return headlineVariants.find((text) => textWidthIn(el, `${project}${text}`) <= headlineW - 2)
+      ?? headlineVariants[headlineVariants.length - 1];
   })();
   const relStep = (() => {
     const n = timeline.length;
@@ -1052,16 +1150,19 @@ export function AIUtilizationPage2({
           >
             <b className="ai-p2-head-project">{project}</b>
           </div>
-          <span className={`ai-chip shrink-0 ${BAND[bandOf(health?.band)]}`}>{health?.band_label || health?.band || 'n/a'}</span>
-          <span className={`ai-chip shrink-0 ${BAND[deltaBand]}`}>
-            {delta == null ? 'Trend n/a' : `${delta > 0 ? '+' : ''}${fmt(delta, 0)} pts`}
+          <span className="ai-p2-head-health shrink-0">
+            {project.length <= 18 && <span className="ai-p2-head-scope" title="Health score: adoption, business value, release coverage, QA adoption and documentation use">AI adoption health</span>}
+            <span className={`ai-chip shrink-0 ${BAND[bandOf(health?.band)]}`}>{health?.band_label || health?.band || 'n/a'}</span>
+            <span className={`ai-chip shrink-0 ${BAND[deltaBand]}`} title={health?.previous_release ? `Adoption points vs ${health.previous_release}` : undefined}>
+              {delta == null ? 'Trend n/a' : `${delta > 0 ? '+' : ''}${fmt(delta, 0)} pts`}
+            </span>
           </span>
           <span className="ai-p2-head-kpis" aria-label="Value, recoverable, and risk count">
-            <span className="ai-p2-head-kpi">
+            <span className="ai-p2-head-kpi is-hero" title="Hours saved × the $40/h loaded rate">
               <span className="ai-p2-head-kpi-k">Value</span>
               <b>{money(health?.value_usd ?? health?.ai_value_usd)}</b>
             </span>
-            <span className="ai-p2-head-kpi">
+            <span className="ai-p2-head-kpi is-hero" title="Potential value (headcount × target hours × rate) minus value generated">
               <span className="ai-p2-head-kpi-k">Recoverable</span>
               <b>{money(health?.unrealized_value_usd)}</b>
             </span>
@@ -1093,6 +1194,20 @@ export function AIUtilizationPage2({
         )}
       </section>
 
+      <section className="ai-p2-headline glass-panel rounded-xl" aria-label="Headline" data-ai-p2-headline>
+        <p className="ai-p2-headline-text" ref={headlineRef} data-headline-variants={headlineVariants.length}>
+          <b>{project}</b>{headlineRest}
+        </p>
+        {health?.current_release && (
+          <span
+            className="ai-p2-headline-asof"
+            title={health.previous_release ? `Current release in scope. The trend chip compares adoption with ${health.previous_release}.` : 'Current release in scope.'}
+          >
+            Release {health.current_release}
+          </span>
+        )}
+      </section>
+
       <div className="ai-p2-mid">
         <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
@@ -1102,20 +1217,32 @@ export function AIUtilizationPage2({
           <div
             className="ai-battle-compare min-h-0"
             data-battle-compare
-            style={{ '--p2-rows': Math.max(1, battle.rows.length) } as React.CSSProperties}
+            style={{ '--p2-rows': Math.max(1, battle.rows.length + (battle.noData.length ? 1 : 0)) } as React.CSSProperties}
           >
             <div className="ai-battle-axis" aria-hidden="true">
+              <span className="ai-battle-axis-key">Metric</span>
               <span className="ai-battle-axis-dev">Dev</span>
-              <span className="ai-battle-axis-key" />
+              <span className="ai-battle-axis-lead" />
               <span className="ai-battle-axis-qa">QA</span>
             </div>
             {battle.rows.map((row) => (
-              <span key={row.key} className="ai-battle-row" title={row.tip}>
-                <b className="ai-battle-val is-dev">{row.dev}</b>
-                <span className="ai-battle-key">{row.key}</span>
-                <b className="ai-battle-val is-qa">{row.qa}</b>
+              <span key={row.key} className="ai-battle-row" title={row.tip} data-lead={row.lead}>
+                <span className="ai-battle-key" data-tip={row.tip ? 'true' : undefined}>{row.key}</span>
+                <b className={`ai-battle-val is-dev${row.devN == null ? ' is-na' : ''}`}>{row.dev}</b>
+                <i
+                  className={`ai-battle-lead is-${row.lead}`}
+                  aria-label={row.lead === 'dev' ? 'Dev leads' : row.lead === 'qa' ? 'QA leads' : 'No lead'}
+                  title={row.lead === 'dev' ? 'Dev leads' : row.lead === 'qa' ? 'QA leads' : 'No lead (equal or n/a)'}
+                >
+                </i>
+                <b className={`ai-battle-val is-qa${row.qaN == null ? ' is-na' : ''}`}>{row.qa}</b>
               </span>
             ))}
+            {battle.noData.length > 0 && (
+              <span className="ai-battle-nodata" data-battle-nodata>
+                No data: {battle.noData.join(', ')}
+              </span>
+            )}
           </div>
           <div className="ai-battle-foot">
             <ContributionDonut contribution={battle.contribution} />
@@ -1128,20 +1255,25 @@ export function AIUtilizationPage2({
         <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">Use case effectiveness</span>
+            {!ucStrip.showTrend && ucStrip.common && (
+              <span className="ai-p2-card-sub" data-uc-common-gain title={DEFINITIONS.gain}>
+                All rows {ucStrip.common} gain vs baseline
+              </span>
+            )}
           </div>
           <div
-            className="ai-uc-strip min-h-0"
+            className={`ai-uc-strip min-h-0${ucStrip.showTrend ? '' : ' is-no-trend'}`}
             data-uc-strip
             style={{ '--p2-rows': Math.max(1, ucStrip.rows.length) } as React.CSSProperties}
           >
             <div className="ai-uc-axis" aria-hidden="true">
               <span className="ai-uc-axis-rank">#</span>
               <span className="ai-uc-axis-name">Use case</span>
-              <span className="ai-uc-axis-num">Usage</span>
-              <span className="ai-uc-axis-num">Hours</span>
-              <span className="ai-uc-axis-trend">Trend</span>
-              <span className="ai-uc-axis-num">Value</span>
-              <span className="ai-uc-axis-rec">Rec</span>
+              <span className="ai-uc-axis-num" title="Number of activity rows logged for the use case in the current release.">Usage</span>
+              <span className="ai-uc-axis-num" title={DEFINITIONS.hoursSaved}>Hours</span>
+              {ucStrip.showTrend && <span className="ai-uc-axis-trend" title={DEFINITIONS.gain}>Gain</span>}
+              <span className="ai-uc-axis-num" title={DEFINITIONS.value}>Value</span>
+              <span className="ai-uc-axis-rec" title="Recommendation per use case. Hover a chip for its rule.">Rec</span>
             </div>
             {ucStrip.rows.map((row) => {
               const barPct = row.count
@@ -1161,10 +1293,10 @@ export function AIUtilizationPage2({
                   </span>
                   <span className="ai-uc-num">{row.count || '—'}</span>
                   <span className="ai-uc-num">{row.count ? fmt(row.hours, 1) : '—'}</span>
-                  <span className="ai-uc-trend">{row.count ? row.trend : '—'}</span>
+                  {ucStrip.showTrend && <span className="ai-uc-trend">{row.count ? row.trend : '—'}</span>}
                   <span className="ai-uc-num ai-uc-value">{row.count ? money(row.value) : 'n/a'}</span>
                   <span className="ai-uc-rec">
-                    <span className={`ai-chip ${BAND[recBand(row.rec)]}`} title={row.rec === 'Scale' ? 'Recommended Scale' : row.rec}>{row.rec}</span>
+                    <span className={`ai-chip ${BAND[recBand(row.rec)]}`} title={REC_DEFINITIONS[row.rec] || row.rec}>{row.rec}</span>
                   </span>
                 </span>
               );
@@ -1218,7 +1350,7 @@ export function AIUtilizationPage2({
                     <span className="ai-p2-eyebrow">{eyebrow}</span>
                     <span className="ai-p2-rel-callout-name">{c.row.release}</span>
                     <span className="ai-p2-rel-callout-meta">
-                      {c.row.health != null ? `${fmt(c.row.health, 0)} adopt` : 'n/a'}
+                      {c.row.health != null ? `${fmt(c.row.health, 0)}% adoption` : 'n/a'}
                       {` · ${fmt(c.row.hours_saved, 0)} h`}
                     </span>
                   </button>
@@ -1231,6 +1363,11 @@ export function AIUtilizationPage2({
                   <span className="ai-p2-rel-callout-meta">n/a</span>
                 </div>
               )}
+            </div>
+            <div className="ai-p2-rel-legend" data-rel-legend aria-label="Chart legend">
+              <span className="ai-p2-rel-key is-adoption" title="Adoption % of the project for each release (left scale)">Adoption %</span>
+              <span className="ai-p2-rel-key is-hours" title="Hours saved in each release (own scale, area under the line)">Hours saved</span>
+              <span className="ai-p2-rel-key is-dot" title="Each dot is one real release. Lines only join the dots.">Dot = release</span>
             </div>
             <div className="ai-p2-rel-chart flex-1 min-h-0" ref={relChartRef}>
               {timeline.length === 0 ? (
@@ -1268,7 +1405,14 @@ export function AIUtilizationPage2({
                     <YAxis yAxisId="left" hide domain={[0, relAdoptCeil]} />
                     <YAxis yAxisId="hours" hide domain={[0, 'dataMax']} />
                     <YAxis yAxisId="value" hide domain={[0, 'dataMax']} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) => {
+                        const n = typeof value === 'number' ? value : Number(value);
+                        if (name === 'Adoption %') return [Number.isFinite(n) ? `${fmt(n, 0)}%` : 'n/a', name];
+                        if (name === 'Hours saved') return [Number.isFinite(n) ? `${fmt(n, 1)} h` : 'n/a', name];
+                        return [Number.isFinite(n) ? money(n) : 'n/a', name];
+                      }}
+                    />
                     {currentRelease?.release && (
                       <ReferenceLine
                         yAxisId="left"
@@ -1278,22 +1422,32 @@ export function AIUtilizationPage2({
                         strokeDasharray="3 3"
                       />
                     )}
-                    <Area yAxisId="hours" type="monotone" dataKey="hours_saved" fill="#0d948828" stroke="#0d9488" strokeWidth={1.25} name="Hours" />
+                    <Area
+                      yAxisId="hours"
+                      type="linear"
+                      dataKey="hours_saved"
+                      fill="#0d948828"
+                      stroke="#0d9488"
+                      strokeWidth={1.5}
+                      name="Hours saved"
+                      dot={{ r: 2.5, fill: '#0d9488', stroke: '#0d9488' }}
+                      activeDot={false}
+                    />
                     <Line
                       yAxisId="left"
-                      type="monotone"
+                      type="linear"
                       dataKey="adoption_pct"
                       stroke="#0284c7"
                       strokeWidth={2}
                       name="Adoption %"
-                      dot={{ r: 2.5, onClick: (state) => {
+                      dot={{ r: 3.5, fill: '#0284c7', stroke: '#0284c7', onClick: (state) => {
                         const payload = (state as { payload?: AIReleaseTrendRow } | undefined)?.payload;
                         if (payload?.release) onOpenRelease(payload.release);
                       } }}
                     >
                       {showPointLabels ? <LabelList dataKey="health" content={ReleaseHealthLabel} /> : null}
                     </Line>
-                    <Line yAxisId="value" type="monotone" dataKey="value" stroke="#047857" strokeDasharray="4 3" strokeWidth={1.25} dot={false} name="Value $" />
+                    <Line yAxisId="value" type="linear" dataKey="value" stroke="none" dot={false} activeDot={false} legendType="none" name="Value $" />
                   </ComposedChart>
                 </ResponsiveContainer>
               )}
@@ -1331,13 +1485,17 @@ export function AIUtilizationPage2({
           aria-label={benchmark ? `Portfolio benchmark. ${benchmark.title}` : 'Portfolio benchmark'}
         >
           <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <span className="ai-p2-card-title">Portfolio benchmark</span>
-            {benchmark?.status && (
+            <div className="ai-p2-qa-head-titles min-w-0">
+              <span className="ai-p2-card-title">Portfolio benchmark</span>
+              <span className="ai-p2-card-sub">AI adoption health</span>
+            </div>
+            {benchmark?.position && (
               <span
-                className={`ai-chip ${BAND[benchmark.status.tone]}`}
-                data-benchmark-status={benchmark.status.label}
+                className="ai-chip ai-band-neutral shrink-0"
+                data-benchmark-status={benchmark.position}
+                title="Position among the scored projects. The band (Elite, Strong, ...) is in the header."
               >
-                {benchmark.status.label}
+                {benchmark.position}
               </span>
             )}
           </div>
@@ -1351,18 +1509,14 @@ export function AIUtilizationPage2({
                   data-benchmark-total={benchmark.total}
                 >
                   <b>#{benchmark.rank}</b>
-                  <span>of {benchmark.total}</span>
-                </p>
-                <p className="ai-p2-mgr-health" data-benchmark-health={benchmark.health}>
-                  <i className="ai-p2-mgr-dot" data-tone={benchmark.healthTone} aria-hidden="true" />
-                  <b data-tone={benchmark.healthTone}>{fmt(benchmark.health, 1)}</b>
-                  <span>Health</span>
+                  <span>of {benchmark.total} projects</span>
                 </p>
                 <span
                   className="ai-p2-mgr-vpu"
                   data-tone={benchmark.valueTone || undefined}
                   data-benchmark-vpu={benchmark.valuePerUser ?? ''}
                   data-benchmark-vpu-delta={benchmark.valueDeltaPct ?? ''}
+                  title="Value generated ÷ active users (headcount when nobody is active), vs the average of the scored projects"
                 >
                   {benchmark.valuePerUser == null
                     ? 'Value/user n/a'
@@ -1371,31 +1525,47 @@ export function AIUtilizationPage2({
               </div>
               {(() => {
                 const span = benchmark.scale.hi - benchmark.scale.lo;
-                const at = (score: number) => `${Math.max(0, Math.min(100, ((score - benchmark.scale.lo) / span) * 100))}%`;
-                const bandLeft = Math.max(0, Math.min(100, ((benchmark.bottomQuartile - benchmark.scale.lo) / span) * 100));
-                const bandRight = Math.max(0, Math.min(100, ((benchmark.topQuartile - benchmark.scale.lo) / span) * 100));
+                const pos = (score: number) => Math.max(0, Math.min(100, ((score - benchmark.scale.lo) / span) * 100));
+                const bandLeft = pos(benchmark.bottomQuartile);
+                const bandRight = pos(benchmark.topQuartile);
+                const quartilesApart = bandRight - bandLeft >= 30;
+                const label = (key: string, text: React.ReactNode, at: number, half: string, row: 'top' | 'low1' | 'low2', tip?: string) => (
+                  <span
+                    key={key}
+                    className={`ai-p2-mgr-tag is-${row} is-${key}`}
+                    style={{ '--at': `${at}%`, '--half': half } as React.CSSProperties}
+                    title={tip}
+                  >
+                    {text}
+                  </span>
+                );
                 return (
                   <div
                     className="ai-p2-mgr-range"
                     role="img"
-                    aria-label="This project against the portfolio: bottom quartile, average, and top quartile"
+                    aria-label={`This project ${fmt(benchmark.health, 1)} against the portfolio: average ${fmt(benchmark.average, 1)}, middle half ${fmt(benchmark.bottomQuartile, 1)} to ${fmt(benchmark.topQuartile, 1)}`}
                   >
+                    {label('me', <b data-benchmark-health={benchmark.health} data-tone={benchmark.healthTone}>{fmt(benchmark.health, 1)}</b>, pos(benchmark.health), '1.1rem', 'top', `${project} health ${fmt(benchmark.health, 1)}`)}
                     <span className="ai-p2-mgr-range-track">
                       <span
                         className="ai-p2-mgr-range-band"
                         style={{ left: `${bandLeft}%`, width: `${Math.max(0.5, bandRight - bandLeft)}%` }}
                       />
-                      <span className="ai-p2-mgr-range-avg" style={{ left: at(benchmark.average) }} />
-                      <span className="ai-p2-mgr-range-me" data-tone={benchmark.healthTone} style={{ left: at(benchmark.health) }} />
+                      <span className="ai-p2-mgr-range-avg" style={{ left: `${pos(benchmark.average)}%` }} />
+                      <span className="ai-p2-mgr-range-me" data-tone={benchmark.healthTone} style={{ left: `${pos(benchmark.health)}%` }} />
                     </span>
+                    {label('avg', <>Avg <b data-benchmark-average={benchmark.average}>{fmt(benchmark.average, 1)}</b></>, pos(benchmark.average), '1.5rem', 'low1', 'Average health of the scored projects')}
+                    {quartilesApart ? (
+                      <>
+                        {label('q1', <>Q1 <b data-benchmark-bottom={benchmark.bottomQuartile}>{fmt(benchmark.bottomQuartile, 1)}</b></>, bandLeft, '1.35rem', 'low2', 'Bottom quartile: a quarter of the projects score below this')}
+                        {label('q3', <>Q3 <b data-benchmark-top={benchmark.topQuartile}>{fmt(benchmark.topQuartile, 1)}</b></>, bandRight, '1.35rem', 'low2', 'Top quartile: a quarter of the projects score above this')}
+                      </>
+                    ) : (
+                      label('q13', <>Middle half <b data-benchmark-bottom={benchmark.bottomQuartile} data-benchmark-top={benchmark.topQuartile}>{fmt(benchmark.bottomQuartile, 1)}–{fmt(benchmark.topQuartile, 1)}</b></>, (bandLeft + bandRight) / 2, '3.4rem', 'low2', 'Middle half of the scored projects (Q1 to Q3)')
+                    )}
                   </div>
                 );
               })()}
-              <div className="ai-p2-mgr-metrics">
-                <span>Bottom quartile <b data-benchmark-bottom={benchmark.bottomQuartile}>{fmt(benchmark.bottomQuartile, 1)}</b></span>
-                <span>Portfolio avg <b data-benchmark-average={benchmark.average}>{fmt(benchmark.average, 1)}</b></span>
-                <span>Top quartile <b data-benchmark-top={benchmark.topQuartile}>{fmt(benchmark.topQuartile, 1)}</b></span>
-              </div>
             </div>
           ) : (
             <p className="ai-p2-empty">No health score for this project.</p>
@@ -1406,8 +1576,8 @@ export function AIUtilizationPage2({
           <div className="ai-p2-card-head ai-p2-card-head-battle">
             <div className="ai-p2-qa-head-titles min-w-0">
               <span className="ai-p2-card-title">QA maturity</span>
-              <span className="ai-p2-card-sub">
-                Bar = score, line = L{nextMaturity} target ({maturityTarget})
+              <span className="ai-p2-card-sub" data-qa-legend>
+                <span className="ai-p2-qa-sub-lead">QA practice vs L{nextMaturity} target · </span>bar = score, line = target
               </span>
             </div>
             <span className={`ai-chip shrink-0 ${BAND[maturityTrack.band]}`} title="Maturity trajectory">
@@ -1447,13 +1617,15 @@ export function AIUtilizationPage2({
                 <p className="ai-p2-empty">No maturity axis scores for this project.</p>
               )}
               {maturityAxes.map((row) => {
-                const status = capabilityStatus(row.score, maturityTarget);
+                const status = capabilityStatus(row.score, maturityTarget, blockerAxis != null && row.key === blockerAxis.key);
+                const statusTip = status.label || 'Below target';
                 return (
                   <div
                     key={row.key}
                     className="ai-p2-qa-cap"
                     data-band={status.band}
-                    title={`${row.axis} ${fmt(row.score, 0)} of ${maturityTarget} · ${status.label}`}
+                    data-blocker={status.label === 'Blocker' ? 'true' : undefined}
+                    title={`${row.axis} ${fmt(row.score, 0)} of ${maturityTarget} · ${statusTip}`}
                   >
                     <span className="ai-p2-qa-cap-name">{row.axis}</span>
                     <span className="ai-p2-qa-cap-score">{fmt(row.score, 0)}</span>
@@ -1467,15 +1639,15 @@ export function AIUtilizationPage2({
             <div className="ai-p2-qa-decision" data-qa-decision title={maturityInsight}>
               {maturityAxes.length > 0 && (
                 <>
-                  <span className="ai-p2-eyebrow">Blocker</span>
+                  <span className="ai-p2-eyebrow">{blockerAxis ? 'Blocker' : 'Watch'}</span>
                   <div className="ai-p2-qa-constraints">
                     {topConstraints.length === 0 && (
                       <span className="ai-p2-qa-none">None — every capability is at target</span>
                     )}
-                    {topConstraints.map((axis) => (
+                    {topConstraints.map((axis, index) => (
                       <span
                         key={axis.key}
-                        className={`ai-chip ${BAND[capabilityStatus(axis.score, maturityTarget).band]}`}
+                        className={`ai-chip ${blockerAxis && index === 0 ? BAND.red : 'ai-band-neutral is-outline'}`}
                         title={`${axis.axis} · ${fmt(axis.score, 0)} of ${maturityTarget} · ${axisImpact(axis.axis)}`}
                       >
                         {axis.axis}
@@ -1510,7 +1682,7 @@ export function AIUtilizationPage2({
                   data-funnel-drop={index === 0 ? '' : (drop == null ? 'n/a' : fmtDrop(drop))}
                   data-largest-drop={leak ? 'true' : 'false'}
                 >
-                  <span className="ai-p2-adopt-label" title={stage.key === 'enabled' ? 'AI enabled' : stage.key === 'active' ? 'Active users' : stage.label}>
+                  <span className="ai-p2-adopt-label" title={stage.key === 'enabled' ? DEFINITIONS.funnelEnabled : stage.key === 'active' ? DEFINITIONS.funnelActive : DEFINITIONS.funnelTeam}>
                     {stage.label}
                   </span>
                   <span className="ai-p2-adopt-line">
@@ -1531,9 +1703,9 @@ export function AIUtilizationPage2({
                 data-funnel-drop=""
                 data-largest-drop="false"
                 data-funnel-role="producing-value"
-                title="People producing value. Not an adoption drop."
+                title={DEFINITIONS.funnelContributors}
               >
-                <span className="ai-p2-adopt-label">Contributors</span>
+                <span className="ai-p2-adopt-label" title={DEFINITIONS.funnelContributors}>Contributors</span>
                 <span className="ai-p2-adopt-line">
                   <b className="ai-p2-adopt-count">{fmt(adoption.contributors.count)}</b>
                   <span className="ai-p2-adopt-people">producing value</span>
