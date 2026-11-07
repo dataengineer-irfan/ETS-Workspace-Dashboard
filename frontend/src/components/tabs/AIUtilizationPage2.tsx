@@ -1221,49 +1221,6 @@ export function AIUtilizationPage2({
       <div className="ai-p2-mid">
         <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
           <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <span className="ai-p2-card-title">Dev vs QA battle</span>
-            <span className={`ai-chip shrink-0 ${BAND[conclusionBand]}`} title="Battle outcome">{battle.conclusion}</span>
-          </div>
-          <div
-            className="ai-battle-compare min-h-0"
-            data-battle-compare
-            style={{ '--p2-rows': Math.max(1, battle.rows.length + (battle.noData.length ? 1 : 0)) } as React.CSSProperties}
-          >
-            <div className="ai-battle-axis" aria-hidden="true">
-              <span className="ai-battle-axis-key">Metric</span>
-              <span className="ai-battle-axis-dev">Dev</span>
-              <span className="ai-battle-axis-lead" />
-              <span className="ai-battle-axis-qa">QA</span>
-            </div>
-            {battle.rows.map((row) => (
-              <span key={row.key} className="ai-battle-row" title={row.tip} data-lead={row.lead}>
-                <span className="ai-battle-key" data-tip={row.tip ? 'true' : undefined}>{row.key}</span>
-                <b className={`ai-battle-val is-dev${row.devN == null ? ' is-na' : ''}`}>{row.dev}</b>
-                <i
-                  className={`ai-battle-lead is-${row.lead}`}
-                  aria-label={row.lead === 'dev' ? 'Dev leads' : row.lead === 'qa' ? 'QA leads' : 'No lead'}
-                  title={row.lead === 'dev' ? 'Dev leads' : row.lead === 'qa' ? 'QA leads' : 'No lead (equal or n/a)'}
-                >
-                </i>
-                <b className={`ai-battle-val is-qa${row.qaN == null ? ' is-na' : ''}`}>{row.qa}</b>
-              </span>
-            ))}
-            {battle.noData.length > 0 && (
-              <span className="ai-battle-nodata" data-battle-nodata>
-                No data: {battle.noData.join(', ')}
-              </span>
-            )}
-          </div>
-          <div className="ai-battle-foot">
-            <ContributionDonut contribution={battle.contribution} />
-            {(battle.recommend || mgrRec) && (
-              <p className="ai-battle-rec" title={battle.recommend || mgrRec}>{battle.recommend || mgrRec}</p>
-            )}
-          </div>
-        </section>
-
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
-          <div className="ai-p2-card-head ai-p2-card-head-battle">
             <span className="ai-p2-card-title">Use case effectiveness</span>
             {!ucStrip.showTrend && ucStrip.common && (
               <span className="ai-p2-card-sub" data-uc-common-gain title={DEFINITIONS.gain}>
@@ -1313,6 +1270,171 @@ export function AIUtilizationPage2({
             })}
             {ucStrip.rows.length === 0 && (
               <p className="ai-p2-empty">No use case rows for this project.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="glass-panel rounded-xl ai-p2-card ai-p2-qa min-h-0 min-w-0">
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <div className="ai-p2-qa-head-titles min-w-0">
+              <span className="ai-p2-card-title">QA maturity</span>
+              <span className="ai-p2-card-sub" data-qa-sub>QA practice vs L{nextMaturity} target</span>
+            </div>
+            <span className={`ai-chip shrink-0 ${BAND[maturityTrack.band]}`} title="Maturity trajectory">
+              {maturityTrack.label}
+            </span>
+          </div>
+          <div className="ai-p2-qa-body">
+            <p className="ai-p2-qa-verdict" ref={verdictRef} data-qa-verdict data-qa-level={maturity} data-qa-next={atTopLevel ? undefined : nextMaturity}>
+              <b>{verdictPick.head}</b> {verdictPick.rest}
+            </p>
+
+            <div
+              className="ai-p2-qa-problem"
+              data-qa-problem
+              data-kind={problemKind}
+              data-band={problemBand}
+              title={maturityInsight}
+            >
+              <span className="ai-p2-eyebrow ai-p2-qa-problem-label">{problemLabel}</span>
+              <p className="ai-p2-qa-problem-text" title={weakestAxis ? axisImpact(weakestAxis.axis) : undefined}>
+                {weakestAxis ? (
+                  problemKind === 'ok' ? (
+                    <>Every capability is at target. Lowest: <b>{weakestAxis.axis}</b> <b className="ai-p2-qa-problem-num">{fmt(weakestAxis.score, 0)}</b></>
+                  ) : (
+                    <><b>{weakestAxis.axis}</b> is <b className="ai-p2-qa-problem-num">{fmt(weakestAxis.score, 0)}</b>, target {maturityTarget}</>
+                  )
+                ) : (
+                  'No capability scores for this project.'
+                )}
+              </p>
+              <span className="ai-p2-eyebrow ai-p2-qa-do-label">Do this</span>
+              <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
+            </div>
+
+            {otherAxes.length > 0 && (
+              <div className="ai-p2-qa-others" data-qa-others aria-label="Other capabilities, weakest first">
+                <span className="ai-p2-eyebrow">Others</span>
+                {otherAxes.map((row) => {
+                  const status = capabilityStatus(row.score, maturityTarget);
+                  return (
+                    <span
+                      key={row.key}
+                      className="ai-p2-qa-other"
+                      data-band={status.band}
+                      title={`${row.axis} ${fmt(row.score, 0)}, target ${maturityTarget}`}
+                    >
+                      <span className="ai-p2-qa-other-name">{row.axis}</span>
+                      <b className="ai-p2-qa-other-score">{fmt(row.score, 0)}</b>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 ai-p2-adopt-card" data-ai-p2-funnel>
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <span className="ai-p2-card-title">AI adoption funnel</span>
+          </div>
+          <div className="ai-p2-adopt" aria-label="AI adoption funnel">
+            {adoption.bars.map((stage, index) => {
+              const drop = adoption.drops[index];
+              const leak = index === adoption.leakAt;
+              const width = stage.count != null && stage.count > 0
+                ? Math.max(4, (stage.count / adoption.max) * 100)
+                : 0;
+              return (
+                <div
+                  key={stage.key}
+                  className={`ai-p2-adopt-row${leak ? ' is-leak' : ''}`}
+                  data-funnel-stage={stage.key}
+                  data-funnel-count={stage.count == null ? 'n/a' : String(stage.count)}
+                  data-funnel-drop={index === 0 ? '' : (drop == null ? 'n/a' : fmtDrop(drop))}
+                  data-largest-drop={leak ? 'true' : 'false'}
+                >
+                  <span className="ai-p2-adopt-label" title={stage.key === 'enabled' ? DEFINITIONS.funnelEnabled : stage.key === 'active' ? DEFINITIONS.funnelActive : DEFINITIONS.funnelTeam}>
+                    {stage.label}
+                  </span>
+                  <span className="ai-p2-adopt-line">
+                    <b className="ai-p2-adopt-count">{fmt(stage.count)}</b>
+                    {index > 0 && <span className="ai-p2-adopt-drop">▼ {fmtDrop(drop)}</span>}
+                  </span>
+                  <span className="ai-p2-adopt-track" aria-hidden="true">
+                    <span className="ai-p2-adopt-bar" style={{ width: `${width}%` }} />
+                  </span>
+                </div>
+              );
+            })}
+            {adoption.contributors && (
+              <div
+                className="ai-p2-adopt-row is-people"
+                data-funnel-stage="contributors"
+                data-funnel-count={adoption.contributors.count == null ? 'n/a' : String(adoption.contributors.count)}
+                data-funnel-drop=""
+                data-largest-drop="false"
+                data-funnel-role="producing-value"
+                title={DEFINITIONS.funnelContributors}
+              >
+                <span className="ai-p2-adopt-label" title={DEFINITIONS.funnelContributors}>Contributors</span>
+                <span className="ai-p2-adopt-line">
+                  <b className="ai-p2-adopt-count">{fmt(adoption.contributors.count)}</b>
+                  <span className="ai-p2-adopt-people">producing value</span>
+                </span>
+                <span className="ai-p2-adopt-track" aria-hidden="true">
+                  <span
+                    className="ai-p2-adopt-bar"
+                    style={{ width: `${adoption.contributors.count != null && adoption.contributors.count > 0 ? Math.min(100, Math.max(4, (adoption.contributors.count / adoption.max) * 100)) : 0}%` }}
+                  />
+                </span>
+              </div>
+            )}
+          </div>
+          <p className="ai-p2-adopt-insight" data-ai-p2-funnel-insight>{adoption.insight}</p>
+        </section>
+      </div>
+
+      <div className="ai-p2-low ai-p2-low-3">
+        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0">
+          <div className="ai-p2-card-head ai-p2-card-head-battle">
+            <span className="ai-p2-card-title">Dev vs QA battle</span>
+            <span className={`ai-chip shrink-0 ${BAND[conclusionBand]}`} title="Battle outcome">{battle.conclusion}</span>
+          </div>
+          <div
+            className="ai-battle-compare min-h-0"
+            data-battle-compare
+            style={{ '--p2-rows': Math.max(1, battle.rows.length + (battle.noData.length ? 1 : 0)) } as React.CSSProperties}
+          >
+            <div className="ai-battle-axis" aria-hidden="true">
+              <span className="ai-battle-axis-key">Metric</span>
+              <span className="ai-battle-axis-dev">Dev</span>
+              <span className="ai-battle-axis-lead" />
+              <span className="ai-battle-axis-qa">QA</span>
+            </div>
+            {battle.rows.map((row) => (
+              <span key={row.key} className="ai-battle-row" title={row.tip} data-lead={row.lead}>
+                <span className="ai-battle-key" data-tip={row.tip ? 'true' : undefined}>{row.key}</span>
+                <b className={`ai-battle-val is-dev${row.devN == null ? ' is-na' : ''}`}>{row.dev}</b>
+                <i
+                  className={`ai-battle-lead is-${row.lead}`}
+                  aria-label={row.lead === 'dev' ? 'Dev leads' : row.lead === 'qa' ? 'QA leads' : 'No lead'}
+                  title={row.lead === 'dev' ? 'Dev leads' : row.lead === 'qa' ? 'QA leads' : 'No lead (equal or n/a)'}
+                >
+                </i>
+                <b className={`ai-battle-val is-qa${row.qaN == null ? ' is-na' : ''}`}>{row.qa}</b>
+              </span>
+            ))}
+            {battle.noData.length > 0 && (
+              <span className="ai-battle-nodata" data-battle-nodata>
+                No data: {battle.noData.join(', ')}
+              </span>
+            )}
+          </div>
+          <div className="ai-battle-foot">
+            <ContributionDonut contribution={battle.contribution} />
+            {(battle.recommend || mgrRec) && (
+              <p className="ai-battle-rec" title={battle.recommend || mgrRec}>{battle.recommend || mgrRec}</p>
             )}
           </div>
         </section>
@@ -1485,9 +1607,7 @@ export function AIUtilizationPage2({
           </div>
         </section>
 
-      </div>
 
-      <div className="ai-p2-low ai-p2-low-3">
         <section
           className="glass-panel rounded-xl ai-p2-card ai-p2-mgr min-h-0 min-w-0"
           data-ai-p2-benchmark
@@ -1580,126 +1700,6 @@ export function AIUtilizationPage2({
           ) : (
             <p className="ai-p2-empty">No health score for this project.</p>
           )}
-        </section>
-
-        <section className="glass-panel rounded-xl ai-p2-card ai-p2-qa min-h-0 min-w-0">
-          <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <div className="ai-p2-qa-head-titles min-w-0">
-              <span className="ai-p2-card-title">QA maturity</span>
-              <span className="ai-p2-card-sub" data-qa-sub>QA practice vs L{nextMaturity} target</span>
-            </div>
-            <span className={`ai-chip shrink-0 ${BAND[maturityTrack.band]}`} title="Maturity trajectory">
-              {maturityTrack.label}
-            </span>
-          </div>
-          <div className="ai-p2-qa-body">
-            <p className="ai-p2-qa-verdict" ref={verdictRef} data-qa-verdict data-qa-level={maturity} data-qa-next={atTopLevel ? undefined : nextMaturity}>
-              <b>{verdictPick.head}</b> {verdictPick.rest}
-            </p>
-
-            <div
-              className="ai-p2-qa-problem"
-              data-qa-problem
-              data-kind={problemKind}
-              data-band={problemBand}
-              title={maturityInsight}
-            >
-              <span className="ai-p2-eyebrow ai-p2-qa-problem-label">{problemLabel}</span>
-              <p className="ai-p2-qa-problem-text" title={weakestAxis ? axisImpact(weakestAxis.axis) : undefined}>
-                {weakestAxis ? (
-                  problemKind === 'ok' ? (
-                    <>Every capability is at target. Lowest: <b>{weakestAxis.axis}</b> <b className="ai-p2-qa-problem-num">{fmt(weakestAxis.score, 0)}</b></>
-                  ) : (
-                    <><b>{weakestAxis.axis}</b> is <b className="ai-p2-qa-problem-num">{fmt(weakestAxis.score, 0)}</b>, target {maturityTarget}</>
-                  )
-                ) : (
-                  'No capability scores for this project.'
-                )}
-              </p>
-              <span className="ai-p2-eyebrow ai-p2-qa-do-label">Do this</span>
-              <p className="ai-p2-qa-rec-text" title={maturityRec}>{maturityRec}</p>
-            </div>
-
-            {otherAxes.length > 0 && (
-              <div className="ai-p2-qa-others" data-qa-others aria-label="Other capabilities, weakest first">
-                <span className="ai-p2-eyebrow">Others</span>
-                {otherAxes.map((row) => {
-                  const status = capabilityStatus(row.score, maturityTarget);
-                  return (
-                    <span
-                      key={row.key}
-                      className="ai-p2-qa-other"
-                      data-band={status.band}
-                      title={`${row.axis} ${fmt(row.score, 0)}, target ${maturityTarget}`}
-                    >
-                      <span className="ai-p2-qa-other-name">{row.axis}</span>
-                      <b className="ai-p2-qa-other-score">{fmt(row.score, 0)}</b>
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="glass-panel rounded-xl ai-p2-card min-h-0 min-w-0 ai-p2-adopt-card" data-ai-p2-funnel>
-          <div className="ai-p2-card-head ai-p2-card-head-battle">
-            <span className="ai-p2-card-title">AI adoption funnel</span>
-          </div>
-          <div className="ai-p2-adopt" aria-label="AI adoption funnel">
-            {adoption.bars.map((stage, index) => {
-              const drop = adoption.drops[index];
-              const leak = index === adoption.leakAt;
-              const width = stage.count != null && stage.count > 0
-                ? Math.max(4, (stage.count / adoption.max) * 100)
-                : 0;
-              return (
-                <div
-                  key={stage.key}
-                  className={`ai-p2-adopt-row${leak ? ' is-leak' : ''}`}
-                  data-funnel-stage={stage.key}
-                  data-funnel-count={stage.count == null ? 'n/a' : String(stage.count)}
-                  data-funnel-drop={index === 0 ? '' : (drop == null ? 'n/a' : fmtDrop(drop))}
-                  data-largest-drop={leak ? 'true' : 'false'}
-                >
-                  <span className="ai-p2-adopt-label" title={stage.key === 'enabled' ? DEFINITIONS.funnelEnabled : stage.key === 'active' ? DEFINITIONS.funnelActive : DEFINITIONS.funnelTeam}>
-                    {stage.label}
-                  </span>
-                  <span className="ai-p2-adopt-line">
-                    <b className="ai-p2-adopt-count">{fmt(stage.count)}</b>
-                    {index > 0 && <span className="ai-p2-adopt-drop">▼ {fmtDrop(drop)}</span>}
-                  </span>
-                  <span className="ai-p2-adopt-track" aria-hidden="true">
-                    <span className="ai-p2-adopt-bar" style={{ width: `${width}%` }} />
-                  </span>
-                </div>
-              );
-            })}
-            {adoption.contributors && (
-              <div
-                className="ai-p2-adopt-row is-people"
-                data-funnel-stage="contributors"
-                data-funnel-count={adoption.contributors.count == null ? 'n/a' : String(adoption.contributors.count)}
-                data-funnel-drop=""
-                data-largest-drop="false"
-                data-funnel-role="producing-value"
-                title={DEFINITIONS.funnelContributors}
-              >
-                <span className="ai-p2-adopt-label" title={DEFINITIONS.funnelContributors}>Contributors</span>
-                <span className="ai-p2-adopt-line">
-                  <b className="ai-p2-adopt-count">{fmt(adoption.contributors.count)}</b>
-                  <span className="ai-p2-adopt-people">producing value</span>
-                </span>
-                <span className="ai-p2-adopt-track" aria-hidden="true">
-                  <span
-                    className="ai-p2-adopt-bar"
-                    style={{ width: `${adoption.contributors.count != null && adoption.contributors.count > 0 ? Math.min(100, Math.max(4, (adoption.contributors.count / adoption.max) * 100)) : 0}%` }}
-                  />
-                </span>
-              </div>
-            )}
-          </div>
-          <p className="ai-p2-adopt-insight" data-ai-p2-funnel-insight>{adoption.insight}</p>
         </section>
       </div>
 

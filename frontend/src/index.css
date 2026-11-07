@@ -4931,8 +4931,22 @@ html.dark .ai-attn-heat-pop {
     --p2-axis-h: 1rem;
     --p2-panel-pad: 0.3rem 0.4rem 0.3rem;
     --p2-panel-pad-y: 0.6rem;
-    grid-template-rows: auto auto minmax(min-content, 1fr) auto auto;
+    /* On a short laptop the battle list and the release chart need about half the card area.
+       The decision row (use case, QA, funnel) keeps a slight edge and its rows drop to their floors. */
+    gap: 0.32rem;
+    grid-template-rows: auto auto minmax(0, 1.15fr) minmax(0, 0.95fr);
   }
+  .ai-util-fit[data-page="2"] > .ai-p2 > .ai-p2-insight { display: none; }
+  .ai-p2-rel-insight { display: none; }
+  .ai-p2-rel-chart { min-height: 4.25rem; }
+  .ai-util-fit[data-page="2"] > .ai-p2 {
+    --p2-row: 12px;
+    --p2-row-dense: 11px;
+  }
+  .ai-p2-qa-body { row-gap: 0.12rem; }
+  .ai-p2-qa-problem { padding-block: 0.1rem; }
+  .ai-p2-qa-other { padding-block: 0; }
+  .ai-battle-foot { gap: 0.1rem; }
 }
 @container (max-width: 720px) {
   .ai-util-fit {
@@ -5028,10 +5042,13 @@ html.dark .ai-attn-heat-pop {
   --ai-p2-fw-figure: 700;
   --ai-p2-fs-meta: 10px;
   --ai-p2-fw-meta: 600;
-  --ai-p2-col-1: minmax(0, 0.84fr);
-  --ai-p2-col-2: minmax(0, 1.16fr);
-  --ai-p2-col-3: minmax(0, 0.94fr);
-  grid-template-rows: auto auto minmax(min-content, 1fr) minmax(min-content, clamp(11.75rem, calc(11.75rem + (100vh - 768px) * 0.31), 14.375rem)) auto;
+  /* Decision row is the wide use-case + QA track. Context row shares it:
+     col 1 use case / battle, col 2 QA / release, col 3 funnel / benchmark. */
+  --ai-p2-col-1: minmax(0, 1.18fr);
+  --ai-p2-col-2: minmax(0, 1.02fr);
+  --ai-p2-col-3: minmax(0, 0.84fr);
+  /* header | headline | decision (taller) | context (shorter) | insight */
+  grid-template-rows: auto auto minmax(min-content, 1.28fr) minmax(min-content, 0.9fr) auto;
   grid-template-columns: minmax(0, 1fr);
 }
 .ai-p3 {
@@ -5042,6 +5059,13 @@ html.dark .ai-attn-heat-pop {
 .ai-p3 > * {
   min-height: 0;
   min-width: 0;
+}
+/* The header, the headline and the insight line never give up their own height.
+   Only the two card rows shrink on a short laptop. */
+.ai-p2 > .ai-p2-head,
+.ai-p2 > .ai-p2-headline,
+.ai-p2 > .ai-p2-insight {
+  min-height: min-content;
 }
 .ai-p3 > * {
   overflow: hidden;
@@ -5647,15 +5671,14 @@ html.dark .ai-p2-mgr .ai-p2-mgr-vpu[data-tone="red"] { color: #fb7185; }
   min-width: 0;
 }
 .ai-p2-qa-body {
-  /* spare low-row height on tall laptops becomes padding, not empty bands: 0 at 768px tall, 8px at 900px */
-  --qa-air: clamp(0px, calc((100vh - 768px) * 0.06), 8px);
+  --qa-air: 0px;
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
-  align-content: space-between;
-  row-gap: calc(0.3rem + var(--qa-air));
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: stretch;
+  row-gap: 0.35rem;
 }
 .ai-p2-qa-verdict {
   margin: 0;
@@ -5716,18 +5739,22 @@ html.dark .ai-p2-qa-problem[data-band="neutral"] { --prob-color: #94a3b8; }
 }
 .ai-p2-qa-others {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(0.2rem + var(--qa-air) * 0.4) 0.2rem;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 0.15rem;
+  min-height: 0;
   min-width: 0;
 }
 .ai-p2-qa-other {
   --cap-color: #64748b;
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
-  gap: 0.3rem;
+  justify-content: space-between;
+  gap: 0.4rem;
   min-width: 0;
-  padding: calc(0.03rem + var(--qa-air) * 0.5) 0.34rem;
+  padding: 0.08rem 0.34rem;
   border-radius: 0.3rem;
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
@@ -5751,40 +5778,45 @@ html.dark .ai-p2-qa-other[data-band="amber"] { --cap-color: #fbbf24; }
   line-height: 1.2;
   color: var(--cap-color);
 }
+/* Short laptop: two columns, so eight capabilities stay inside the card. Must follow the
+   column rule above or source order puts the list back to one column. */
+@media (max-height: 740px) {
+  .ai-p2-qa-others {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-content: space-between;
+    gap: 0 0.4rem;
+  }
+  .ai-p2-qa-others > .ai-p2-eyebrow { grid-column: 1 / -1; }
+}
 
-/* AI adoption funnel (compact): one horizontal strip, Team -> Active -> Contributors. Each stage
-   shows its label, its count, the real drop from the stage before, and a bar scaled to the
-   largest stage. Contributors is people producing value, never a drop. */
+/* AI adoption funnel: a vertical stage list in the tall decision column.
+   Each row is label, a bar scaled to the largest stage, then the count and drop.
+   Rows share the card height so the column is the funnel, not empty space.
+   Contributors is people producing value, never a drop. */
 .ai-p2-adopt {
   flex: 1 1 auto;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  column-gap: 1rem;
-  align-items: stretch;
-  padding: 0.2rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.28rem;
+  padding: 0.35rem 0.45rem;
 }
 .ai-p2-adopt-row {
   position: relative;
+  flex: 1 1 0;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.14rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
   min-width: 0;
+  min-height: 0;
 }
 .ai-p2-adopt-row + .ai-p2-adopt-row::before {
-  content: '→';
-  position: absolute;
-  left: -0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0.5rem;
-  font-size: var(--ai-p2-fs-meta);
-  line-height: 1;
-  text-align: center;
-  color: var(--muted);
+  content: none;
 }
 .ai-p2-adopt-label {
+  flex: 0 0 5.4rem;
   font-size: var(--ai-p2-fs-label);
   font-weight: var(--ai-p2-fw-label);
   line-height: 1.15;
@@ -5804,8 +5836,10 @@ html.dark .ai-p2-qa-other[data-band="amber"] { --cap-color: #fbbf24; }
   color: var(--muted);
 }
 .ai-p2-adopt-track {
+  flex: 1 1 auto;
   display: block;
-  height: 10px;
+  height: 12px;
+  min-width: 1.5rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 48%, transparent);
   overflow: hidden;
@@ -6477,10 +6511,10 @@ html.dark .ai-rec-engine li {
     /* Battle stays on col 1. Col 2 is wide enough for the use-case name, tag,
        and Rec chip once Trend is hidden. Col 3 keeps Release and the funnel
        wider than the old 0.90 track. */
-    --ai-p2-col-1: minmax(0, 0.86fr);
-    --ai-p2-col-2: minmax(0, 1.14fr);
-    --ai-p2-col-3: minmax(0, 0.9fr);
-    grid-template-rows: auto auto minmax(min-content, 1fr) minmax(min-content, clamp(11.75rem, calc(11.75rem + (100vh - 768px) * 0.31), 14.375rem)) auto;
+    --ai-p2-col-1: minmax(0, 1.2fr);
+    --ai-p2-col-2: minmax(0, 0.98fr);
+    --ai-p2-col-3: minmax(0, 0.82fr);
+    grid-template-rows: auto auto minmax(min-content, 1.28fr) minmax(min-content, 0.9fr) auto;
     gap: 0.28rem;
   }
   .ai-p2 > .ai-p2-mid {
@@ -6532,7 +6566,7 @@ html.dark .ai-rec-engine li {
 @media (max-height: 740px) {
   @container (max-width: 1180px) {
     .ai-util-fit[data-page="2"] > .ai-p2 {
-      grid-template-rows: auto auto minmax(min-content, 1fr) auto;
+      grid-template-rows: auto auto minmax(0, 1.08fr) minmax(0, 1fr);
     }
     .ai-util-fit[data-page="2"] > .ai-p2 > .ai-p2-insight {
       display: none;
