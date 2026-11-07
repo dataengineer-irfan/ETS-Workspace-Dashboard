@@ -6027,25 +6027,23 @@ html.dark .ai-p2-adopt-row.is-leak .ai-p2-adopt-drop {
 .ai-p2-rel-callout .ai-p2-eyebrow {
   font-size: var(--ai-p2-fs-meta);
   letter-spacing: 0.02em;
-  line-height: 1.15;
-  white-space: normal;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 .ai-p2-rel-callout-name {
   font-size: var(--ai-p2-fs-label);
-  font-weight: var(--ai-p2-fw-label);
+  font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.15;
-  white-space: normal;
-  overflow-wrap: break-word;
+  line-height: 1.1;
+  color: var(--text);
 }
 .ai-p2-rel-callout-meta {
   font-size: var(--ai-p2-fs-meta);
   font-weight: var(--ai-p2-fw-meta);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
-  white-space: normal;
-  overflow-wrap: break-word;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 .ai-p2-rel-chart {
   /* The plot takes the track the body gives it: from 2.6rem on a short screen up to

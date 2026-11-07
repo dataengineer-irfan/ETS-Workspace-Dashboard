@@ -1477,12 +1477,12 @@ export function AIUtilizationPage2({
                     type="button"
                     className={`ai-p2-rel-callout ${roleClass}`}
                     onClick={() => onOpenRelease(c.row.release)}
-                    title={`${eyebrow} · ${c.row.release}`}
+                    title={`${eyebrow} · ${c.row.release}${c.row.health != null ? ` · ${fmt(c.row.health, 0)}% adoption` : ''} · ${fmt(c.row.hours_saved, 0)} h`}
                   >
                     <span className="ai-p2-eyebrow">{eyebrow}</span>
-                    <span className="ai-p2-rel-callout-name">{c.row.release}</span>
                     <span className="ai-p2-rel-callout-meta">
-                      {c.row.health != null ? `${fmt(c.row.health, 0)}% adoption` : 'n/a'}
+                      <b className="ai-p2-rel-callout-name">{c.row.release}</b>
+                      {c.row.health != null ? ` · ${fmt(c.row.health, 0)}%` : ' · n/a'}
                       {` · ${fmt(c.row.hours_saved, 0)} h`}
                     </span>
                   </button>
@@ -1491,8 +1491,7 @@ export function AIUtilizationPage2({
               {releaseCallouts.length === 0 && (
                 <div className="ai-p2-rel-callout is-now" aria-disabled>
                   <span className="ai-p2-eyebrow">Now</span>
-                  <span className="ai-p2-rel-callout-name">—</span>
-                  <span className="ai-p2-rel-callout-meta">n/a</span>
+                  <span className="ai-p2-rel-callout-meta">—</span>
                 </div>
               )}
             </div>
